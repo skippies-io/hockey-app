@@ -1,0 +1,59 @@
+const BUILD = "2025-09-17-21:20Z-poolA";
+
+function getStandingsByTab_(tab, label) {
+  const sh = SpreadsheetApp.openById(COACH_SHEET_ID).getSheetByName(tab);
+  if (!sh) return [];
+  const v = sh.getDataRange().getDisplayValues();
+  const rows = [];
+  let currentPool = "";
+  let hadExplicitPool = false;
+  const poolsFound = new Set();
+
+  function isHeaderRow(r) {
+    const t = r.map(x => String(x || "").trim().toUpperCase());
+    const joined = t.join(" ");
+    return joined.includes("GAMES PLAYED") && joined.includes("WINS") && joined.includes("LOSSES");
+  }
+  function poolFromHeader(r0) {
+    const m = String(r0[0] || "").match(/Pool\s*([A-D])/i);
+    return m ? m[1].toUpperCase() : "";
+  }
+
+  for (let i = 0; i < v.length; i++) {
+    const r = v[i];
+    if (r.join("").trim() === "") continue;
+    const a0 = String(r[0] || "").trim();
+    if (/^DATE:/i.test(a0)) continue;
+
+    if (isHeaderRow(r)) {
+      const p = poolFromHeader(r);
+      if (p) {
+        currentPool = p;
+        hadExplicitPool = true;
+      } else {
+        currentPool = String.fromCharCode(65 + poolsFound.size); // A, B, C…
+      }
+      if (!poolsFound.has(currentPool)) poolsFound.add(currentPool);
+      continue;
+    }
+
+    const gp = r[1];
+    if (currentPool && gp !== "" && isFinite(gp)) {
+      rows.push({
+        Age: label,
+        Pool: currentPool,
+        Team: r[0],
+        GP: Number(r[1]) || 0,
+        W: Number(r[2]) || 0,
+        D: Number(r[3]) || 0,
+        L: Number(r[4]) || 0,
+        GF: Number(r[5]) || 0,
+        GA: Number(r[6]) || 0,
+        GD: Number(r[7]) || 0,
+        Points: Number(r[8]) || 0
+      });
+    }
+  }
+
+  return rows;
+}

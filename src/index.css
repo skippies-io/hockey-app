@@ -1,68 +1,69 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+:root { color-scheme: light;
+       --sticky-offset: 0px; /* height of the sticky page header */ }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #111; background: #fff; }
+a { color: inherit; }
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+/* Layout */
+.p-4 { padding: 16px; }
+.header { padding: 12px 16px; border-bottom: 1px solid #eee; margin-bottom: 12px; position: sticky; top: 0; background: #fff; z-index: 10; }
+.header-top { display: flex; align-items: center; gap: 12px; }
+.app-title { margin: 0; font-size: 20px; }
+.title-link { color: #111; text-decoration: none; }
+.age-chooser { margin-left: auto; }
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+nav { margin-top: 8px; display: flex; gap: 8px; }
+nav a { padding: 6px 10px; border: 1px solid #eee; border-radius: 999px; text-decoration: none; color: #111; background: #fafafa; }
+nav a[aria-current="page"] { background: #eef2ff; border-color: #dfe4ff; }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+/* Toolbars */
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar .title { margin: 0; font-size: 18px; }
+.toolbar-right { margin-left: auto; }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+/* Standings table */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; min-width: 640px; }
+.table thead th {
+  position: sticky;
+  top: var(--sticky-offset);
+  z-index: 2;                  /* <-- keeps header above rows */
+  background: #f8f8f8;
+  border-bottom: 1px solid #eaeaea;
+  padding: 10px 8px;
+  font-weight: 600;
 }
+.table td, .table th { padding: 8px 8px; text-align: center; }
+.table .left { text-align: left; }
+.row { border-top: 1px solid #eee; cursor: pointer; }
+.row:hover { background: #fafafa; }
+.row-top { background: #eefcf1; } /* top 2 highlight */
+.strong { font-weight: 700; }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+/* Fixture cards */
+.cards { display: grid; gap: 8px; }
+.card { border: 1px solid #eee; border-radius: 10px; padding: 12px; background: #fff; }
+.meta { font-size: 12px; color: #666; margin-bottom: 4px; }
+.match { display: flex; align-items: center; gap: 8px; }
+.time { width: 64px; color: #666; font-variant-numeric: tabular-nums; }
+.teams { flex: 1; }
+.sub { color: #666; }
+.score { width: 72px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge { width: 28px; text-align: center; font-weight: 700; }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+/* Team stats */
+.stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.stat { border: 1px solid #eee; border-radius: 10px; padding: 12px; text-align: center; background: #fff; }
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { color: #666; }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.empty { border: 1px dashed #ccc; border-radius: 10px; padding: 12px; color: #666; }
+.footer { padding: 16px; color: #888; font-size: 12px; }
+
+/* Mobile tweaks */
+@media (max-width: 640px) {
+  .time { width: 52px; }
+  .score { width: 64px; }
+  .table td, .table th { padding: 6px 6px; }
+  .stats-grid { grid-template-columns: repeat(5, minmax(0,1fr)); }
 }

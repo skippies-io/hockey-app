@@ -1,21 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { getSheet } from "../lib/api";
+import { getFixturesRows } from "../lib/api";
 
-const SHEET_FIXTURES = "U13B_Fixtures"; // change later per age group
+function toMinutes(t) { if (!t) return 0; const [hh, mm] = String(t).split(":").map(Number); return (hh||0)*60 + (mm||0); }
+function hasScore(x) { const n = Number(x); return !Number.isNaN(n) && String(x).trim() !== ""; }
 
-function toMinutes(t) {
-  // "8:00" -> 480
-  if (!t) return 0;
-  const [hh, mm] = String(t).split(":").map(Number);
-  return (hh||0)*60 + (mm||0);
-}
-
-function hasScore(x) {
-  const n = Number(x);
-  return !Number.isNaN(n) && String(x).trim() !== "";
-}
-
-export default function Fixtures() {
+export default function Fixtures({ ageId, ageLabel }) {
   const [rows, setRows] = useState([]);
   const [date, setDate] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -26,16 +15,13 @@ export default function Fixtures() {
     (async () => {
       try {
         setLoading(true);
-        const data = await getSheet(SHEET_FIXTURES);
+        const data = await getFixturesRows(ageId);
         if (alive) setRows(data);
-      } catch (e) {
-        setErr(e.message || String(e));
-      } finally {
-        if (alive) setLoading(false);
-      }
+      } catch (e) { setErr(e.message || String(e)); }
+      finally { if (alive) setLoading(false); }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [ageId]);
 
   const dates = useMemo(() => {
     const set = new Set(rows.map(r => (r.Date || "").toString().trim()).filter(Boolean));
@@ -44,7 +30,6 @@ export default function Fixtures() {
 
   const filtered = useMemo(() => {
     const list = date === "All" ? rows : rows.filter(r => String(r.Date).trim() === date);
-    // sort by date (stable by original order), then time
     return list.slice().sort((a,b) => {
       const da = String(a.Date), db = String(b.Date);
       if (da !== db) return da.localeCompare(db);
@@ -57,9 +42,9 @@ export default function Fixtures() {
 
   return (
     <div className="p-4">
-      <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:12 }}>
-        <h2 style={{ margin:0 }}>U13 Boys — Fixtures</h2>
-        <div style={{ marginLeft:"auto" }}>
+      <div className="toolbar">
+        <h2 className="title">{ageLabel} — Fixtures</h2>
+        <div className="toolbar-right">
           <label style={{ marginRight:8 }}>Date</label>
           <select value={date} onChange={e=>setDate(e.target.value)}>
             {dates.map(d => <option key={d} value={d}>{d}</option>)}
@@ -67,23 +52,19 @@ export default function Fixtures() {
         </div>
       </div>
 
-      <div style={{ display:"grid", gap:8 }}>
+      <div className="cards">
         {filtered.map((m, i) => {
           const played = hasScore(m.Score1) || hasScore(m.Score2);
           return (
-            <div key={i} style={{ border:"1px solid #eee", borderRadius:8, padding:12 }}>
-              <div style={{ fontSize:12, color:"#666", marginBottom:4 }}>
-                {m.Date} • {m.Venue} • {m.Round}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <div style={{ width:60 }}>{m.Time}</div>
-                <div style={{ flex:1 }}>
+            <div key={i} className="card">
+              <div className="meta">{m.Date} • {m.Venue} • {m.Round}</div>
+              <div className="match">
+                <div className="time">{m.Time}</div>
+                <div className="teams">
                   <div>{m.Team1}</div>
-                  <div style={{ color:"#666" }}>{m.Team2}</div>
+                  <div className="sub">{m.Team2}</div>
                 </div>
-                <div style={{ width:72, textAlign:"right", fontWeight:600 }}>
-                  {played ? `${m.Score1 ?? ""} - ${m.Score2 ?? ""}` : "TBD"}
-                </div>
+                <div className="score">{played ? `${m.Score1 ?? ""} - ${m.Score2 ?? ""}` : "TBD"}</div>
               </div>
             </div>
           );
