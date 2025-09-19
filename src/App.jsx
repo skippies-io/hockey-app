@@ -54,20 +54,20 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      {/* legacy routes → redirect to first age */}
-      <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
-      <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+  <Routes>
+    {/* legacy links → send to first age */}
+    <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
+    <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
 
-      {/* welcome at root */}
-      <Route path="/" element={<Welcome groups={groups} firstId={firstId} />} />
+    {/* welcome at root */}
+    <Route path="/" element={<Welcome groups={groups} />} />
 
-      {/* main nested layout */}
-      <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+    {/* age routes */}
+    <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
 
-      {/* unknown paths → welcome */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    {/* unknown → welcome */}
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
   );
 
 }

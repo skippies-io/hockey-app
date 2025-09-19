@@ -1,143 +1,96 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* ========== Design tokens ========== */
+:root{
+  --bg:#fff;
+  --ink:#111;
+  --muted:#666;
+  --line:#eee;
+  --brand:#1e293b;
+  --accent:#eef2ff;
+  --follow:#f6ffed;
+  --star-on:#f6b200;
+  --star-off:#ccc;
+  --radius:16px;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+/* ========== Global reset (light) ========== */
+html,body,#root{height:100%}
+body{margin:0;background:#f7f7f9;color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+*{box-sizing:border-box}
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* Remove Vite demo styles we don't use */
+.logo,.logo.react,.read-the-docs,#root>.card{all:unset}
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
+/* Optional container helper (you can keep your inline container if you prefer) */
+.container{max-width:900px;margin:0 auto}
 
-.card {
-  padding: 2em;
-}
+/* ========== Header / Brand (mobile-first) ========== */
+.header{padding:12px 16px;background:var(--bg)}
+.header-top{display:flex;flex-direction:column;align-items:center;gap:10px}
+.brand-link{display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;color:var(--ink)}
+/* On phones, let the logo “pop” with its native-ish aspect */
+.brand-logo{width:120px;height:auto;display:block;object-fit:contain}
+.brand-title{font-size:20px;font-weight:800;line-height:1.15;text-align:center;letter-spacing:.2px}
+.age-chooser{display:flex;align-items:center;gap:8px}
 
-.read-the-docs {
-  color: #888;
-}
-/* Brand header layout */
-.brand { display: flex; align-items: center; }
-.brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #111; }
+/* Tab nav (Standings / Fixtures) */
+nav{display:flex;gap:8px}
+nav a{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#fafafa;text-decoration:none;color:var(--ink)}
+nav a[aria-current="page"]{background:var(--accent)}
 
-/* Cap the logo size so it never overflows */
-.brand-logo { width: 40px; height: 40px; object-fit: contain; display: block; }
-
-/* Title sizing */
-.brand-title { font-size: 20px; font-weight: 700; letter-spacing: 0.2px; }
-
-/* Keep header content on one line and spaced */
-.header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-
-/* On wider screens, bump sizes slightly */
-@media (min-width: 640px) {
-  .brand-logo { width: 120px; height: 53px; }
-  .brand-title { font-size: 22px; }
-}
-/* --- Header / brand (mobile-first) --- */
-.header { padding: 12px 16px; }
-.header-top { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-
-.brand { display: flex; align-items: center; }
-.brand-link { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: #111; }
-
-/* Make the logo pop on mobile without overflow */
-.brand-logo { width: 120px; height: auto; display: block; object-fit: contain; }
-
-/* Title: bold, compact line-height, centered */
-.brand-title { font-size: 20px; font-weight: 800; line-height: 1.15; text-align: center; letter-spacing: 0.2px; }
-
-/* Age picker centered under the brand on mobile */
-.age-chooser { display: flex; align-items: center; gap: 8px; }
-
-/* --- Larger screens (≥640px) revert to a horizontal layout --- */
-@media (min-width: 640px) {
-  .header-top { flex-direction: row; justify-content: space-between; align-items: center; }
-  .brand-link { flex-direction: row; align-items: center; }
-  .brand-logo { width: 44px; height: 44px; }
-  .brand-title { font-size: 24px; text-align: left; }
-}
-/* Mobile-first header spacing */
-.header { padding: 12px 16px; }
-.header-top { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.brand-link { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: #111; }
-.brand-logo { width: 120px; height: auto; display: block; object-fit: contain; }
-.brand-title { font-size: 20px; font-weight: 800; line-height: 1.15; text-align: center; letter-spacing: 0.2px; }
-.age-chooser { display: flex; align-items: center; gap: 8px; }
-
-/* Larger screens → compact row */
-@media (min-width: 640px) {
-  .header-top { flex-direction: row; justify-content: space-between; align-items: center; }
-  .brand-link { flex-direction: row; }
-  .brand-logo { width: 44px; height: 44px; }
-  .brand-title { font-size: 24px; text-align: left; }
+/* ≥640px: compact row layout */
+@media (min-width:640px){
+  .header-top{flex-direction:row;justify-content:space-between;align-items:center}
+  .brand-link{flex-direction:row}
+  .brand-logo{width:56px;height:56px}
+  .brand-title{font-size:24px;text-align:left}
 }
 
-/* Follow visuals */
-.star-btn { background: none; border: 0; padding: 6px; border-radius: 8px; cursor: pointer; }
-.star { font-size: 18px; line-height: 1; display: inline-block; }
-.star.is-on { color: #f6b200; }      /* filled star color */
-.star.is-off { color: #ccc; }        /* outline star color */
+/* ========== Toolbar (title + filters) ========== */
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 16px 12px}
+.title{margin:0;font-size:18px}
+.toolbar-right{display:flex;align-items:center;gap:8px}
 
-.row-following, .card-following { background: #f6ffed; } /* soft highlight */
-.only-following-note { font-size: 12px; color: #666; margin-top: 4px; }
+/* ========== Follow visuals ========== */
+.star-btn{background:none;border:0;padding:6px;border-radius:8px;cursor:pointer}
+.star{font-size:18px;line-height:1;display:inline-block;color:var(--star-off)}
+.star.is-on{color:var(--star-on)}
+.row-following,.card-following{background:var(--follow)}
+.only-following-note{font-size:12px;color:var(--muted);margin:4px 0}
 
-/* Compact table tweaks on mobile (keeps current table until we redo UI) */
-@media (max-width: 480px) {
-  table td, table th { padding: 8px 6px; }
-  .sticky-th { position: sticky; top: 0; background: #fff; }
-}
-/* --- Welcome --- */
-.welcome {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px 16px;
-  background: #f7f7f9;
-}
-.welcome-card {
-  width: 100%;
-  max-width: 420px;
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 16px;
-  padding: 20px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-}
-.welcome-logo { width: 120px; height: auto; margin: 6px auto 10px; display: block; }
-.welcome-title { margin: 4px 0 6px; font-size: 22px; font-weight: 800; }
-.welcome-sub { margin: 0 0 14px; color: #555; font-size: 14px; }
+/* Keyboard focus visibility */
+.star-btn:focus-visible,
+button:focus-visible,
+select:focus-visible,
+a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:8px}
 
-.welcome-actions { display: grid; gap: 10px; margin: 10px 0 6px; }
-.btn-primary, .btn-secondary {
-  padding: 12px 14px; border-radius: 999px; font-weight: 700; cursor: pointer;
-  border: 1px solid transparent;
+/* ========== Tables (Standings) ========== */
+.table-wrap{margin:0 16px 16px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:600px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--bg);z-index:1}
+th.left,td.left{text-align:left}
+tbody tr:last-child td{border-bottom:0}
+
+/* Compact on very small phones */
+@media (max-width:480px){
+  th,td{padding:8px 6px}
 }
-.btn-primary { background: #1e293b; color: #fff; }
-.btn-secondary { background: #eef2ff; color: #111; border-color: #e5e7eb; }
-.welcome-skip { display: inline-flex; gap: 8px; align-items: center; color: #666; font-size: 13px; }
+
+/* ========== Cards (Fixtures) ========== */
+.cards{display:grid;gap:10px;margin:0 16px 16px}
+.fixture-card{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--bg)}
+.meta{font-size:12px;color:var(--muted);margin-bottom:8px}
+.match{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px}
+.fixture-time{font-weight:600}
+.team-row{display:flex;align-items:center;gap:8px}
+.score{font-weight:700}
+
+/* ========== Welcome page ========== */
+.welcome{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:#f7f7f9}
+.welcome-card{width:100%;max-width:460px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:22px;text-align:left;box-shadow:0 10px 30px rgba(0,0,0,.04)}
+.welcome-logo{width:120px;height:auto;display:block;margin:4px 0 10px}
+.welcome-title{margin:4px 0 10px;font-size:22px;font-weight:800}
+.welcome-lead{margin:0 0 10px;font-size:16px}
+.welcome-copy p{margin:6px 0;color:#444;line-height:1.35}
+.btn-primary{margin-top:14px;padding:12px 16px;border:0;border-radius:999px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;width:100%}
+@media (min-width:640px){.btn-primary{width:auto}}

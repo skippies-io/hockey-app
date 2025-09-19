@@ -1,23 +1,10 @@
 // src/views/Welcome.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function Welcome({ groups, firstId }) {
+export default function Welcome({ groups }) {
   const navigate = useNavigate();
-  const [skipNextTime, setSkipNextTime] = useState(true);
-
-  // Auto-bypass if they've seen it before
-  useEffect(() => {
-    const seen = localStorage.getItem("hj_seen_welcome") === "1";
-    if (seen && firstId) navigate(`/${firstId}/standings`, { replace: true });
-  }, [firstId, navigate]);
-
-  const go = (path) => {
-    if (skipNextTime) localStorage.setItem("hj_seen_welcome", "1");
-    navigate(path);
-  };
-
-  const landingId = useMemo(() => firstId || groups?.[0]?.id, [firstId, groups]);
+  const firstId = useMemo(() => groups?.[0]?.id || "U9M", [groups]);
 
   return (
     <div className="welcome">
@@ -27,22 +14,33 @@ export default function Welcome({ groups, firstId }) {
           alt="HJ Hockey for Juniors"
           className="welcome-logo"
         />
-        <h1 className="welcome-title">HJ Indoor Season 2025</h1>
-        <p className="welcome-sub">Live tables & fixtures for Johannesburg junior indoor hockey.</p>
+        <h1 className="welcome-title">Welcome 👋</h1>
+        <p className="welcome-lead">
+          This is the <strong>HJ Indoor Hockey</strong> fixtures & standings site.
+        </p>
 
-        <div className="welcome-actions">
-          <button className="btn-primary" onClick={() => go(`/${landingId}/standings`)}>View Standings</button>
-          <button className="btn-secondary" onClick={() => go(`/${landingId}/fixtures`)}>View Fixtures</button>
+        <div className="welcome-copy">
+          <p>
+            • Browse <strong>live tables</strong> and <strong>weekly fixtures</strong> for each age group.
+          </p>
+          <p>
+            • Tap the <strong>☆ star</strong> next to a team to <strong>favourite</strong> it—followed teams are
+            highlighted across the app and you can filter to “Only followed”.
+          </p>
+          <p>
+            • Share direct links like <em>/U13B/fixtures</em> with coaches and parents for quick access.
+          </p>
+          <p>
+            We’re just getting started—feedback is welcome (we’ll add a feedback form here later).
+          </p>
         </div>
 
-        <label className="welcome-skip">
-          <input
-            type="checkbox"
-            checked={skipNextTime}
-            onChange={e => setSkipNextTime(e.target.checked)}
-          />
-          Skip this screen next time
-        </label>
+        <button
+          className="btn-primary"
+          onClick={() => navigate(`/${firstId}/standings`)}
+        >
+          Get started
+        </button>
       </div>
     </div>
   );
