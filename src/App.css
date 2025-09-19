@@ -1,160 +1,279 @@
-/* ========== Design tokens ========== */
-:root{
-  --bg:#fff;
-  --ink:#111;
-  --muted:#666;
-  --line:#eee;
-  --brand:#1e293b;
-  --accent:#eef2ff;
-  --follow:#f6ffed;
-  --star-on:#f6b200;
-  --star-off:#ccc;
-  --radius:16px;
+/* --- Reset-ish base --- */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #fafafa;
+  color: #111;
+}
+a { color: inherit; }
+
+/* --- Header & Brand --- */
+.header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+.brand-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.brand-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #111;
+}
+.brand-logo {
+  width: 100px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+.brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
 }
 
-/* ========== Global reset (light) ========== */
-html,body,#root{height:100%}
-body{margin:0;background:#f7f7f9;color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-*{box-sizing:border-box}
-
-/* Remove Vite demo styles we don't use */
-.logo,.logo.react,.read-the-docs,#root>.card{all:unset}
-
-/* Optional container helper (you can keep your inline container if you prefer) */
-.container{max-width:900px;margin:0 auto}
-
-/* ========== Header / Brand (mobile-first) ========== */
-/* HEADER rows */
-.header{ padding:12px 16px; background:#fff; }
-.brand-row{ display:flex; justify-content:center; align-items:center; margin-bottom:10px; }
-.brand-link{ display:flex; flex-direction:column; align-items:center; gap:8px; text-decoration:none; color:#111; }
-.brand-logo{ width:120px; height:auto; display:block; object-fit:contain; }
-.brand-title{ font-size:20px; font-weight:800; line-height:1.15; text-align:center; letter-spacing:.2px; }
-
-/* nav + age line */
-.controls-row{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  justify-content:space-between;   /* nav left, age right */
+/* --- Controls: Tabs + Age dropdown --- */
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+.age-chooser {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.age-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
 }
 
-/* age pill styling */
-.age-chooser{ display:flex; align-items:center; gap:8px; }
-.age-label{ color:#555; }
-
-/* MOBILE: keep brand stacked; controls stay one line */
-@media (max-width: 480px){
-  .brand-row{ margin-bottom:8px; }
-  nav a{ padding:8px 12px; }
+/* --- Tabs (NavLink pills) --- */
+nav a {
+  font-size: 14px;
+  font-weight: 500;
 }
 
-/* DESKTOP: compact brand, everything on one line height-wise */
-@media (min-width:640px){
-  .brand-link{ flex-direction:row; }
-  .brand-logo{ width: 56px; height:56px; }
-  .brand-title{ font-size:24px; text-align:left; }
+/* --- Standings: Mobile Cards --- */
+.standings-cards {
+  display: grid;
+  gap: 10px;
+  margin: 16px;
+}
+.stand-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+.stand-card.following {
+  background: #f6ffed;
+}
+.sc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.sc-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sc-name { font-weight: 600; font-size: 15px; }
+.sc-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rank-chip {
+  font-size: 12px;
+  background: #eef2ff;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.sc-points {
+  font-weight: 700;
+}
+.sc-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.sc-stat { display: flex; flex-direction: column; align-items: center; }
+.lbl { font-size: 11px; color: #666; }
+.gd-chip {
+  margin-left: auto;
+  font-size: 12px;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 8px;
 }
 
-/* ========== Toolbar (title + filters) ========== */
-.toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 16px 12px}
-.title{margin:0;font-size:18px}
-.toolbar-right{display:flex;align-items:center;gap:8px}
-
-/* ========== Follow visuals ========== */
-.star-btn{background:none;border:0;padding:6px;border-radius:8px;cursor:pointer}
-.star{font-size:18px;line-height:1;display:inline-block;color:var(--star-off)}
-.star.is-on{color:var(--star-on)}
-.row-following,.card-following{background:var(--follow)}
-.only-following-note{font-size:12px;color:var(--muted);margin:4px 0}
-
-/* Keyboard focus visibility */
-.star-btn:focus-visible,
-button:focus-visible,
-select:focus-visible,
-a:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:8px}
-
-/* ========== Tables (Standings) ========== */
-.table-wrap{margin:0 16px 16px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg)}
-table{width:100%;border-collapse:separate;border-spacing:0;min-width:600px}
-th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
-thead th{position:sticky;top:0;background:var(--bg);z-index:1}
-th.left,td.left{text-align:left}
-tbody tr:last-child td{border-bottom:0}
-
-/* Compact on very small phones */
-@media (max-width:480px){
-  th,td{padding:8px 6px}
+/* --- Desktop Table --- */
+.table-wrap { display: none; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+.table th, .table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: center;
+}
+.table th.left, .table td.left {
+  text-align: left;
+}
+.row-following {
+  background: #f6ffed;
 }
 
-/* ========== Cards (Fixtures) ========== */
-.cards{display:grid;gap:10px;margin:0 16px 16px}
-.fixture-card{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:var(--bg)}
-.meta{font-size:12px;color:var(--muted);margin-bottom:8px}
-.match{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px}
-.fixture-time{font-weight:600}
-.team-row{display:flex;align-items:center;gap:8px}
-.score{font-weight:700}
-
-/* ========== Welcome page ========== */
-.welcome{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:#f7f7f9}
-.welcome-card{width:100%;max-width:460px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:22px;text-align:left;box-shadow:0 10px 30px rgba(0,0,0,.04)}
-.welcome-logo{width:120px;height:auto;display:block;margin:4px 0 10px}
-.welcome-title{margin:4px 0 10px;font-size:22px;font-weight:800}
-.welcome-lead{margin:0 0 10px;font-size:16px}
-.welcome-copy p{margin:6px 0;color:#444;line-height:1.35}
-.btn-primary{margin-top:14px;padding:12px 16px;border:0;border-radius:999px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;width:100%}
-@media (min-width:640px){.btn-primary{width:auto}}
-
-/* --- UEFA polish for standings cards --- */
-.stand-card{
-  border:1px solid var(--line);
-  background:#fff;
-  border-radius: var(--radius);
-  padding:12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.04);
+/* --- Stars (Follow) --- */
+.star-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0 4px;
 }
-.sc-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
-.sc-team{ display:flex; align-items:center; gap:10px; min-width:0; }
-.badge{
-  width:34px; height:34px; border-radius:50%;
-  display:grid; place-items:center;
-  color:#fff; font-weight:800; font-size:13px; letter-spacing:.5px;
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+.star {
+  font-size: 16px;
+  line-height: 1;
 }
-.sc-name{ font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.star.is-on { color: #f6b200; }
+.star.is-off { color: #ccc; }
 
-.sc-right{ display:flex; align-items:center; gap:10px; }
-.rank-chip{
-  font-weight:800; background:#f2f4f8; border:1px solid var(--line);
-  border-radius:999px; padding:3px 8px; font-size:12px;
+/* --- Fixtures --- */
+.cards {
+  display: grid;
+  gap: 10px;
+  margin: 16px;
 }
-.sc-points{
-  font-weight:800; background:#f4f7ff; border:1px solid var(--line);
-  border-radius:999px; padding:4px 8px; min-width:44px; text-align:center;
+.card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 12px;
+}
+.match {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.meta {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+.teams {
+  font-weight: 600;
+}
+.score {
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
 }
 
-/* grid now 6 stats + GD pill spanning two columns */
-.sc-grid{
-  display:grid;
-  grid-template-columns: repeat(6, minmax(0,1fr));
-  gap:8px; font-size:13px; align-items:stretch;
+/* --- Toolbar --- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 16px;
 }
-.sc-stat{ text-align:center; background:#fafafa; border:1px solid var(--line); border-radius:10px; padding:8px 6px; }
-.sc-stat .lbl{ display:block; color:#666; font-size:11px; margin-bottom:2px; }
-
-.gd-chip{
-  grid-column: span 2;
-  justify-self:end;
-  align-self:center;
-  background:#eefbf1; color:#0a7a2a; border:1px solid #d4f2dc;
-  padding:4px 8px; border-radius:999px; font-size:12px;
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.gd-chip strong{ margin-left:4px; }
+.title {
+  font-size: 18px;
+  font-weight: 700;
+}
 
-/* form dots (future) */
-.form-row{ display:flex; gap:6px; margin-top:8px; }
-.dot{ width:8px; height:8px; border-radius:50%; background:#ddd; }
-.dot.win{ background:#22c55e; }  /* green */
-.dot.draw{ background:#eab308; } /* amber */
-.dot.loss{ background:#ef4444; } /* red */
+/* --- Welcome Page --- */
+.welcome {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #f7f7f9;
+}
+.welcome-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+.welcome-logo {
+  width: 120px;
+  height: auto;
+  margin: 6px auto 10px;
+  display: block;
+}
+.welcome-title {
+  margin: 4px 0 6px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.welcome-lead {
+  margin: 0 0 14px;
+  color: #555;
+  font-size: 14px;
+}
+.btn-primary {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* --- Responsive switches --- */
+@media (min-width: 700px) {
+  .standings-cards { display: none !important; }
+  .table-wrap { display: block !important; }
+  .brand-row { justify-content: flex-start; }
+  .brand-link { flex-direction: row; gap: 10px; }
+  .brand-logo { width: 44px; }
+  .brand-title { font-size: 22px; text-align: left; }
+  .controls-row { justify-content: space-between; }
+}

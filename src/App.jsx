@@ -1,16 +1,15 @@
-import { Link, NavLink, Routes, Route, Navigate, Outlet, useLocation, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
+import { Routes, Route, Navigate, Link, NavLink, useParams, useLocation, useNavigate } from "react-router-dom";
 import Standings from "./components/Standings";
 import Fixtures from "./components/Fixtures";
 import Team from "./views/Team";
+import Welcome from "./views/Welcome";
 import { getGroups } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
-import Welcome from "./views/Welcome";
 import "./App.css";
 
-/* ---------- Small nav that respects ageId ---------- */
-function TabNav({ ageId }) {
-  const linkStyle = ({ isActive }) => ({
+function Tabs({ ageId }) {
+  const pill = ({ isActive }) => ({
     padding: "6px 10px",
     border: "1px solid #eee",
     borderRadius: 999,
@@ -19,74 +18,26 @@ function TabNav({ ageId }) {
     color: "#111",
   });
   return (
-    <nav style={{ marginTop: 8, display: "flex", gap: 8 }}>
-      <NavLink to={`/${ageId}/standings`} style={linkStyle}>Standings</NavLink>
-      <NavLink to={`/${ageId}/fixtures`}  style={linkStyle}>Fixtures</NavLink>
+    <nav style={{ display: "flex", gap: 8 }}>
+      <NavLink to={`/${ageId}/standings`} style={pill}>Standings</NavLink>
+      <NavLink to={`/${ageId}/fixtures`}  style={pill}>Fixtures</NavLink>
     </nav>
   );
 }
 
-/* ---------- Top-level shell: loads groups, sets up routing ---------- */
-export default function App() {
-  const [groups, setGroups] = useState(FALLBACK_GROUPS); // [{id, label}]
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const gs = await getGroups();
-        if (!alive || !gs.length) return;
-        setGroups(gs.map(g => ({ id: g.id, label: g.label })));
-      } catch (err) {
-        console.error("getGroups failed", err);
-      } finally {
-        if (alive) setLoaded(true);
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
+function AgeLayout({ groups }) {
+  const params = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const ageIdUrl = params.ageId;
 
   const firstId = groups[0]?.id;
-
-  if (!loaded && !groups.length) {
-    return <div className="p-4" style={{ fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>Loading…</div>;
-  }
-
-  return (
-  <Routes>
-    {/* legacy links → send to first age */}
-    <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
-    <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
-
-    {/* welcome at root */}
-    <Route path="/" element={<Welcome groups={groups} />} />
-
-    {/* age routes */}
-    <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
-
-    {/* unknown → welcome */}
-    <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes>
+  const group = useMemo(
+    () => groups.find(g => g.id === ageIdUrl) || (firstId ? groups[0] : null),
+    [groups, ageIdUrl, firstId]
   );
 
-}
-
-/* ---------- Layout for any age route (/:ageId/*) ---------- */
-function AgeLayout({ groups }) {
-  const { ageId } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  // Clamp ageId to a valid group
-  const group = useMemo(() => {
-    return groups.find(g => g.id === ageId) || groups[0];
-  }, [groups, ageId]);
-
-  // If URL ageId is unknown (e.g., typo), normalize to the first valid group
-  if (!groups.some(g => g.id === ageId)) {
-    return <Navigate to={`/${group.id}/standings`} replace />;
-  }
+  if (!group) return <div className="p-4">Loading…</div>;
 
   const onAgeChange = (e) => {
     const newId = e.target.value;
@@ -95,41 +46,75 @@ function AgeLayout({ groups }) {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <header className="header">
         <div className="brand-row">
-          <Link to="/" className="brand-link">
-            <img src={`${import.meta.env.BASE_URL}hj_logo.jpg`} alt="HJ" className="brand-logo" />
+          <Link to="/" className="brand-link" aria-label="Home">
+            <img
+              src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
+              alt="HJ Hockey for Juniors"
+              className="brand-logo"
+            />
             <span className="brand-title">HJ Indoor Season 2025</span>
           </Link>
         </div>
 
         <div className="controls-row">
-          <Nav ageId={group.id} />
+          <Tabs ageId={group.id} />
           <div className="age-chooser">
-            <label className="age-label">Age</label>
-            <select value={group.id} onChange={onAgeChange}>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+            <label htmlFor="ageSelect" className="age-label">Age</label>
+            <select id="ageSelect" value={group.id} onChange={onAgeChange}>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.label}</option>
+              ))}
             </select>
           </div>
         </div>
       </header>
 
-      {/* nested routes for this age */}
       <Routes>
+        <Route index element={<Navigate to={`/${group.id}/standings`} replace />} />
         <Route path="standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
         <Route path="fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
         <Route path="team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
-        {/* default under /:ageId → standings */}
-        <Route index element={<Navigate to="standings" replace />} />
+        <Route path="*" element={<div className="p-4">Not found</div>} />
       </Routes>
 
-      <footer className="footer">
+      <footer className="footer" style={{ padding: 12, textAlign: "center", color: "#666" }}>
         Data via Google Apps Script JSON • Route: {location.pathname}
       </footer>
-
-      {/* Outlet is here if you later want deeper nesting */}
-      <Outlet />
     </div>
+  );
+}
+
+export default function App() {
+  const [groups, setGroups] = useState(FALLBACK_GROUPS);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const gs = await getGroups();
+        if (!alive) return;
+        if (gs && gs.length) {
+          setGroups(gs.map(g => ({ id: g.id, label: g.label })));
+        }
+      } catch (err) {
+        console.error("Failed to fetch groups", err);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const firstId = groups[0]?.id || "U9M";
+
+  return (
+    <Routes>
+      <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
+      <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+      <Route path="/" element={<Welcome groups={groups} />} />
+      <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
