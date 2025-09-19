@@ -81,3 +81,33 @@
   .brand-logo { width: 44px; height: 44px; }
   .brand-title { font-size: 24px; text-align: left; }
 }
+/* Mobile-first header spacing */
+.header { padding: 12px 16px; }
+.header-top { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.brand-link { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: #111; }
+.brand-logo { width: 120px; height: auto; display: block; object-fit: contain; }
+.brand-title { font-size: 20px; font-weight: 800; line-height: 1.15; text-align: center; letter-spacing: 0.2px; }
+.age-chooser { display: flex; align-items: center; gap: 8px; }
+
+/* Larger screens → compact row */
+@media (min-width: 640px) {
+  .header-top { flex-direction: row; justify-content: space-between; align-items: center; }
+  .brand-link { flex-direction: row; }
+  .brand-logo { width: 44px; height: 44px; }
+  .brand-title { font-size: 24px; text-align: left; }
+}
+
+/* Follow visuals */
+.star-btn { background: none; border: 0; padding: 6px; border-radius: 8px; cursor: pointer; }
+.star { font-size: 18px; line-height: 1; display: inline-block; }
+.star.is-on { color: #f6b200; }      /* filled star color */
+.star.is-off { color: #ccc; }        /* outline star color */
+
+.row-following, .card-following { background: #f6ffed; } /* soft highlight */
+.only-following-note { font-size: 12px; color: #666; margin-top: 4px; }
+
+/* Compact table tweaks on mobile (keeps current table until we redo UI) */
+@media (max-width: 480px) {
+  table td, table th { padding: 8px 6px; }
+  .sticky-th { position: sticky; top: 0; background: #fff; }
+}
