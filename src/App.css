@@ -40,3 +40,21 @@
 .read-the-docs {
   color: #888;
 }
+/* Brand header layout */
+.brand { display: flex; align-items: center; }
+.brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #111; }
+
+/* Cap the logo size so it never overflows */
+.brand-logo { width: 40px; height: 40px; object-fit: contain; display: block; }
+
+/* Title sizing */
+.brand-title { font-size: 20px; font-weight: 700; letter-spacing: 0.2px; }
+
+/* Keep header content on one line and spaced */
+.header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* On wider screens, bump sizes slightly */
+@media (min-width: 640px) {
+  .brand-logo { width: 120px; height: 53px; }
+  .brand-title { font-size: 22px; }
+}

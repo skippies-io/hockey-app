@@ -5,6 +5,7 @@ import Fixtures from "./components/Fixtures";
 import Team from "./views/Team";
 import { getGroups } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
+import "./App.css";
 
 function Nav() {
   const linkStyle = ({ isActive }) => ({
@@ -33,7 +34,7 @@ export default function App() {
     let alive = true;
     (async () => {
       try {
-        const gs = await getGroups(); // built from Standings_All
+        const gs = await getGroups(); // built from Standings_All + Fixtures_All
         if (!alive || !gs.length) return;
         setGroups(gs.map(g => ({ id: g.id, label: g.label })));
         setGroupId(gs[0].id);
@@ -52,7 +53,7 @@ export default function App() {
   if (!group) {
     return (
       <div className="p-4" style={{ fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
-        <h1>Indoor Hockey</h1>
+        <h1>HJ Indoor Season 2025</h1>
         <p>No age groups found. Try refreshing.</p>
       </div>
     );
@@ -62,9 +63,17 @@ export default function App() {
     <div style={{ maxWidth: 900, margin: "0 auto", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
       <header className="header">
         <div className="header-top">
-          <h1 className="app-title">
-            <Link to="/standings" className="title-link">Indoor Hockey</Link>
-          </h1>
+          <div className="brand">
+            <Link to="/standings" className="brand-link">
+              {/* NOTE: assets in /public are available at the root path */}
+              <img
+                src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
+                alt="HJ Hockey for Juniors"
+                className="brand-logo"
+              />
+              <span className="brand-title">HJ Indoor Season 2025</span>
+            </Link>
+          </div>
           <div className="age-chooser">
             <label style={{ marginRight: 8 }}>Age</label>
             {loading ? (
