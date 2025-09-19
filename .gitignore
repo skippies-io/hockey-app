@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# image sources not needed in the site
+public/*.xcf
+public/*_original.*
+public/*_cropped.*
