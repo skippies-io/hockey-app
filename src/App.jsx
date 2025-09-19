@@ -1,4 +1,4 @@
-import { Link, NavLink, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Link, NavLink, Routes, Route, Navigate, Outlet, useLocation, useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import Standings from "./components/Standings";
 import Fixtures from "./components/Fixtures";
@@ -7,7 +7,8 @@ import { getGroups } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
 import "./App.css";
 
-function Nav() {
+/* ---------- Small nav that respects ageId ---------- */
+function TabNav({ ageId }) {
   const linkStyle = ({ isActive }) => ({
     padding: "6px 10px",
     border: "1px solid #eee",
@@ -18,54 +19,83 @@ function Nav() {
   });
   return (
     <nav style={{ marginTop: 8, display: "flex", gap: 8 }}>
-      <NavLink to="/standings" style={linkStyle}>Standings</NavLink>
-      <NavLink to="/fixtures"  style={linkStyle}>Fixtures</NavLink>
+      <NavLink to={`/${ageId}/standings`} style={linkStyle}>Standings</NavLink>
+      <NavLink to={`/${ageId}/fixtures`}  style={linkStyle}>Fixtures</NavLink>
     </nav>
   );
 }
 
+/* ---------- Top-level shell: loads groups, sets up routing ---------- */
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS); // [{id, label}]
-  const [groupId, setGroupId] = useState(FALLBACK_GROUPS[0].id);
-  const [loading, setLoading] = useState(true);
-  const location = useLocation();
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const gs = await getGroups(); // built from Standings_All + Fixtures_All
+        const gs = await getGroups();
         if (!alive || !gs.length) return;
         setGroups(gs.map(g => ({ id: g.id, label: g.label })));
-        setGroupId(gs[0].id);
+      } catch (err) {
+        console.error("getGroups failed", err);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) setLoaded(true);
       }
     })();
     return () => { alive = false; };
   }, []);
 
-  const group = useMemo(
-    () => groups.find(g => g.id === groupId) || groups[0],
-    [groups, groupId]
-  );
+  const firstId = groups[0]?.id;
 
-  if (!group) {
-    return (
-      <div className="p-4" style={{ fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
-        <h1>HJ Indoor Season 2025</h1>
-        <p>No age groups found. Try refreshing.</p>
-      </div>
-    );
+  if (!loaded && !groups.length) {
+    return <div className="p-4" style={{ fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>Loading…</div>;
   }
+
+  return (
+    <Routes>
+      {/* legacy routes → redirect to first age */}
+      <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
+      <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+
+      {/* main nested layout that can read :ageId safely */}
+      <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+
+      {/* default → first age standings */}
+      <Route path="/" element={<Navigate to={`/${firstId}/standings`} replace />} />
+      <Route path="*" element={<Navigate to={`/${firstId}/standings`} replace />} />
+    </Routes>
+  );
+}
+
+/* ---------- Layout for any age route (/:ageId/*) ---------- */
+function AgeLayout({ groups }) {
+  const { ageId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Clamp ageId to a valid group
+  const group = useMemo(() => {
+    return groups.find(g => g.id === ageId) || groups[0];
+  }, [groups, ageId]);
+
+  // If URL ageId is unknown (e.g., typo), normalize to the first valid group
+  if (!groups.some(g => g.id === ageId)) {
+    return <Navigate to={`/${group.id}/standings`} replace />;
+  }
+
+  const onAgeChange = (e) => {
+    const newId = e.target.value;
+    const isFixtures = location.pathname.includes("/fixtures");
+    navigate(`/${newId}/${isFixtures ? "fixtures" : "standings"}`);
+  };
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
       <header className="header">
         <div className="header-top">
           <div className="brand">
-            <Link to="/standings" className="brand-link">
-              {/* NOTE: assets in /public are available at the root path */}
+            <Link to={`/${group.id}/standings`} className="brand-link">
               <img
                 src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
                 alt="HJ Hockey for Juniors"
@@ -76,31 +106,31 @@ export default function App() {
           </div>
           <div className="age-chooser">
             <label style={{ marginRight: 8 }}>Age</label>
-            {loading ? (
-              <span>Loading…</span>
-            ) : (
-              <select value={groupId} onChange={e => setGroupId(e.target.value)}>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.label}</option>
-                ))}
-              </select>
-            )}
+            <select value={group.id} onChange={onAgeChange}>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.label}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <Nav />
+        <TabNav ageId={group.id} />
       </header>
 
+      {/* nested routes for this age */}
       <Routes>
-        <Route path="/" element={<Navigate to="/standings" replace />} />
-        <Route path="/standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
-        <Route path="/fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
-        <Route path="/team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
-        <Route path="*" element={<div className="p-4">Not found</div>} />
+        <Route path="standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
+        <Route path="fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
+        <Route path="team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
+        {/* default under /:ageId → standings */}
+        <Route index element={<Navigate to="standings" replace />} />
       </Routes>
 
       <footer className="footer">
         Data via Google Apps Script JSON • Route: {location.pathname}
       </footer>
+
+      {/* Outlet is here if you later want deeper nesting */}
+      <Outlet />
     </div>
   );
 }

@@ -58,7 +58,6 @@
   .brand-logo { width: 120px; height: 53px; }
   .brand-title { font-size: 22px; }
 }
-
 /* --- Header / brand (mobile-first) --- */
 .header { padding: 12px 16px; }
 .header-top { display: flex; flex-direction: column; align-items: center; gap: 10px; }
