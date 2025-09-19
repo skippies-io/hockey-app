@@ -105,3 +105,56 @@ tbody tr:last-child td{border-bottom:0}
 .welcome-copy p{margin:6px 0;color:#444;line-height:1.35}
 .btn-primary{margin-top:14px;padding:12px 16px;border:0;border-radius:999px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;width:100%}
 @media (min-width:640px){.btn-primary{width:auto}}
+
+/* --- UEFA polish for standings cards --- */
+.stand-card{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius: var(--radius);
+  padding:12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.04);
+}
+.sc-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.sc-team{ display:flex; align-items:center; gap:10px; min-width:0; }
+.badge{
+  width:34px; height:34px; border-radius:50%;
+  display:grid; place-items:center;
+  color:#fff; font-weight:800; font-size:13px; letter-spacing:.5px;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.25);
+}
+.sc-name{ font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.sc-right{ display:flex; align-items:center; gap:10px; }
+.rank-chip{
+  font-weight:800; background:#f2f4f8; border:1px solid var(--line);
+  border-radius:999px; padding:3px 8px; font-size:12px;
+}
+.sc-points{
+  font-weight:800; background:#f4f7ff; border:1px solid var(--line);
+  border-radius:999px; padding:4px 8px; min-width:44px; text-align:center;
+}
+
+/* grid now 6 stats + GD pill spanning two columns */
+.sc-grid{
+  display:grid;
+  grid-template-columns: repeat(6, minmax(0,1fr));
+  gap:8px; font-size:13px; align-items:stretch;
+}
+.sc-stat{ text-align:center; background:#fafafa; border:1px solid var(--line); border-radius:10px; padding:8px 6px; }
+.sc-stat .lbl{ display:block; color:#666; font-size:11px; margin-bottom:2px; }
+
+.gd-chip{
+  grid-column: span 2;
+  justify-self:end;
+  align-self:center;
+  background:#eefbf1; color:#0a7a2a; border:1px solid #d4f2dc;
+  padding:4px 8px; border-radius:999px; font-size:12px;
+}
+.gd-chip strong{ margin-left:4px; }
+
+/* form dots (future) */
+.form-row{ display:flex; gap:6px; margin-top:8px; }
+.dot{ width:8px; height:8px; border-radius:50%; background:#ddd; }
+.dot.win{ background:#22c55e; }  /* green */
+.dot.draw{ background:#eab308; } /* amber */
+.dot.loss{ background:#ef4444; } /* red */
