@@ -97,27 +97,22 @@ function AgeLayout({ groups }) {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", fontFamily: "system-ui, -apple-system, Segoe UI, Roboto" }}>
       <header className="header">
-        <div className="header-top">
-          <div className="brand">
-            <Link to="/" className="brand-link">
-              <img
-                src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
-                alt="HJ Hockey for Juniors"
-                className="brand-logo"
-              />
-              <span className="brand-title">HJ Indoor Season 2025</span>
-            </Link>
-          </div>
+        <div className="brand-row">
+          <Link to="/" className="brand-link">
+            <img src={`${import.meta.env.BASE_URL}hj_logo.jpg`} alt="HJ" className="brand-logo" />
+            <span className="brand-title">HJ Indoor Season 2025</span>
+          </Link>
+        </div>
+
+        <div className="controls-row">
+          <Nav ageId={group.id} />
           <div className="age-chooser">
-            <label style={{ marginRight: 8 }}>Age</label>
+            <label className="age-label">Age</label>
             <select value={group.id} onChange={onAgeChange}>
-              {groups.map(g => (
-                <option key={g.id} value={g.id}>{g.label}</option>
-              ))}
+              {groups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
             </select>
           </div>
         </div>
-        <TabNav ageId={group.id} />
       </header>
 
       {/* nested routes for this age */}
