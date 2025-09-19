@@ -111,3 +111,33 @@
   table td, table th { padding: 8px 6px; }
   .sticky-th { position: sticky; top: 0; background: #fff; }
 }
+/* --- Welcome --- */
+.welcome {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #f7f7f9;
+}
+.welcome-card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+.welcome-logo { width: 120px; height: auto; margin: 6px auto 10px; display: block; }
+.welcome-title { margin: 4px 0 6px; font-size: 22px; font-weight: 800; }
+.welcome-sub { margin: 0 0 14px; color: #555; font-size: 14px; }
+
+.welcome-actions { display: grid; gap: 10px; margin: 10px 0 6px; }
+.btn-primary, .btn-secondary {
+  padding: 12px 14px; border-radius: 999px; font-weight: 700; cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn-primary { background: #1e293b; color: #fff; }
+.btn-secondary { background: #eef2ff; color: #111; border-color: #e5e7eb; }
+.welcome-skip { display: inline-flex; gap: 8px; align-items: center; color: #666; font-size: 13px; }

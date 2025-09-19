@@ -5,6 +5,7 @@ import Fixtures from "./components/Fixtures";
 import Team from "./views/Team";
 import { getGroups } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
+import Welcome from "./views/Welcome";
 import "./App.css";
 
 /* ---------- Small nav that respects ageId ---------- */
@@ -58,14 +59,17 @@ export default function App() {
       <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
       <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
 
-      {/* main nested layout that can read :ageId safely */}
+      {/* welcome at root */}
+      <Route path="/" element={<Welcome groups={groups} firstId={firstId} />} />
+
+      {/* main nested layout */}
       <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
 
-      {/* default → first age standings */}
-      <Route path="/" element={<Navigate to={`/${firstId}/standings`} replace />} />
-      <Route path="*" element={<Navigate to={`/${firstId}/standings`} replace />} />
+      {/* unknown paths → welcome */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+
 }
 
 /* ---------- Layout for any age route (/:ageId/*) ---------- */
@@ -95,7 +99,7 @@ function AgeLayout({ groups }) {
       <header className="header">
         <div className="header-top">
           <div className="brand">
-            <Link to={`/${group.id}/standings`} className="brand-link">
+            <Link to="/" className="brand-link">
               <img
                 src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
                 alt="HJ Hockey for Juniors"
