@@ -153,7 +153,7 @@ body{
 }
 .welcome-logo { width: 120px; height: auto; margin: 6px auto 10px; display: block; }
 .welcome-title { margin: 4px 0 8px; font-size: 22px; font-weight: 800; }
-.welcome-lead { margin: 0 0 10px; font-size: 15px; color: #444; }
+.welcome-lead { margin: 0 0 10px; font-size: 17px; color: #444; }
 .welcome-copy p { margin: 6px 0; color: #444; line-height: 1.35; }
 .welcome-actions { display: grid; gap: 10px; margin-top: 12px; }
 

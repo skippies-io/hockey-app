@@ -1,10 +1,7 @@
-// src/views/Welcome.jsx
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
-export default function Welcome({ groups }) {
-  const navigate = useNavigate();
-  const firstId = useMemo(() => groups?.[0]?.id || "U9M", [groups]);
+export default function Welcome({ groups = [] }) {
+  const firstId = groups[0]?.id || "U9M";
 
   return (
     <div className="welcome">
@@ -14,30 +11,22 @@ export default function Welcome({ groups }) {
           alt="HJ Hockey for Juniors"
           className="welcome-logo"
         />
-        <h1 className="welcome-title">Welcome 👋</h1>
+        <h1 className="welcome-title">HJ Indoor Season 2025</h1>
         <p className="welcome-lead">
-          This is the <strong>HJ Indoor Hockey</strong> fixtures & standings site.
+          Welcome to the unofficial HJ Indoor Hockey fixtures and standings site.
         </p>
-
         <div className="welcome-copy">
+          <p>Pick an age group, browse fixtures, and track pool standings.</p>
+          <p>Use the ★ to follow teams—followed teams are highlighted in both fixtures and standings.</p>
           <p>
-            • Browse <strong>live tables</strong> and <strong>weekly fixtures</strong> for each age group.
-          </p>
-          <p>
-            • Tap the <strong>☆ star</strong> next to a team to <strong>favourite</strong> it—followed teams are
-            highlighted across the app and you can filter to “Only followed”.
-          </p>
-          <p>
-            We’re just getting started—feedback is welcome (we’ll add a feedback form here later).
+            We’re just getting started — feedback is welcome. You can send feedback directly in the app using the form below.
           </p>
         </div>
 
-        <button
-          className="btn-primary"
-          onClick={() => navigate(`/${firstId}/standings`)}
-        >
-          Get started
-        </button>
+        <div className="welcome-actions">
+          <Link className="btn-primary" to={`/${firstId}/standings`}>Start browsing</Link>
+          <Link className="btn-secondary" to="/feedback">Send feedback</Link>
+        </div>
       </div>
     </div>
   );
