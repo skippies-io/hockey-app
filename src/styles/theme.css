@@ -1,0 +1,29 @@
+:root{
+  /* Brand */
+  --brand:#16a34a;           /* HJ green */
+  --ink:#111;
+  --muted:#666;
+  --surface:#fff;
+  --bg:#fafafa;
+  --line:#eee;
+
+  /* Accents */
+  --pill-bg:#fafafa;
+  --pill-border:#e5e7eb;
+  --pill-active:#eef2ff;
+
+  --star-on:#f6b200;
+  --star-off:#cfcfcf;
+
+  /* Cards / tables */
+  --card-shadow:0 2px 4px rgba(0,0,0,.04);
+  --follow-bg:#f6ffed;
+
+  /* Radii & spacing */
+  --r-8:8px;
+  --r-10:10px;
+  --r-12:12px;
+  --r-pill:999px;
+  --gap-8:8px;
+  --gap-10:10px;
+}

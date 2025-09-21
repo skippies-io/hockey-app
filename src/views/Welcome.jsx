@@ -28,9 +28,6 @@ export default function Welcome({ groups }) {
             highlighted across the app and you can filter to “Only followed”.
           </p>
           <p>
-            • Share direct links like <em>/U13B/fixtures</em> with coaches and parents for quick access.
-          </p>
-          <p>
             We’re just getting started—feedback is welcome (we’ll add a feedback form here later).
           </p>
         </div>

@@ -9,18 +9,11 @@ import { FALLBACK_GROUPS } from "./config";
 import "./App.css";
 
 function Tabs({ ageId }) {
-  const pill = ({ isActive }) => ({
-    padding: "6px 10px",
-    border: "1px solid #eee",
-    borderRadius: 999,
-    background: isActive ? "#eef2ff" : "#fafafa",
-    textDecoration: "none",
-    color: "#111",
-  });
+  const cls = ({ isActive }) => "pill" + (isActive ? " is-active" : "");
   return (
-    <nav style={{ display: "flex", gap: 8 }}>
-      <NavLink to={`/${ageId}/standings`} style={pill}>Standings</NavLink>
-      <NavLink to={`/${ageId}/fixtures`}  style={pill}>Fixtures</NavLink>
+    <nav className="pills">
+      <NavLink to={`/${ageId}/standings`} className={cls}>Standings</NavLink>
+      <NavLink to={`/${ageId}/fixtures`}  className={cls}>Fixtures</NavLink>
     </nav>
   );
 }
