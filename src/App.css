@@ -95,6 +95,20 @@ select{padding:6px 10px;border:1px solid var(--pill-border);border-radius:var(--
   border-bottom-left-radius: var(--r-12);
 }
 
+/* Feedback form */
+.feedback-form input,
+.feedback-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--pill-border);
+  border-radius: var(--r-10);
+  background: #fff;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+.feedback-form textarea { resize: vertical; }
+.text-red-600 { color: #dc2626; }
+
 /* Toolbar */
 .toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;margin:10px 16px}
 .toolbar-right{display:flex;align-items:center;gap:8px}
@@ -109,4 +123,43 @@ select{padding:6px 10px;border:1px solid var(--pill-border);border-radius:var(--
   .brand-logo{width:56px}
   .brand-title{text-align:left}
   .controls-row{justify-content:space-between}
+}
+
+/* Base (keep this near the top if possible) */
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* --- Welcome page --- */
+.welcome {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #f7f7f9;
+}
+.welcome-card {
+  width: 100%;
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+.welcome-logo { width: 120px; height: auto; margin: 6px auto 10px; display: block; }
+.welcome-title { margin: 4px 0 8px; font-size: 22px; font-weight: 800; }
+.welcome-lead { margin: 0 0 10px; font-size: 15px; color: #444; }
+.welcome-copy p { margin: 6px 0; color: #444; line-height: 1.35; }
+.welcome-actions { display: grid; gap: 10px; margin-top: 12px; }
+
+.btn-primary {
+  padding: 12px 16px;
+  border: 0; border-radius: 999px;
+  background: #111; color: #fff; font-weight: 700;
+  cursor: pointer;
 }

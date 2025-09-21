@@ -94,3 +94,26 @@ export async function getSheet(sheetName) {
   const data = await fetchJSON(`${API_BASE}?sheet=${encodeURIComponent(sheetName)}`);
   return data.rows || [];
 }
+
+export async function sendFeedback({ name, email, message, route, ageId }) {
+  const ua = navigator.userAgent || "";
+  const form = new URLSearchParams();
+  form.set("name", name || "");
+  form.set("email", email || "");
+  form.set("message", message || "");
+  form.set("route", route || "");
+  form.set("ageId", ageId || "");
+  form.set("ua", ua);
+
+  const res = await fetch(`${import.meta.env.VITE_API_BASE}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: form.toString(),
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!json || json.ok !== true) {
+    throw new Error(json && json.error ? json.error : "Failed to send feedback");
+  }
+  return true;
+}

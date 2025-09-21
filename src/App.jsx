@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Routes, Route, Navigate, Link, NavLink, useParams, useLocation, useNavigate } from "react-router-dom";
+import {
+  Routes, Route, Navigate, Link, NavLink,
+  useParams, useLocation, useNavigate
+} from "react-router-dom";
+
 import Standings from "./components/Standings";
 import Fixtures from "./components/Fixtures";
 import Team from "./views/Team";
 import Welcome from "./views/Welcome";
+import Feedback from "./views/Feedback";
+
 import { getGroups } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
+
 import "./App.css";
+import hjLogoUrl from "/hj_logo.jpg";
 
 function Tabs({ ageId }) {
   const cls = ({ isActive }) => "pill" + (isActive ? " is-active" : "");
@@ -22,9 +30,10 @@ function AgeLayout({ groups }) {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const ageIdUrl = params.ageId;
 
+  const ageIdUrl = params.ageId;
   const firstId = groups[0]?.id;
+
   const group = useMemo(
     () => groups.find(g => g.id === ageIdUrl) || (firstId ? groups[0] : null),
     [groups, ageIdUrl, firstId]
@@ -43,11 +52,7 @@ function AgeLayout({ groups }) {
       <header className="header">
         <div className="brand-row">
           <Link to="/" className="brand-link" aria-label="Home">
-            <img
-              src={`${import.meta.env.BASE_URL}hj_logo.jpg`}
-              alt="HJ Hockey for Juniors"
-              className="brand-logo"
-            />
+            <img src={hjLogoUrl} alt="HJ Hockey for Juniors" className="brand-logo" />
             <span className="brand-title">HJ Indoor Season 2025</span>
           </Link>
         </div>
@@ -70,11 +75,13 @@ function AgeLayout({ groups }) {
         <Route path="standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
         <Route path="fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
         <Route path="team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
+        <Route path="feedback" element={<Feedback />} />
         <Route path="*" element={<div className="p-4">Not found</div>} />
       </Routes>
 
       <footer className="footer" style={{ padding: 12, textAlign: "center", color: "#666" }}>
-        Data via Google Apps Script JSON • Route: {location.pathname}
+        Data via Google Apps Script JSON • Route: {location.pathname} •{" "}
+        <Link to={`/${group.id}/feedback`}>Feedback</Link>
       </footer>
     </div>
   );
@@ -89,9 +96,7 @@ export default function App() {
       try {
         const gs = await getGroups();
         if (!alive) return;
-        if (gs && gs.length) {
-          setGroups(gs.map(g => ({ id: g.id, label: g.label })));
-        }
+        if (gs && gs.length) setGroups(gs.map(g => ({ id: g.id, label: g.label })));
       } catch (err) {
         console.error("Failed to fetch groups", err);
       }
@@ -107,6 +112,7 @@ export default function App() {
       <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
       <Route path="/" element={<Welcome groups={groups} />} />
       <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+      <Route path="/feedback" element={<Feedback />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
