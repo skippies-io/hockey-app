@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { sendFeedback } from "../lib/api";
 
 export default function Feedback() {
@@ -11,8 +11,11 @@ export default function Feedback() {
   const [err, setErr]         = useState("");
 
   const location = useLocation();
+  const navigate = useNavigate();
   const params   = useParams();
-  const ageId    = params.ageId || ""; // filled when routed under /:ageId/feedback
+  const ageId    = params.ageId || "";
+
+  const cancelTo = ageId ? `/${ageId}/standings` : `/`;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +41,11 @@ export default function Feedback() {
       <div className="p-4" style={{ maxWidth: 640, margin: "0 auto" }}>
         <h2>Thanks! 🙌</h2>
         <p>Your feedback has been sent. We appreciate it.</p>
+        <div style={{ marginTop: 12 }}>
+          <button className="btn-primary" onClick={() => navigate(cancelTo)}>
+            Back to {ageId ? `${ageId} standings` : "home"}
+          </button>
+        </div>
       </div>
     );
   }
@@ -58,17 +66,28 @@ export default function Feedback() {
 
         <label>
           <div>Message</div>
-          <textarea required rows={5} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Tell us what's working, what’s confusing, or what you'd love to see…" />
+          <textarea
+            required
+            rows={5}
+            value={message}
+            onChange={e=>setMessage(e.target.value)}
+            placeholder="Tell us what's working, what’s confusing, or what you'd love to see…"
+          />
         </label>
 
         {err && <div className="text-red-600" role="alert">Error: {err}</div>}
 
-        <button className="btn-primary" disabled={sending}>
-          {sending ? "Sending…" : "Send feedback"}
-        </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <button className="btn-primary" disabled={sending}>
+            {sending ? "Sending…" : "Send feedback"}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigate(cancelTo)}>
+            Cancel
+          </button>
+        </div>
+
         <div style={{ fontSize: 12, color: "#666" }}>
-          Route: {location.pathname}
-          {ageId ? ` • Age: ${ageId}` : ""}
+          Route: {location.pathname}{ageId ? ` • Age: ${ageId}` : ""}
         </div>
       </form>
     </div>

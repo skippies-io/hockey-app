@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { getStandingsRows } from "../lib/api";
 import { useFollows } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
@@ -14,14 +14,14 @@ function sortStandings(a, b) {
 
 export default function Standings({ ageId, ageLabel }) {
   const [rows, setRows] = useState([]);
-  const [pool, setPool] = useState("A");
+  const [pool, setPool] = useState("All");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
   const { isFollowing, toggleFollow } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useState(false);
 
-  // Load data for ageId
+  // Load standings data for this age
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -38,58 +38,64 @@ export default function Standings({ ageId, ageLabel }) {
     return () => { alive = false; };
   }, [ageId]);
 
-  // Available pools (A/B/C/…)
+  // Build pool list with "All" first
   const pools = useMemo(() => {
     const set = new Set(rows.map(r => String(r.Pool || "").trim()).filter(Boolean));
-    return Array.from(set).sort();
+    const list = Array.from(set).sort();
+    return ["All", ...list];
   }, [rows]);
 
-  // Ensure selected pool is valid when data changes
+  // Reset selection if current pool disappears
   useEffect(() => {
-    if (pools.length && !pools.includes(pool)) setPool(pools[0]);
+    if (!pools.includes(pool)) setPool("All");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pools]);
 
-  // Final list to render = by pool → optional only-following → sorted
-  const display = useMemo(() => {
-    let list = rows.filter(r => String(r.Pool).trim() === pool);
-    if (onlyFollowing) list = list.filter(r => isFollowing(r.Team));
-    return list.sort(sortStandings);
-  }, [rows, pool, onlyFollowing, isFollowing]);
+  // Memoized finalize that applies follow filter (scoped by age) and sorts
+  const finalize = useCallback((list) => {
+    let out = list;
+    if (onlyFollowing) {
+      out = out.filter(r => isFollowing(`${ageId}:${r.Team}`));
+    }
+    return out.slice().sort(sortStandings);
+  }, [onlyFollowing, isFollowing, ageId]);
+
+  // Build sections for “All” or for a single pool in a uniform shape
+  const sections = useMemo(() => {
+    const m = new Map();
+    if (pool === "All") {
+      for (const r of rows) {
+        const key = String(r.Pool || "").trim() || "?";
+        if (!m.has(key)) m.set(key, []);
+        m.get(key).push(r);
+      }
+    } else {
+      for (const r of rows) {
+        if (String(r.Pool).trim() === pool) {
+          if (!m.has(pool)) m.set(pool, []);
+          m.get(pool).push(r);
+        }
+      }
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, list]) => ({ pool: k, rows: finalize(list) }));
+  }, [rows, pool, finalize]);
 
   if (loading) return <div className="p-4">Loading standings…</div>;
   if (err) return <div className="p-4 text-red-600">Error: {err}</div>;
 
-  return (
-    <div className="p-4">
-      <div className="toolbar">
-        <h2 className="title">{ageLabel} — Standings</h2>
-        <div className="toolbar-right">
-          <label style={{ marginRight: 8 }}>Pool</label>
-          <select value={pool} onChange={e => setPool(e.target.value)}>
-            {pools.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-      </div>
+  const PoolBlock = ({ title, items }) => (
+    <section style={{ marginBottom: 16 }}>
+      <h3 className="pool-head">Pool {title}</h3>
 
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-        <input
-          type="checkbox"
-          checked={onlyFollowing}
-          onChange={e => setOnlyFollowing(e.target.checked)}
-        />
-        Show only followed teams
-      </label>
-      {onlyFollowing && display.length === 0 && (
-        <div className="only-following-note">Follow one or more teams to see them here.</div>
-      )}
-
-      {/* --- Mobile cards --- */}
+      {/* Mobile cards */}
       <div className="standings-cards">
-        {display.map((r, idx) => {
-          const followed = isFollowing(r.Team);
+        {items.map((r, idx) => {
+          const keyFollow = `${ageId}:${r.Team}`;
+          const followed = isFollowing(keyFollow);
           const key = `${r.Age}-${r.Pool}-${r.Team}-${idx}`;
-          const rank = idx + 1; // position within the filtered/sorted list
+          const rank = idx + 1;
           const badgeBg = colorFromName(r.Team);
           const init = teamInitials(r.Team);
 
@@ -109,7 +115,7 @@ export default function Standings({ ageId, ageLabel }) {
                   <button
                     className="star-btn"
                     aria-label={followed ? "Unfollow team" : "Follow team"}
-                    onClick={() => toggleFollow(r.Team)}
+                    onClick={() => toggleFollow(keyFollow)}
                     title={followed ? "Unfollow" : "Follow"}
                   >
                     <span className={`star ${followed ? "is-on" : "is-off"}`}>
@@ -126,7 +132,6 @@ export default function Standings({ ageId, ageLabel }) {
                 <div className="sc-stat"><span className="lbl">L</span>{r.L}</div>
                 <div className="sc-stat"><span className="lbl">GF</span>{r.GF}</div>
                 <div className="sc-stat"><span className="lbl">GA</span>{r.GA}</div>
-                {/* Optional: show GD as a colored pill */}
                 <div className="gd-chip" title="Goal difference">
                   GD <strong>{Number(r.GD) >= 0 ? `+${r.GD}` : r.GD}</strong>
                 </div>
@@ -136,7 +141,7 @@ export default function Standings({ ageId, ageLabel }) {
         })}
       </div>
 
-      {/* --- Desktop table (unchanged) --- */}
+      {/* Desktop table */}
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -148,8 +153,9 @@ export default function Standings({ ageId, ageLabel }) {
             </tr>
           </thead>
           <tbody>
-            {display.map((r, idx) => {
-              const followed = isFollowing(r.Team);
+            {items.map((r, idx) => {
+              const keyFollow = `${ageId}:${r.Team}`;
+              const followed = isFollowing(keyFollow);
               const key = `${r.Age}-${r.Pool}-${r.Team}-${idx}`;
               return (
                 <tr key={key} className={followed ? "row-following" : ""}>
@@ -157,7 +163,7 @@ export default function Standings({ ageId, ageLabel }) {
                     <button
                       className="star-btn"
                       aria-label={followed ? "Unfollow team" : "Follow team"}
-                      onClick={() => toggleFollow(r.Team)}
+                      onClick={() => toggleFollow(keyFollow)}
                       title={followed ? "Unfollow" : "Follow"}
                     >
                       <span className={`star ${followed ? "is-on" : "is-off"}`}>
@@ -180,6 +186,33 @@ export default function Standings({ ageId, ageLabel }) {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+
+  return (
+    <div className="p-4">
+      <div className="toolbar">
+        <h2 className="title">{ageLabel} — Standings</h2>
+        <div className="toolbar-right">
+          <label style={{ marginRight: 8 }}>Pool</label>
+          <select value={pool} onChange={e => setPool(e.target.value)}>
+            {pools.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+        <input
+          type="checkbox"
+          checked={onlyFollowing}
+          onChange={e => setOnlyFollowing(e.target.checked)}
+        />
+        Show only followed teams
+      </label>
+
+      {sections.map(sec => (
+        <PoolBlock key={sec.pool} title={sec.pool} items={sec.rows} />
+      ))}
     </div>
   );
 }

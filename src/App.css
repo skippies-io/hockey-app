@@ -163,3 +163,51 @@ body{
   background: #111; color: #fff; font-weight: 700;
   cursor: pointer;
 }
+.btn-secondary {
+  padding: 12px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #eef2ff;
+  color: #111;
+  border: 1px solid #e5e7eb;
+}
+
+.link-back {
+  background: none;
+  border: 0;
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.pool-head { margin: 6px 0 8px; font-weight: 800; letter-spacing: 0.2px; }
+
+/* --- Fixture cards (mobile & desktop) --- */
+.fixture-card {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+  margin: 10px 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+/* Highlight when either team is followed */
+.fixture-card.card-following {
+  background: #f6ffed;           /* soft green */
+  border-color: #d7f5c9;
+}
+
+/* Ensure inner blocks don't paint over the highlight */
+.fixture-card .match,
+.fixture-card .meta {
+  background: transparent;
+}
+
+/* (Optional) a slightly stronger edge so it pops on OLED */
+@media (max-width: 480px) {
+  .fixture-card.card-following {
+    box-shadow: 0 0 0 2px rgba(82,196,26,0.15);
+  }
+}
