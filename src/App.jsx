@@ -11,6 +11,7 @@ import Welcome from "./views/Welcome";
 import Feedback from "./views/Feedback";
 
 import { getGroups } from "./lib/api";
+import { getFixturesRows, getStandingsRows } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
 
 import "./App.css";
@@ -38,6 +39,12 @@ function AgeLayout({ groups }) {
     () => groups.find(g => g.id === ageIdUrl) || (firstId ? groups[0] : null),
     [groups, ageIdUrl, firstId]
   );
+
+  useEffect(() => {
+  if (!group?.id) return;
+  getStandingsRows(group.id).catch(()=>{});
+  getFixturesRows(group.id).catch(()=>{});
+}, [group?.id]);
 
   if (!group) return <div className="p-4">Loading…</div>;
 

@@ -1,99 +1,79 @@
+// src/lib/api.js
 export const API_BASE = import.meta.env.VITE_API_BASE;
+const APP_VER  = import.meta.env.VITE_APP_VERSION || "v1";
+const MAX_AGE_MS = 60_000; // 60s client-side cache
 
-async function fetchJSON(url) {
+function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
+
+async function fetchJSON(url, { revalidate = true } = {}) {
   if (!API_BASE) throw new Error("Missing VITE_API_BASE");
+
+  const key = cacheKey(url);
+  const cached = sessionStorage.getItem(key);
+  if (cached) {
+    try {
+      const { t, data } = JSON.parse(cached);
+      // serve fresh
+      if (Date.now() - t < MAX_AGE_MS) return data;
+
+      // stale-while-revalidate (background refresh)
+      if (revalidate) {
+        fetch(url)
+          .then(r => r.json())
+          .then(nd => sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data: nd })))
+          .catch(() => { /* background refresh failed; keep stale */ });
+      }
+      return data; // stale but immediate
+    } catch {
+      // Bad JSON in cache → ignore and refetch below
+    }
+  }
+
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "API error");
+  if (data && data.ok === false) throw new Error(data.error || "API error");
+  sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data }));
   return data;
 }
 
-const state = {
-  loaded: false,
-  loadPromise: null,
-  standingsAll: [],
-  fixturesAll: [],
-  groups: [], // [{ id, label }]
-};
-
-function labelToId(label) {
-  const lbl = String(label || "").trim();
-  if (!lbl) return null;
-  const ageMatch = /U(\d+)/i.exec(lbl);
-  const low = lbl.toLowerCase();
-  const code = low.includes("boys") ? "B" : low.includes("girls") ? "G" : low.includes("mixed") ? "M" : "X";
-  return ageMatch ? `U${ageMatch[1]}${code}` : `${lbl.replace(/\s+/g, "_")}${code}`;
-}
-
-function sortGroups(a, b) {
-  const num = (s) => {
-    const m = /^U(\d+)/i.exec(s.id || "");
-    return m ? parseInt(m[1], 10) : 0;
-  };
-  const order = { B: 0, G: 1, M: 2, X: 3 };
-  const na = num(a), nb = num(b);
-  if (na !== nb) return na - nb;
-  const ca = (a.id || "").slice(-1), cb = (b.id || "").slice(-1);
-  return (order[ca] ?? 9) - (order[cb] ?? 9);
-}
-
-async function loadAll() {
-  if (state.loadPromise) return state.loadPromise;
-  state.loadPromise = (async () => {
-    const [s, f] = await Promise.all([
-      fetchJSON(`${API_BASE}?sheet=Standings_All`),
-      fetchJSON(`${API_BASE}?sheet=Fixtures_All`),
-    ]);
-    state.standingsAll = s.rows || [];
-    state.fixturesAll = f.rows || [];
-
-    const map = new Map();
-    function add(label) {
-      const id = labelToId(label);
-      const lbl = String(label || "").trim();
-      if (!id || !lbl) return;
-      if (!map.has(id)) map.set(id, { id, label: lbl });
-    }
-    state.standingsAll.forEach(r => add(r.Age));
-    state.fixturesAll.forEach(r => add(r.Age));
-    state.groups = Array.from(map.values()).sort(sortGroups);
-
-    state.loaded = true;
-  })();
-  return state.loadPromise;
-}
+/* ---------- Public API ---------- */
 
 export async function getGroups() {
-  await loadAll();
-  return state.groups;
+  const url = `${API_BASE}?groups=1`;
+  const j = await fetchJSON(url);
+  return j.groups || [];
 }
 
 export async function getStandingsRows(ageId) {
-  await loadAll();
-  const g = state.groups.find(x => x.id === ageId) || state.groups[0];
-  if (!g) return [];
-  return state.standingsAll.filter(r => String(r.Age).trim() === g.label);
+  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+  const j = await fetchJSON(url);
+  return j.rows || [];
 }
 
 export async function getFixturesRows(ageId) {
-  await loadAll();
-  const g = state.groups.find(x => x.id === ageId) || state.groups[0];
-  if (!g) return [];
-  return state.fixturesAll.filter(r => String(r.Age).trim() === g.label);
+  const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
+  const j = await fetchJSON(url);
+  return j.rows || [];
 }
 
-export async function refreshAll() {
-  state.loaded = false;
-  state.loadPromise = null;
-  return loadAll();
-}
-
-// (legacy helper left here intentionally in case something still imports it)
+// Legacy helper (kept for any old imports)
 export async function getSheet(sheetName) {
-  const data = await fetchJSON(`${API_BASE}?sheet=${encodeURIComponent(sheetName)}`);
-  return data.rows || [];
+  const url = `${API_BASE}?sheet=${encodeURIComponent(sheetName)}`;
+  const j = await fetchJSON(url);
+  return j.rows || [];
 }
+
+// Manual cache clear (useful after deploy or for a “Refresh data” button)
+export function refreshAll() {
+  const prefix = `hj:cache:${APP_VER}:`;
+  for (let i = sessionStorage.length - 1; i >= 0; i--) {
+    const k = sessionStorage.key(i);
+    if (k && k.startsWith(prefix)) sessionStorage.removeItem(k);
+  }
+}
+
+/* ---------- Feedback sender ---------- */
 
 export async function sendFeedback({ name, email, message, route, ageId }) {
   const ua = navigator.userAgent || "";
@@ -105,12 +85,13 @@ export async function sendFeedback({ name, email, message, route, ageId }) {
   form.set("ageId", ageId || "");
   form.set("ua", ua);
 
-  const res = await fetch(`${import.meta.env.VITE_API_BASE}`, {
+  const res = await fetch(API_BASE, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
     body: form.toString(),
-  });
+  }).catch(() => null); // network fail → handled below
 
+  if (!res) throw new Error("Network error");
   const json = await res.json().catch(() => ({}));
   if (!json || json.ok !== true) {
     throw new Error(json && json.error ? json.error : "Failed to send feedback");
