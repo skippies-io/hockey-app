@@ -211,3 +211,62 @@ body{
     box-shadow: 0 0 0 2px rgba(82,196,26,0.15);
   }
 }
+/* --- Fixtures: mobile-friendly rows & truncation --- */
+.fixture-card .match {
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* time | teams | score */
+  align-items: center;
+  gap: 10px;
+}
+
+.fixture-card .teams {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0; /* allow children to shrink */
+}
+
+.fixture-card .team-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0; /* enables ellipsis */
+}
+
+.fixture-card .team-row .star-btn {
+  flex: 0 0 auto; /* never shrink the star */
+}
+
+.fixture-card .team-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;  /* single-line with … on narrow screens */
+}
+
+.fixture-card .time {
+  font-variant-numeric: tabular-nums; /* tidy times */
+  color: #555;
+}
+
+.fixture-card .score {
+  font-weight: 700;
+  flex: 0 0 auto;      /* keep pinned to right */
+  white-space: nowrap; /* never wrap the score */
+}
+
+/* Follow highlight (keep your existing tint) */
+.fixture-card.card-following {
+  background: #f5ffef;
+  border: 1px solid #b7e0b3;
+}
+
+/* On wider screens, allow names to wrap naturally if there’s space */
+@media (min-width: 640px) {
+  .fixture-card .team-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}

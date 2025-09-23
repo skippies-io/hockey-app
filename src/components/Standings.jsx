@@ -144,6 +144,21 @@ export default function Standings({ ageId, ageLabel }) {
       {/* Desktop table */}
       <div className="table-wrap">
         <table className="table">
+          <colgroup>
+            {/* star column */}
+            <col style={{ width: 36 }} />
+            {/* team column grows */}
+            <col />
+            {/* numeric/stat columns (GP, W, D, L, GF, GA, GD, Pts) */}
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+            <col style={{ width: "6ch" }} />
+          </colgroup>
           <thead>
             <tr>
               <th style={{ width: 36 }} aria-label="follow column"></th>

@@ -37,12 +37,31 @@ async function fetchJSON(url, { revalidate = true } = {}) {
   return data;
 }
 
+// put these near the top (or anywhere above getGroups)
+const DIVISION_ORDER = { B: 0, G: 1, M: 2, X: 3 }; // tweak if you want Girls-first etc.
+
+function sortGroups(a, b) {
+  // sort by age number first (U9, U11, U13, …)
+  const numA = parseInt((a.id || "").match(/^U(\d+)/i)?.[1] || "0", 10);
+  const numB = parseInt((b.id || "").match(/^U(\d+)/i)?.[1] || "0", 10);
+  if (numA !== numB) return numA - numB;
+
+  // then by division letter at the end of the id: B | G | M (fallback X)
+  const divA = (a.id || "").slice(-1).toUpperCase();
+  const divB = (b.id || "").slice(-1).toUpperCase();
+  return (DIVISION_ORDER[divA] ?? 99) - (DIVISION_ORDER[divB] ?? 99);
+}
+
+
 /* ---------- Public API ---------- */
 
 export async function getGroups() {
   const url = `${API_BASE}?groups=1`;
   const j = await fetchJSON(url);
-  return j.groups || [];
+  // normalise to {id, label} and sort
+  return (j.groups || [])
+    .map(g => ({ id: g.id, label: g.label }))
+    .sort(sortGroups);
 }
 
 export async function getStandingsRows(ageId) {

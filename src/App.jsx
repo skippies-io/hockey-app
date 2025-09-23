@@ -10,13 +10,24 @@ import Team from "./views/Team";
 import Welcome from "./views/Welcome";
 import Feedback from "./views/Feedback";
 
-import { getGroups } from "./lib/api";
-import { getFixturesRows, getStandingsRows } from "./lib/api";
+import { getGroups, getFixturesRows, getStandingsRows } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
 
 import "./App.css";
 import hjLogoUrl from "/hj_logo.jpg";
 
+/* Sort by numeric age (U9 < U11 < …), then Boys, Girls, Mixed */
+const GROUP_ORDER = { B: 0, G: 1, M: 2, X: 3 };
+function sortAgeGroups(a, b) {
+  const na = +(a.id.match(/^U(\d+)/)?.[1] || 0);
+  const nb = +(b.id.match(/^U(\d+)/)?.[1] || 0);
+  if (na !== nb) return na - nb;
+  const ca = a.id.slice(-1);
+  const cb = b.id.slice(-1);
+  return (GROUP_ORDER[ca] ?? 9) - (GROUP_ORDER[cb] ?? 9);
+}
+
+/* --- Small nav for the two main tabs --- */
 function Tabs({ ageId }) {
   const cls = ({ isActive }) => "pill" + (isActive ? " is-active" : "");
   return (
@@ -27,6 +38,7 @@ function Tabs({ ageId }) {
   );
 }
 
+/* --- Layout for /:ageId/* --- */
 function AgeLayout({ groups }) {
   const params = useParams();
   const navigate = useNavigate();
@@ -40,11 +52,12 @@ function AgeLayout({ groups }) {
     [groups, ageIdUrl, firstId]
   );
 
+  /* Prefetch the data for the selected age to warm caches */
   useEffect(() => {
-  if (!group?.id) return;
-  getStandingsRows(group.id).catch(()=>{});
-  getFixturesRows(group.id).catch(()=>{});
-}, [group?.id]);
+    if (!group?.id) return;
+    getStandingsRows(group.id).catch(() => {});
+    getFixturesRows(group.id).catch(() => {});
+  }, [group?.id]);
 
   if (!group) return <div className="p-4">Loading…</div>;
 
@@ -82,7 +95,7 @@ function AgeLayout({ groups }) {
         <Route path="standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
         <Route path="fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
         <Route path="team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
-        <Route path="feedback" element={<Feedback />} />
+        <Route path="feedback" element={<Feedback />} /> {/* scoped feedback */}
         <Route path="*" element={<div className="p-4">Not found</div>} />
       </Routes>
 
@@ -94,6 +107,7 @@ function AgeLayout({ groups }) {
   );
 }
 
+/* --- Top-level app: load groups, wire routes --- */
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS);
 
@@ -103,7 +117,10 @@ export default function App() {
       try {
         const gs = await getGroups();
         if (!alive) return;
-        if (gs && gs.length) setGroups(gs.map(g => ({ id: g.id, label: g.label })));
+        if (gs && gs.length) {
+          const sorted = gs.map(g => ({ id: g.id, label: g.label })).sort(sortAgeGroups);
+          setGroups(sorted);
+        }
       } catch (err) {
         console.error("Failed to fetch groups", err);
       }
@@ -115,11 +132,20 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Legacy direct paths → redirect to first age */}
       <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
       <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+
+      {/* Welcome at root */}
       <Route path="/" element={<Welcome groups={groups} />} />
+
+      {/* Age-scoped UI */}
       <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+
+      {/* Global feedback (no age context) */}
       <Route path="/feedback" element={<Feedback />} />
+
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
