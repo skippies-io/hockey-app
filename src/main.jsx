@@ -11,3 +11,12 @@ createRoot(document.getElementById('root')).render(
     </HashRouter>
   </React.StrictMode>
 )
+// Register service worker in production builds
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    navigator.serviceWorker.register(swUrl).catch((err) => {
+      console.warn("SW registration failed", err);
+    });
+  });
+}
