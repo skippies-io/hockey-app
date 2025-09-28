@@ -1,89 +1,61 @@
-// public/sw.js
-// HJ Indoor — service worker (drop-in)
-// Update VERSION to force clients to take the new SW after deploys.
-const VERSION   = 'v1.0.0';
-const CACHE_NAME = `hj-cache-${VERSION}`;
+// ----- bump to force update -----
+const VERSION = 'v1.0.5'
+const CACHE_NAME = `hj-cache-${VERSION}`
 
-// Derive the site base (works on GH Pages subpaths like /hockey-app/)
-const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') + '/';
+// Derive base path from the SW scope so it works on GitHub Pages subpath
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') + '/'
 
-// Core files to precache (add more if you want)
+// Precache ONLY files that truly exist in /public on prod
 const PRECACHE = [
-  BASE_PATH,                         // e.g. /hockey-app/
+  BASE_PATH,                          // e.g. /hockey-app/
   BASE_PATH + 'index.html',
   BASE_PATH + 'manifest.webmanifest',
-  BASE_PATH + 'hj_logo.jpg',
-  BASE_PATH + 'favicon.ico'
-];
+  BASE_PATH + 'HJ_icon_192.png',      // ← adjust if your actual file differs
+  BASE_PATH + 'HJ_icon_512.png'       // ← adjust if your actual file differs
+  // If (and only if) you have these files in public, you may add them:
+  // BASE_PATH + 'hj_ico.png',
+  // BASE_PATH + 'hj_logo.png'
+]
 
-// ----- INSTALL: pre-cache core -----
-self.addEventListener('install', event => {
+// ----- INSTALL -----
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
-  );
-});
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const results = await Promise.allSettled(PRECACHE.map((url) => cache.add(url)))
+      const failed = results
+        .map((r, i) => ({ r, url: PRECACHE[i] }))
+        .filter((x) => x.r.status === 'rejected')
+      if (failed.length) {
+        console.warn('[SW] Some precache requests failed:', failed.map((f) => f.url))
+      }
+    }).then(() => self.skipWaiting())
+  )
+})
 
-// ----- ACTIVATE: clean old caches -----
-self.addEventListener('activate', event => {
+// ----- ACTIVATE -----
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys
-        .filter(k => k !== CACHE_NAME)
-        .map(k => caches.delete(k))
-      )
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
-  );
-});
+  )
+})
 
-// Helper: network-first with cache fallback + background fill
-async function networkFirst(req) {
-  try {
-    const res = await fetch(req);
-    const cache = await caches.open(CACHE_NAME);
-    // Clone & store only successful GETs
-    if (req.method === 'GET' && res && res.ok) {
-      cache.put(req, res.clone());
-    }
-    return res;
-  } catch {
-    const cached = await caches.match(req);
-    if (cached) return cached;
-    // As a last resort, SPA fallback for navigations
-    if (req.mode === 'navigate') {
-      return caches.match(BASE_PATH + 'index.html');
-    }
-    return new Response('Offline', { status: 503, statusText: 'Offline' });
-  }
-}
+// ----- FETCH (cache-first for same-origin GET) -----
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+  const url = new URL(req.url)
+  if (url.origin !== location.origin) return
 
-// Helper: cache-first for immutable/versioned assets (e.g. /assets/*.js)
-async function cacheFirst(req) {
-  const cached = await caches.match(req);
-  if (cached) return cached;
-  const res = await fetch(req);
-  const cache = await caches.open(CACHE_NAME);
-  if (req.method === 'GET' && res && res.ok) {
-    cache.put(req, res.clone());
-  }
-  return res;
-}
-
-// ----- FETCH: smart routing -----
-self.addEventListener('fetch', event => {
-  const req = event.request;
-  const url = new URL(req.url);
-
-  // Only handle same-origin GET requests
-  if (req.method !== 'GET' || url.origin !== location.origin) return;
-
-  // Cache-first for hashed/static assets under /assets/
-  if (url.pathname.startsWith(BASE_PATH + 'assets/')) {
-    event.respondWith(cacheFirst(req));
-    return;
-  }
-
-  // For everything else (API calls, pages, images), use network-first
-  event.respondWith(networkFirst(req));
-});
+  event.respondWith(
+    caches.match(req).then((hit) => {
+      if (hit) return hit
+      return fetch(req).then((resp) => {
+        const copy = resp.clone()
+        caches.open(CACHE_NAME).then((c) => c.put(req, copy)).catch(() => {})
+        return resp
+      }).catch(() => hit)
+    })
+  )
+})
