@@ -1,20 +1,43 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#111111">
-    <!-- iOS home screen icon (Apple prefers 180x180 PNG, we’ll reuse 192 for now) -->
-    <link rel="apple-touch-icon" href="HJ_icon_192.png">
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="hj_ico.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#111111" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="hj_ico.png" />
+
+    <!-- iOS PWA enhancements -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HJ 2025" />
+    <!-- Apple prefers 180x180; 192 works if you don’t have a 180 yet -->
+    <link rel="apple-touch-icon" href="HJ_icon_192.png" />
+
+    <!-- SEO / Social -->
     <title>HJ - Hockey for Juniors</title>
-    <meta name="description" content="Live standings and fixtures for Hockey for Juniors — Indoor Season 2025.">
-    <link rel="icon" href="hj_ico.png" type="image/png">
-    <meta property="og:title" content="HJ Indoor Season 2025">
-    <meta property="og:description" content="Live standings and fixtures for Hockey for Juniors — Indoor Season 2025.">
-    <meta property="og:image" content="/hj_logo.jpg">
+    <meta name="description" content="Live standings and fixtures for Hockey for Juniors — Indoor Season 2025." />
+    <meta property="og:title" content="HJ Indoor Season 2025" />
+    <meta property="og:description" content="Live standings and fixtures for Hockey for Juniors — Indoor Season 2025." />
+    <meta property="og:image" content="hj_logo.jpg" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3WKWW816P4"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-3WKWW816P4', {
+        page_path: window.location.pathname + window.location.hash,
+      });
+    </script>
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>

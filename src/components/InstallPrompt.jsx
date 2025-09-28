@@ -88,7 +88,7 @@ export default function InstallPrompt() {
   if (supportsPrompt) {
     return (
       <div style={barStyle}>
-        <span>Install HJ 2025 for faster access</span>
+        <span>Install the HJ app</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={handleNotNow} style={ghostBtnStyle}>Not now</button>
           <button onClick={handleInstallClick} style={primaryBtnStyle}>Install</button>
