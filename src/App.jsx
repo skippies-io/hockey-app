@@ -9,12 +9,15 @@ import Fixtures from "./components/Fixtures";
 import Team from "./views/Team";
 import Welcome from "./views/Welcome";
 import Feedback from "./views/Feedback";
+import InstallPrompt from "./components/InstallPrompt.jsx";
 
 import { getGroups, getFixturesRows, getStandingsRows } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
 
 import "./App.css";
-import hjLogoUrl from "/hj_logo.jpg";
+
+// Use BASE_URL so this works on GitHub Pages subpath (/hockey-app/)
+const hjLogoUrl = import.meta.env.BASE_URL + "hj_logo.jpg";
 
 /* Sort by numeric age (U9 < U11 < …), then Boys, Girls, Mixed */
 const GROUP_ORDER = { B: 0, G: 1, M: 2, X: 3 };
@@ -107,7 +110,7 @@ function AgeLayout({ groups }) {
   );
 }
 
-/* --- Top-level app: load groups, wire routes --- */
+/* --- Top-level app: load groups, wire routes + InstallPrompt --- */
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS);
 
@@ -131,22 +134,27 @@ export default function App() {
   const firstId = groups[0]?.id || "U9M";
 
   return (
-    <Routes>
-      {/* Legacy direct paths → redirect to first age */}
-      <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
-      <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+    <>
+      <Routes>
+        {/* Legacy direct paths → redirect to first age */}
+        <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
+        <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
 
-      {/* Welcome at root */}
-      <Route path="/" element={<Welcome groups={groups} />} />
+        {/* Welcome at root */}
+        <Route path="/" element={<Welcome groups={groups} />} />
 
-      {/* Age-scoped UI */}
-      <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
+        {/* Age-scoped UI */}
+        <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
 
-      {/* Global feedback (no age context) */}
-      <Route path="/feedback" element={<Feedback />} />
+        {/* Global feedback (no age context) */}
+        <Route path="/feedback" element={<Feedback />} />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {/* PWA install helper */}
+      <InstallPrompt />
+    </>
   );
 }
