@@ -16,6 +16,9 @@ import { FALLBACK_GROUPS } from "./config";
 
 import "./App.css";
 
+// --- GA helpers ---
+import { trackPageView, trackEvent } from "./lib/analytics";
+
 // Use BASE_URL so this works on GitHub Pages subpath (/hockey-app/)
 const hjLogoUrl = import.meta.env.BASE_URL + "hj_logo.jpg";
 
@@ -132,6 +135,12 @@ export default function App() {
   }, []);
 
   const firstId = groups[0]?.id || "U9M";
+
+  // --- GA: track on first load and every route change
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location]);
 
   return (
     <>
