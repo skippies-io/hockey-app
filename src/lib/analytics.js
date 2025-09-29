@@ -1,11 +1,11 @@
-// Minimal GA4 helper for HashRouter apps
+// src/lib/analytics.js
 
 export function trackPageView() {
   try {
     const page_path = window.location.pathname + window.location.hash;
+    console.log("[GA] page_view ->", page_path);     // TEMP LOG
     if (typeof window.gtag === "function") {
-      // GA4 page_view
-      window.gtag("event", "page_view", { page_path });
+      window.gtag("event", "page_view", { page_path, debug_mode: true });
     } else {
       console.warn("gtag not found; page_view skipped", page_path);
     }
@@ -14,11 +14,11 @@ export function trackPageView() {
   }
 }
 
-// Optional: simple event helper
 export function trackEvent(name, params = {}) {
   try {
+    console.log("[GA] event ->", name, params);      // TEMP LOG
     if (typeof window.gtag === "function") {
-      window.gtag("event", name, params);
+      window.gtag("event", name, { ...params, debug_mode: true });
     }
   } catch (e) {
     console.error("trackEvent error", name, params, e);

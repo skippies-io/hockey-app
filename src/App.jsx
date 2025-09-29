@@ -70,6 +70,7 @@ function AgeLayout({ groups }) {
   const onAgeChange = (e) => {
     const newId = e.target.value;
     const isFixtures = location.pathname.includes("/fixtures");
+    trackEvent("select_content", { content_type: "age_group", item_id: newId });
     navigate(`/${newId}/${isFixtures ? "fixtures" : "standings"}`);
   };
 
@@ -136,11 +137,12 @@ export default function App() {
 
   const firstId = groups[0]?.id || "U9M";
 
-  // --- GA: track on first load and every route change
   const location = useLocation();
   useEffect(() => {
+    console.log("[GA] location change ->", location.pathname + location.hash); // TEMP LOG
     trackPageView();
   }, [location]);
+
 
   return (
     <>
