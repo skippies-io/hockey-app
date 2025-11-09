@@ -109,7 +109,7 @@ Simulate missing scores and offline mode; verify that alerts appear and cached d
 - **FR-007**: Staff can flag fixtures as delayed/cancelled, which decorates corresponding Overview cards and digest exports.  
 - **FR-008**: Client caches latest Overview payload for offline viewing with clear “cached” labels.  
 - **FR-009**: Notifications delivered **in-app via Notification Center**, with opt-in per followed team.  
-- **FR-010**: Shared digest pages require no authentication but respect **[DEFERRED: privacy rules for minors’ information]** before exposing player-sensitive data.  
+- **FR-010**: Shared digest pages require no authentication and follow Anonymous-by-Default privacy rules — no player or coach names, photos, or contact details are exposed. Awards reference teams only (e.g., “Top Scorer – Blue Crane Rebels”). Future versions may support opt-in name display once guardian consent tracking is implemented.  
 - **FR-011**: System reconciles fixtures/standings from multiple seasons; Overview defaults to active season with manual season switching.  
 - **FR-012**: Home screen includes **Announcements** feed sourced from Google Sheet updates.  
 - **FR-013**: Franchise directory lists all franchises with contact button that opens the user’s default mail app; leads to be tracked in future.  
