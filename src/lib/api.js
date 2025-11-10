@@ -64,16 +64,131 @@ export async function getGroups() {
     .sort(sortGroups);
 }
 
-export async function getStandingsRows(ageId) {
-  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
-  const j = await fetchJSON(url);
-  return j.rows || [];
+function matchesTournament(row, slug) {
+  if (!slug) return true;
+  const candidate = (
+    row?.TournamentSlug ||
+    row?.tournamentSlug ||
+    row?.Tournament ||
+    row?.tournament
+  );
+  if (!candidate) return false;
+  return String(candidate).toLowerCase() === String(slug).toLowerCase();
 }
 
-export async function getFixturesRows(ageId) {
+export async function getStandingsRows(ageId, { tournamentSlug } = {}) {
+  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+  const j = await fetchJSON(url);
+  const rows = j.rows || [];
+  if (!tournamentSlug) return rows;
+  const filtered = rows.filter(r => matchesTournament(r, tournamentSlug));
+  return filtered.length ? filtered : rows; // fall back if sheet missing slug data
+}
+
+export async function getFixturesRows(ageId, { tournamentSlug } = {}) {
   const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
   const j = await fetchJSON(url);
-  return j.rows || [];
+  const rows = j.rows || [];
+  if (!tournamentSlug) return rows;
+  const filtered = rows.filter(r =>
+    matchesTournament(r, tournamentSlug)
+  );
+  return filtered.length ? filtered : rows;
+}
+
+const DEFAULT_SEASON = new Date().getFullYear().toString();
+
+function buildParams(params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    search.set(key, value);
+  });
+  return search.toString();
+}
+
+export async function getOverview({ season = DEFAULT_SEASON, userKey } = {}) {
+  const qs = buildParams({ overview: "1", season, userKey });
+  const url = `${API_BASE}?${qs}`;
+  try {
+    const data = await fetchJSON(url, { revalidate: true });
+    return data;
+  } catch (err) {
+    console.warn("[api] getOverview failed, returning fallback payload", err);
+    return {
+      season,
+      generatedAt: new Date().toISOString(),
+      cards: [],
+      announcements: [],
+      followPreference: { teams: [], ageGroups: [], season },
+      freshness: [],
+      availableSeasons: [season],
+    };
+  }
+}
+
+async function postJSON(searchParams, payload) {
+  if (!API_BASE) throw new Error("Missing VITE_API_BASE");
+  const res = await fetch(`${API_BASE}?${searchParams}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json().catch(() => ({}));
+  if (json && json.ok === false) throw new Error(json.error || "API error");
+  return json;
+}
+
+export async function createDigest({ title, selectedTeams, selectedAgeGroups, ownerUserKey, expiresAt }) {
+  const params = buildParams({ digests: "1" });
+  const body = {
+    title: title || "My Digest",
+    selectedTeams: selectedTeams || [],
+    selectedAgeGroups: selectedAgeGroups || [],
+    ownerUserKey,
+    expiresAt,
+  };
+  return postJSON(params, body);
+}
+
+export async function getDigest(token) {
+  if (!token) throw new Error("Missing digest token");
+  const qs = buildParams({ digest: token });
+  const url = `${API_BASE}?${qs}`;
+  const data = await fetchJSON(url, { revalidate: false });
+  return data;
+}
+
+export async function flagFixtureAlert({ fixtureId, alertType, message, flaggedBy, season = DEFAULT_SEASON }) {
+  if (!fixtureId || !alertType) {
+    throw new Error("fixtureId and alertType are required");
+  }
+  const params = buildParams({ alerts: "1" });
+  return postJSON(params, {
+    fixtureId,
+    alertType,
+    message,
+    flaggedBy,
+    season,
+  });
+}
+
+export async function getTournaments({ season = DEFAULT_SEASON } = {}) {
+  const qs = buildParams({ tournaments: "1", season });
+  const url = `${API_BASE}?${qs}`;
+  const data = await fetchJSON(url, { revalidate: true });
+  return data;
+}
+
+export async function getTournamentDetail(slug) {
+  if (!slug) throw new Error("Missing tournament slug");
+  const qs = buildParams({ tournament: slug });
+  const url = `${API_BASE}?${qs}`;
+  const data = await fetchJSON(url, { revalidate: true });
+  return data;
 }
 
 // Legacy helper (kept for any old imports)

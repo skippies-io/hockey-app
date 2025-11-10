@@ -10,6 +10,11 @@ import Team from "./views/Team";
 import Welcome from "./views/Welcome";
 import Feedback from "./views/Feedback";
 import InstallPrompt from "./components/InstallPrompt.jsx";
+import Overview from "./views/Overview/Overview.jsx";
+import DigestPublic from "./views/Overview/DigestPublic.jsx";
+import TournamentDirectory from "./views/Tournaments/Directory.jsx";
+import TournamentDetail from "./views/Tournaments/Detail.jsx";
+import Layout from "./components/Layout.jsx";
 
 import { getGroups, getFixturesRows, getStandingsRows } from "./lib/api";
 import { FALLBACK_GROUPS } from "./config";
@@ -146,13 +151,23 @@ export default function App() {
 
   return (
     <>
-      <Routes>
-        {/* Legacy direct paths → redirect to first age */}
-        <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
-        <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
+      <Layout>
+        <Routes>
+          {/* Legacy direct paths → redirect to first age */}
+          <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
+          <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
 
-        {/* Welcome at root */}
-        <Route path="/" element={<Welcome groups={groups} />} />
+          {/* Overview is the primary landing */}
+          <Route path="/" element={<Overview />} />
+          <Route path="/overview" element={<Overview />} />
+          <Route path="/overview/:season" element={<Overview />} />
+
+        {/* Legacy welcome page */}
+        <Route path="/welcome" element={<Welcome groups={groups} />} />
+
+        {/* Tournament directory */}
+        <Route path="/tournaments" element={<TournamentDirectory />} />
+        <Route path="/tournaments/:slug" element={<TournamentDetail />} />
 
         {/* Age-scoped UI */}
         <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
@@ -160,9 +175,13 @@ export default function App() {
         {/* Global feedback (no age context) */}
         <Route path="/feedback" element={<Feedback />} />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Shared digest view */}
+          <Route path="/digest/:token" element={<DigestPublic />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
 
       {/* PWA install helper */}
       <InstallPrompt />

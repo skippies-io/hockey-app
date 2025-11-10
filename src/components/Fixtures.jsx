@@ -30,7 +30,7 @@ function hasScore(x) {
 }
 
 /* ---- component ---- */
-export default function Fixtures({ ageId, ageLabel }) {
+export default function Fixtures({ ageId, ageLabel, tournamentSlug, refreshIntervalMs }) {
   const [rows, setRows] = useState([]);
   const [date, setDate] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -41,19 +41,31 @@ export default function Fixtures({ ageId, ageLabel }) {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
+
+    const load = async () => {
       try {
         setLoading(true);
-        const data = await getFixturesRows(ageId);
+        const data = await getFixturesRows(ageId, { tournamentSlug });
         if (alive) setRows(data);
       } catch (e) {
         if (alive) setErr(e.message || String(e));
       } finally {
         if (alive) setLoading(false);
       }
-    })();
+    };
+
+    load();
+
+    if (refreshIntervalMs && refreshIntervalMs > 0) {
+      const id = setInterval(load, refreshIntervalMs);
+      return () => {
+        alive = false;
+        clearInterval(id);
+      };
+    }
+
     return () => { alive = false; };
-  }, [ageId]);
+  }, [ageId, tournamentSlug, refreshIntervalMs]);
 
   const dates = useMemo(() => {
     const set = new Set(rows.map(r => (r.Date || "").toString().trim()).filter(Boolean));

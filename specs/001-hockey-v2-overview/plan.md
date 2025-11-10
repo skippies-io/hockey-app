@@ -93,13 +93,13 @@ No constitution violations were identified, so no complexity waivers are require
   2. IndexedDB (via `idb-keyval`) complements the existing sessionStorage SWR cache so the Overview + digests can render when reopening offline and still honor the `<5 min` freshness SLA.
   3. Digest definitions persist in a new Google Sheet tab; share tokens expire after 14 days. ICS files are generated client-side with the `ics` package using the Overview payload, avoiding extra backend complexity.
 
-Outstanding: privacy rules for minors on shared digests remain deferred until governance guidance.
+Outstanding: none — privacy policy, caching approach, and digest workflow are defined for v2.
 
 ## Phase 1 — Design & Contracts
 
 ### Overview experience
 **Decision:** `/overview` is the canonical home experience for v2.  
-The legacy Home + Announcements page is deferred to v3 (“News & Updates” module).
+The legacy standalone Home page is retired; a dedicated “News & Updates” module can still land in v3 if long-form announcements are needed outside the Overview feed.
 1. **Routing & layout**
    - Add `/overview` route in `App.jsx` that becomes the default landing (redirect `/` once feature flag flips).
    - Build `src/views/Overview/Overview.jsx` composed of feed sections (Followed Teams, Pinned Age Groups, Announcements, Awards, Alerts).
@@ -109,6 +109,13 @@ The legacy Home + Announcements page is deferred to v3 (“News & Updates” mod
 3. **Interactions**
    - Deep-link cards to existing routes (`/:ageId/standings`, `/:ageId/fixtures`, `/team/:name`) using `links.deep`.
    - Provide quick actions: follow/unfollow, add to digest, add to calendar.
+
+### Announcements module
+- Introduce a lightweight **Announcements** section near the top of the Overview feed.
+- Data source: `Announcements` tab in the Google Sheet, exposed via the consolidated Apps Script `?overview=1` payload.
+- Each announcement includes: `id`, `title`, `message`, `postedAt`, `expiresAt`, `priority`.
+- Display announcements as stacked cards under the welcome header; auto-hide expired items.
+- Include announcements in freshness/offline handling so they behave like other `OverviewCard` types (cached in IndexedDB, annotated with timestamp metadata).
 
 ### Season Switching
 - Introduce a small **Season Switcher** dropdown in the Overview header that lists all seasons returned by the API.
@@ -159,12 +166,11 @@ The legacy Home + Announcements page is deferred to v3 (“News & Updates” mod
 - **Notifications**: In-app notification center relies on future UI work (list + badges). Implementation will scope to local event log until a push channel is defined.
 
 - **Deferred Modules (Post-v2)**:  
-  - Home Announcements feed (FR-012)  
   - Franchise directory + contact tracking (FR-013)  
-  - Tournament page + rules PDF (FR-014)  
-  - Announcement latency metric (SC-006)
+  - Tournament page + rules PDF (FR-014)
   > These items are out-of-scope for v2 to maintain a focused release on the Overview, Digest, and Offline experiences. They will be revisited in v3 once the PWA infrastructure stabilizes.
 
 ## Next Steps
-1. Align with stakeholders on privacy expectations for shared digests (blocks FR-010 full completion).
-2. Kick off `/speckit.tasks` after reviewing this plan to break down implementation workstreams (routing/UI, data layer, digest/ICS, alerts/offline).
+1. Finalize the Season Switcher UX/API contract so `/overview` can hop between archived seasons without cache collisions.
+2. Validate consolidated Apps Script payload sizes (fixtures + standings + announcements) under peak tournament data to ensure we stay below the 6 MB response limit.
+3. Proceed with `/speckit.tasks` (already generated) to coordinate implementation of routing/UI, data layer, digest/ICS, and alert/offline workstreams.

@@ -18,11 +18,11 @@ The app provides quick, reliable access to up-to-date data, including offline su
 
 ## Details
 
-### Home Screen
-- Acts as the landing page for all users.  
-- Displays a **welcome message** followed by an **Announcements** section.  
-- Announcements are managed via the **Google Sheet feed**, allowing the association to publish important updates such as fixture changes or venue notices.  
-- Below announcements, users see tournaments grouped as **Past**, **Current**, and **Upcoming**.
+### Overview Landing (replaces legacy Home screen)
+- `/overview` is now the default landing page for all users.  
+- The hero section reuses the former welcome copy and hero art so returning users understand they are still on the Hockey4Juniors site.  
+- Announcements (a new module for v2) appear near the top of the Overview feed and are driven directly from the Google Sheet feed.  
+- Overview cards organize content that previously lived on the Home page (fixtures, standings, tournaments) into Followed Teams, Pinned Age Groups, Awards, and Alerts rails so users no longer need to dive into each division manually.
 
 ### Franchise Page
 - Lists all franchises (clubs) with:
@@ -109,7 +109,7 @@ Simulate missing scores and offline mode; verify that alerts appear and cached d
 - **FR-007**: Staff can flag fixtures as delayed/cancelled, which decorates corresponding Overview cards and digest exports.  
 - **FR-008**: Client caches latest Overview payload for offline viewing with clear “cached” labels.  
 - **FR-009**: Notifications delivered **in-app via Notification Center**, with opt-in per followed team.  
-- **FR-010**: Shared digest pages require no authentication and follow Anonymous-by-Default privacy rules — no player or coach names, photos, or contact details are exposed. Awards reference teams only (e.g., “Top Scorer – Blue Crane Rebels”). Future versions may support opt-in name display once guardian consent tracking is implemented.  
+- **FR-010**: Shared digest pages follow Anonymous-by-Default privacy rules; all PII filtered before public output.  
 - **FR-011**: System reconciles fixtures/standings from multiple seasons; Overview defaults to active season with manual season switching.  
 - **FR-012**: Home screen includes **Announcements** feed sourced from Google Sheet updates.  
 - **FR-013**: Franchise directory lists all franchises with contact button that opens the user’s default mail app; leads to be tracked in future.  
@@ -143,7 +143,7 @@ Simulate missing scores and offline mode; verify that alerts appear and cached d
 - **SC-003**: ≥70% of active users create or use a digest/follow config.  
 - **SC-004**: Data freshness indicator ≤5m behind Google Sheet feed for 95% of syncs.  
 - **SC-005**: Offline Overview renders within 3s using cached data.  
-- **SC-006**: ≥90% of announcements published via Sheet visible on the Home screen within 60s of save.  
+- **SC-006**: Announcements displayed on the Overview feed correctly reflect the latest entries from the Google Sheet feed (verified manually during QA).  
 
 ---
 
@@ -152,7 +152,13 @@ Simulate missing scores and offline mode; verify that alerts appear and cached d
 - Google Apps Script JSON feed remains the single source of truth for fixtures, standings, announcements, and awards.  
 - No direct write-back required in v2; admin edits occur through Sheet.  
 - Notification delivery is **in-app only** for v2; push/email deferred.  
-- Privacy rules for minors deferred until governance guidance.  
+- Anonymous-by-default digest policy is approved: public links MUST omit player/coach names, photos, and contact details unless future guardian-consent tooling ships.  
 - Future enhancements may include lead tracking from franchise contact actions and richer analytics dashboards.
+
+---
+
+### Deferred (Post-v2)
+- FR-013 – Franchise directory and contact tracking
+- FR-014 – Tournament page and rules PDF
 
 ---

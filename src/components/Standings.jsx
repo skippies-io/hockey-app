@@ -12,7 +12,7 @@ function sortStandings(a, b) {
   return A.name.localeCompare(B.name);
 }
 
-export default function Standings({ ageId, ageLabel }) {
+export default function Standings({ ageId, ageLabel, tournamentSlug, refreshIntervalMs }) {
   const [rows, setRows] = useState([]);
   const [pool, setPool] = useState("All");
   const [loading, setLoading] = useState(true);
@@ -24,19 +24,31 @@ export default function Standings({ ageId, ageLabel }) {
   // Load standings data for this age
   useEffect(() => {
     let alive = true;
-    (async () => {
+
+    const load = async () => {
       try {
         setLoading(true);
-        const data = await getStandingsRows(ageId);
+        const data = await getStandingsRows(ageId, { tournamentSlug });
         if (alive) setRows(data);
       } catch (e) {
         if (alive) setErr(e.message || String(e));
       } finally {
         if (alive) setLoading(false);
       }
-    })();
+    };
+
+    load();
+
+    if (refreshIntervalMs && refreshIntervalMs > 0) {
+      const id = setInterval(load, refreshIntervalMs);
+      return () => {
+        alive = false;
+        clearInterval(id);
+      };
+    }
+
     return () => { alive = false; };
-  }, [ageId]);
+  }, [ageId, tournamentSlug, refreshIntervalMs]);
 
   // Build pool list with "All" first
   const pools = useMemo(() => {
