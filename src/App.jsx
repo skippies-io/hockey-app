@@ -38,8 +38,8 @@ function Tabs({ ageId }) {
   const cls = ({ isActive }) => "pill" + (isActive ? " is-active" : "");
   return (
     <nav className="pills">
-      <NavLink to={`/${ageId}/standings`} className={cls}>Standings</NavLink>
       <NavLink to={`/${ageId}/fixtures`}  className={cls}>Fixtures</NavLink>
+      <NavLink to={`/${ageId}/standings`} className={cls}>Standings</NavLink>
     </nav>
   );
 }
