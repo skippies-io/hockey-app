@@ -1,171 +1,500 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-  Routes, Route, Navigate, Link, NavLink,
-  useParams, useLocation, useNavigate
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
 } from "react-router-dom";
-
-import Standings from "./components/Standings";
-import Fixtures from "./components/Fixtures";
-import Team from "./views/Team";
-import Welcome from "./views/Welcome";
-import Feedback from "./views/Feedback";
-import InstallPrompt from "./components/InstallPrompt.jsx";
-
-import { getGroups, getFixturesRows, getStandingsRows } from "./lib/api";
+import Card from "./components/Card";
+import Fixtures from "./views/Fixtures";
+import InstallPrompt from "./components/InstallPrompt";
+import PageIntroCard from "./components/PageIntroCard";
+import Standings from "./views/Standings";
 import { FALLBACK_GROUPS } from "./config";
-
+import { getGroups, getStandingsRows } from "./lib/api";
+import { useFollows, makeTeamFollowKey } from "./lib/follows";
+import { teamProfilePath } from "./lib/routes";
+import { useShowFollowedPreference } from "./lib/preferences";
 import "./App.css";
+import AppLayout from "./components/AppLayout";
+import Feedback from "./views/Feedback";
+import InstallBanner from "./components/InstallBanner";
+import TeamProfile from "./views/TeamProfile";
+import Welcome from "./views/Welcome";
 
-// --- GA helpers ---
-import { trackPageView, trackEvent } from "./lib/analytics";
+// Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
+function isRealTeamName(name) {
+  if (!name) return false;
+  const trimmed = String(name).trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
 
-// Use BASE_URL so this works on GitHub Pages subpath (/hockey-app/)
-const hjLogoUrl = import.meta.env.BASE_URL + "hj_logo.jpg";
+  // 1st Place / 2nd Place / 3rd Place / 4th Place / 5th Place / 6th Place
+  if (/^\d+(st|nd|rd|th)\s+place$/.test(lower)) return false;
 
-/* Sort by numeric age (U9 < U11 < …), then Boys, Girls, Mixed */
-const GROUP_ORDER = { B: 0, G: 1, M: 2, X: 3 };
-function sortAgeGroups(a, b) {
-  const na = +(a.id.match(/^U(\d+)/)?.[1] || 0);
-  const nb = +(b.id.match(/^U(\d+)/)?.[1] || 0);
-  if (na !== nb) return na - nb;
-  const ca = a.id.slice(-1);
-  const cb = b.id.slice(-1);
-  return (GROUP_ORDER[ca] ?? 9) - (GROUP_ORDER[cb] ?? 9);
+  // Winner SF1, Loser SF2, Winner QF1, etc.
+  if (lower.startsWith("winner ") || lower.startsWith("loser ")) return false;
+
+  // A1, B2, etc. (cross-pool placeholders)
+  if (/^[ab][1-4]$/i.test(lower)) return false;
+
+  return true;
 }
 
-/* --- Small nav for the two main tabs --- */
-function Tabs({ ageId }) {
-  const cls = ({ isActive }) => "pill" + (isActive ? " is-active" : "");
-  return (
-    <nav className="pills">
-      <NavLink to={`/${ageId}/fixtures`}  className={cls}>Fixtures</NavLink>
-      <NavLink to={`/${ageId}/standings`} className={cls}>Standings</NavLink>
-    </nav>
-  );
-}
+function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
+  const [teams, setTeams] = useState([]); // [{ ageId, ageLabel, teams: [{ name, pool }] }]
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(null);
+  const { isFollowing, toggleFollow, size: followCount } = useFollows();
+  const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("teams");
 
-/* --- Layout for /:ageId/* --- */
-function AgeLayout({ groups }) {
-  const params = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const isAllAges = ageId === "all";
+  const ageLabelMap = useMemo(() => {
+    const m = new Map();
+    for (const g of ageGroups || []) {
+      m.set(g.id, g.label || g.id);
+    }
+    return m;
+  }, [ageGroups]);
+  const ageOrder = useMemo(() => {
+    const m = new Map();
+    (ageGroups || []).forEach((g, idx) => m.set(g.id, idx));
+    return m;
+  }, [ageGroups]);
 
-  const ageIdUrl = params.ageId;
-  const firstId = groups[0]?.id;
-
-  const group = useMemo(
-    () => groups.find(g => g.id === ageIdUrl) || (firstId ? groups[0] : null),
-    [groups, ageIdUrl, firstId]
-  );
-
-  /* Prefetch the data for the selected age to warm caches */
-  useEffect(() => {
-    if (!group?.id) return;
-    getStandingsRows(group.id).catch(() => {});
-    getFixturesRows(group.id).catch(() => {});
-  }, [group?.id]);
-
-  if (!group) return <div className="p-4">Loading…</div>;
-
-  const onAgeChange = (e) => {
-    const newId = e.target.value;
-    const isFixtures = location.pathname.includes("/fixtures");
-    trackEvent("select_content", { content_type: "age_group", item_id: newId });
-    navigate(`/${newId}/${isFixtures ? "fixtures" : "standings"}`);
+  const deriveAgeId = (row) => {
+    if (row?.__ageId) return String(row.__ageId).trim();
+    if (!isAllAges) return ageId;
+    const age = String(row?.ageId || row?.Age || row?.age || "").trim();
+    return age || "unknown";
   };
 
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setErr(null);
+
+      try {
+        const ageList = isAllAges
+          ? (ageGroups || []).filter((g) => g.id && g.id !== "all")
+          : [{ id: ageId }];
+
+        const results = await Promise.all(
+          ageList.map((g) => getStandingsRows(g.id).catch((e) => ({ __error: e })))
+        );
+
+        if (!alive) return;
+
+        const ageBuckets = new Map(); // ageId -> Map(name -> { name, pool })
+
+        for (let idx = 0; idx < results.length; idx++) {
+          const res = results[idx];
+          const ageKey = ageList[idx]?.id;
+          if (res && res.__error) {
+            throw res.__error;
+          }
+
+          for (const row of res || []) {
+            const team = row.Team || row.team || "";
+            if (!isRealTeamName(team)) continue;
+
+            const name = team.trim();
+            const pool = (row.Pool || row.Group || "").trim() || null;
+            const rowAgeId = ageKey || deriveAgeId(row);
+
+            if (!ageBuckets.has(rowAgeId)) {
+              ageBuckets.set(rowAgeId, new Map());
+            }
+            const bucket = ageBuckets.get(rowAgeId);
+
+            if (!bucket.has(name)) {
+              bucket.set(name, { name, pool });
+            } else if (pool && !bucket.get(name).pool) {
+              bucket.get(name).pool = pool;
+            }
+          }
+        }
+
+        const compiled = Array.from(ageBuckets.entries()).map(([id, bucket]) => {
+          const entries = Array.from(bucket.values());
+          entries.sort((a, b) => a.name.localeCompare(b.name));
+          return {
+            ageId: id,
+            ageLabel: ageLabelMap.get(id) || id || "Unknown age",
+            teams: entries,
+          };
+        });
+
+        compiled.sort((a, b) => {
+          const orderA = ageOrder.has(a.ageId) ? ageOrder.get(a.ageId) : 999;
+          const orderB = ageOrder.has(b.ageId) ? ageOrder.get(b.ageId) : 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.ageLabel.localeCompare(b.ageLabel);
+        });
+
+        setTeams(compiled);
+      } catch (e) {
+        setErr(e.message || String(e));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [ageId, ageLabelMap, ageOrder, isAllAges]);
+
+  const toggleFavorite = (teamName, teamAgeId) => {
+    toggleFollow(makeTeamFollowKey(teamAgeId, teamName));
+  };
+
+  const isFav = (teamName, teamAgeId) =>
+    isFollowing(makeTeamFollowKey(teamAgeId, teamName));
+
+  const filterTeams = (list, teamAgeId) =>
+    onlyFollowing ? list.filter((t) => isFav(t.name, teamAgeId)) : list;
+
+  if (loading) return <div className="p-4">Loading teams…</div>;
+  if (err) return <div className="p-4 text-red-600">Error: {err}</div>;
+
+  const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
+  const introCard = (
+    <PageIntroCard
+      eyebrow="Teams"
+      title={`${displayAgeLabel} — Teams`}
+      description={
+        isAllAges
+          ? "Browse teams across all age groups. Star teams to highlight them in fixtures and standings."
+          : "Browse teams for this age group and follow your favourites to highlight them in fixtures and standings."
+      }
+    />
+  );
+
+  const filterBar = (
+    <Card className="filters-card">
+      <div className="hj-filter-row">
+        <label
+          className="hj-checkbox-label"
+          style={followCount === 0 ? { color: "var(--hj-color-ink-muted)" } : undefined}
+        >
+          <input
+            type="checkbox"
+            checked={onlyFollowing}
+            onChange={(e) => setOnlyFollowing(e.target.checked)}
+          />
+          Show only followed teams ({followCount || 0})
+          {followCount === 0 && (
+            <div className="filter-help">
+              You haven’t followed any teams yet. Tap the ☆ next to a team to follow it.
+            </div>
+          )}
+        </label>
+      </div>
+    </Card>
+  );
+
+  const hasAnyTeams = teams.some((bucket) => (bucket?.teams || []).length > 0);
+
+  if (!teams.length || !hasAnyTeams) {
+    return (
+      <div className="page-stack teams-page">
+        {introCard}
+        {filterBar}
+        <Card>
+          No teams found for this {isAllAges ? "selection" : "age group"}.
+        </Card>
+      </div>
+    );
+  }
+
+  if (isAllAges) {
+    const filteredBuckets = teams
+      .map((bucket) => ({
+        ...bucket,
+        teams: filterTeams(bucket.teams || [], bucket.ageId),
+      }))
+      .filter((bucket) => bucket.teams.length > 0);
+
+    const showFollowingEmpty =
+      onlyFollowing && hasAnyTeams && filteredBuckets.length === 0;
+
+    return (
+      <div className="page-stack teams-page">
+        {introCard}
+        {filterBar}
+
+        {showFollowingEmpty && (
+          <Card>⭐ No followed teams yet. Star a few teams to build your list.</Card>
+        )}
+
+        {filteredBuckets.map((bucket) => (
+          <Card key={bucket.ageId} className="teams-section teams-age-block">
+            <h3 className="section-title pool-head teams-age-title">Teams — {bucket.ageLabel}</h3>
+            <div className="teams-list">
+              {bucket.teams.map((t) => {
+                const fav = isFav(t.name, bucket.ageId);
+                return (
+                  <article
+                    key={`${bucket.ageId}:${t.name}`}
+                    className={`team-row ${fav ? "card--followed" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleFavorite(t.name, bucket.ageId)}
+                      aria-label={
+                        fav ? `Unfollow ${t.name}` : `Follow ${t.name}`
+                      }
+                      className="star-btn"
+                    >
+                      <span className={`star ${fav ? "is-on" : "is-off"}`}>
+                        {fav ? "★" : "☆"}
+                      </span>
+                    </button>
+                    <Link
+                      to={teamProfilePath(bucket.ageId, t.name)}
+                      className="team-link"
+                    >
+                      {t.name}
+                    </Link>
+                  </article>
+                );
+              })}
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const singleAgeTeams = filterTeams(teams[0]?.teams || [], ageId);
+  const showFollowingEmpty =
+    onlyFollowing && (teams[0]?.teams || []).length > 0 && singleAgeTeams.length === 0;
+
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <header className="header">
-        <div className="brand-row">
-          <Link to="/" className="brand-link" aria-label="Home">
-            <img src={hjLogoUrl} alt="HJ Hockey for Juniors" className="brand-logo" />
-            <span className="brand-title">HJ Indoor Season 2025</span>
-          </Link>
+    <div className="page-stack teams-page">
+      {introCard}
+      {filterBar}
+      {showFollowingEmpty && (
+        <Card>⭐ No followed teams yet. Star a few teams to build your list.</Card>
+      )}
+
+      <Card className="teams-section">
+        <div className="teams-list">
+          {singleAgeTeams.map((t) => {
+            const fav = isFav(t.name, ageId);
+            return (
+              <article
+                key={`${ageId}:${t.name}`}
+                className={`team-row ${fav ? "card--followed" : ""}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(t.name, ageId)}
+                  aria-label={
+                    fav ? `Unfollow ${t.name}` : `Follow ${t.name}`
+                  }
+                  className="star-btn"
+                >
+                  <span className={`star ${fav ? "is-on" : "is-off"}`}>
+                    {fav ? "★" : "☆"}
+                  </span>
+                </button>
+                <Link
+                  to={teamProfilePath(ageId, t.name)}
+                  className="team-link"
+                >
+                  {t.name}
+                </Link>
+              </article>
+            );
+          })}
         </div>
-
-        <div className="controls-row">
-          <Tabs ageId={group.id} />
-          <div className="age-chooser">
-            <label htmlFor="ageSelect" className="age-label">Age</label>
-            <select id="ageSelect" value={group.id} onChange={onAgeChange}>
-              {groups.map(g => (
-                <option key={g.id} value={g.id}>{g.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
-
-      <Routes>
-        <Route index element={<Navigate to={`/${group.id}/standings`} replace />} />
-        <Route path="standings" element={<Standings ageId={group.id} ageLabel={group.label} />} />
-        <Route path="fixtures"  element={<Fixtures  ageId={group.id} ageLabel={group.label} />} />
-        <Route path="team/:name" element={<Team ageId={group.id} ageLabel={group.label} />} />
-        <Route path="feedback" element={<Feedback />} /> {/* scoped feedback */}
-        <Route path="*" element={<div className="p-4">Not found</div>} />
-      </Routes>
-
-      <footer className="footer" style={{ padding: 12, textAlign: "center", color: "#666" }}>
-        Data via Google Apps Script JSON • Route: {location.pathname} •{" "}
-        <Link to={`/${group.id}/feedback`}>Feedback</Link>
-      </footer>
+      </Card>
     </div>
   );
 }
 
-/* --- Top-level app: load groups, wire routes + InstallPrompt --- */
+function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
+  const params = useParams();
+  const rawAgeId = params.ageId;
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Normalise weird values like "undefined" / "null" to empty string
+  const ageId = rawAgeId && rawAgeId !== "undefined" && rawAgeId !== "null"
+    ? rawAgeId
+    : "";
+
+  useEffect(() => {
+    if (!ageId && groups.length) {
+      navigate(`/${groups[0].id}/fixtures`, { replace: true });
+    }
+  }, [ageId, groups, navigate]);
+
+  const age = groups.find((g) => g.id === ageId);
+  const ageLabel = age?.label || ageId || "";
+
+  const currentTab = useMemo(() => {
+    // Expect paths like: /U13/fixtures, /U13/standings, /U13/teams
+    const segments = location.pathname.split("/").filter(Boolean);
+    // segments[0] = ageId, segments[1] = tab (fixtures|standings|teams)
+    const maybeTab = segments[1];
+
+    if (maybeTab === "standings" || maybeTab === "teams" || maybeTab === "fixtures") {
+      return maybeTab;
+    }
+    return "fixtures";
+  }, [location.pathname]);
+
+
+  const onAgeChange = (nextId) => {
+    const tab = currentTab || "fixtures";
+    navigate(`/${nextId}/${tab}`);
+  };
+
+
+  if (!ageId) {
+    const body = loading ? (
+      <div className="p-4">Loading age…</div>
+    ) : (
+      <Navigate to="/" replace />
+    );
+    return (
+      <LayoutComponent showNav={false}>
+        {body}
+      </LayoutComponent>
+    );
+  }
+
+  if (!age && !loading) {
+    const fallbackId = groups[0]?.id;
+    if (fallbackId) {
+      return <Navigate to={`/${fallbackId}/fixtures`} replace />;
+    }
+    return (
+      <LayoutComponent showNav={false}>
+        <div className="p-4 text-red-600">Unknown age id: {ageId}</div>
+      </LayoutComponent>
+    );
+  }
+
+  return (
+    <LayoutComponent
+      ageOptions={groups}
+      selectedAge={ageId}
+      onAgeChange={onAgeChange}
+      currentTab={currentTab}
+    >
+      <Routes>
+        <Route
+          path="fixtures"
+          element={<Fixtures ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />}
+        />
+        <Route
+          path="standings"
+          element={<Standings ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />}
+        />
+        <Route
+          path="teams"
+          element={<TeamsPage ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />}
+        />
+        <Route index element={<Navigate to="fixtures" replace />} />
+        <Route path="*" element={<Navigate to="fixtures" replace />} />
+      </Routes>
+    </LayoutComponent>
+  );
+}
+
+function FeedbackPage({ groups }) {
+  const navigate = useNavigate();
+  const selectedAge = groups[0]?.id || "";
+
+  const handleAgeChange = (nextId) => {
+    if (nextId) navigate(`/${nextId}/fixtures`);
+  };
+
+  return (
+    <AppLayout
+      ageOptions={groups}
+      selectedAge={selectedAge}
+      onAgeChange={handleAgeChange}
+      currentTab="feedback"
+      showAgeSelector={false}
+    >
+      <Feedback />
+    </AppLayout>
+  );
+}
+
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS);
+  const [loadingGroups, setLoadingGroups] = useState(true);
+
+  const groupsWithAll = useMemo(() => {
+    const rest = (groups || []).filter((g) => g.id !== "all");
+    return [{ id: "all", label: "All" }, ...rest];
+  }, [groups]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const gs = await getGroups();
+        const list = await getGroups();
         if (!alive) return;
-        if (gs && gs.length) {
-          const sorted = gs.map(g => ({ id: g.id, label: g.label })).sort(sortAgeGroups);
-          setGroups(sorted);
+        if (Array.isArray(list) && list.length) {
+          setGroups(list);
         }
-      } catch (err) {
-        console.error("Failed to fetch groups", err);
+      } catch (e) {
+        // keep fallback groups; surface errors in console only
+        console.warn("Failed to load groups", e);
+      } finally {
+        if (alive) setLoadingGroups(false);
       }
     })();
-    return () => { alive = false; };
+
+    return () => {
+      alive = false;
+    };
   }, []);
-
-  const firstId = groups[0]?.id || "U9M";
-
-  const location = useLocation();
-  useEffect(() => {
-    console.log("[GA] location change ->", location.pathname + location.hash); // TEMP LOG
-    trackPageView();
-  }, [location]);
-
 
   return (
     <>
+      <InstallBanner />
       <Routes>
-        {/* Legacy direct paths → redirect to first age */}
-        <Route path="/standings" element={<Navigate to={`/${firstId}/standings`} replace />} />
-        <Route path="/fixtures"  element={<Navigate to={`/${firstId}/fixtures`}  replace />} />
-
-        {/* Welcome at root */}
-        <Route path="/" element={<Welcome groups={groups} />} />
-
-        {/* Age-scoped UI */}
-        <Route path="/:ageId/*" element={<AgeLayout groups={groups} />} />
-
-        {/* Global feedback (no age context) */}
-        <Route path="/feedback" element={<Feedback />} />
-
-        {/* Fallback */}
+        <Route
+          path="/"
+          element={
+            <>
+              <InstallPrompt />
+              <Welcome groups={groupsWithAll} />
+            </>
+          }
+        />
+        <Route
+          path="/feedback"
+          element={<FeedbackPage groups={groupsWithAll} />}
+        />
+        <Route
+          path="/:ageId/team/:teamId"
+          element={<TeamProfile />}
+        />
+        <Route
+          path="/:ageId/*"
+          element={
+            <AgeLayout
+              groups={groupsWithAll}
+              loading={loadingGroups}
+              LayoutComponent={AppLayout}
+            />
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
-      {/* PWA install helper */}
-      <InstallPrompt />
     </>
   );
 }
