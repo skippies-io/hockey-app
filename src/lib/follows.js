@@ -1,5 +1,11 @@
 // src/lib/follows.js
-const KEY = "hj_followed_teams";
+const KEY = "hj_followed_teams_v2";
+
+export function makeTeamFollowKey(ageId, teamName) {
+  const age = String(ageId ?? "").trim();
+  const name = String(teamName ?? "").trim();
+  return `${age}:${name}`;
+}
 
 // read -> Set<string>
 export function readFollows() {

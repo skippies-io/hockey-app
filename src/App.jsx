@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   Navigate,
@@ -18,7 +18,6 @@ import { getGroups, getStandingsRows } from "./lib/api";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
-import "./App.css";
 import AppLayout from "./components/AppLayout";
 import Feedback from "./views/Feedback";
 import InstallBanner from "./components/InstallBanner";
@@ -65,12 +64,15 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
     return m;
   }, [ageGroups]);
 
-  const deriveAgeId = (row) => {
-    if (row?.__ageId) return String(row.__ageId).trim();
-    if (!isAllAges) return ageId;
-    const age = String(row?.ageId || row?.Age || row?.age || "").trim();
-    return age || "unknown";
-  };
+  const deriveAgeId = useCallback(
+    (row) => {
+      if (row?.__ageId) return String(row.__ageId).trim();
+      if (!isAllAges) return ageId;
+      const age = String(row?.ageId || row?.Age || row?.age || "").trim();
+      return age || "unknown";
+    },
+    [ageId, isAllAges]
+  );
 
   useEffect(() => {
     let alive = true;
@@ -147,7 +149,7 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-  }, [ageId, ageLabelMap, ageOrder, isAllAges]);
+  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges]);
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));
@@ -324,6 +326,7 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
   const rawAgeId = params.ageId;
   const navigate = useNavigate();
   const location = useLocation();
+  const Layout = LayoutComponent;
 
   // Normalise weird values like "undefined" / "null" to empty string
   const ageId = rawAgeId && rawAgeId !== "undefined" && rawAgeId !== "null"
@@ -364,11 +367,7 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
     ) : (
       <Navigate to="/" replace />
     );
-    return (
-      <LayoutComponent showNav={false}>
-        {body}
-      </LayoutComponent>
-    );
+    return <Layout showNav={false}>{body}</Layout>;
   }
 
   if (!age && !loading) {
@@ -377,14 +376,14 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
       return <Navigate to={`/${fallbackId}/fixtures`} replace />;
     }
     return (
-      <LayoutComponent showNav={false}>
+      <Layout showNav={false}>
         <div className="p-4 text-red-600">Unknown age id: {ageId}</div>
-      </LayoutComponent>
+      </Layout>
     );
   }
 
   return (
-    <LayoutComponent
+    <Layout
       ageOptions={groups}
       selectedAge={ageId}
       onAgeChange={onAgeChange}
@@ -406,7 +405,7 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
         <Route index element={<Navigate to="fixtures" replace />} />
         <Route path="*" element={<Navigate to="fixtures" replace />} />
       </Routes>
-    </LayoutComponent>
+    </Layout>
   );
 }
 

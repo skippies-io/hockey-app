@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
 import PageIntroCard from "../components/PageIntroCard";
+import StandingsRow from "../components/StandingsRow";
 import { getStandingsRows } from "../lib/api";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
@@ -35,172 +36,76 @@ function sortStandings(a, b) {
 }
 
 function StandingsSection({
-  heading,
-  poolLabel,
-  rows,
   ageId,
   ageLabel,
+  heading,
+  pools = [],
   isFollowing,
   toggleFollow,
 }) {
-  if (!rows || !rows.length) return null;
+  if (!pools.length) return null;
 
-  const scopeAgeLabel = ageLabel || ageId || "";
+  const renderRow = (r, idx, poolKey) => {
+    const rowAgeId = ageId || r.__ageId || ageLabel || "";
+    const followKey = makeTeamFollowKey(rowAgeId, r.Team);
+    const isFollowed = isFollowing(followKey);
+    const rank = r.Rank != null ? r.Rank : idx + 1;
+    const badgeBg = colorFromName(r.Team);
+    const init = teamInitials(r.Team);
+    const profilePath = teamProfilePath(rowAgeId, r.Team);
+
+    return (
+      <StandingsRow
+        key={`${r.Age || rowAgeId}-${poolKey}-${r.Team}-${idx}`}
+        rank={rank}
+        teamName={
+          <Link to={profilePath} className="team-link fixture-team-link">
+            {r.Team}
+          </Link>
+        }
+        badgeColor={badgeBg}
+        initials={init}
+        played={r.GP ?? r.P ?? 0}
+        won={r.W ?? 0}
+        drawn={r.D ?? 0}
+        lost={r.L ?? 0}
+        gf={r.GF ?? 0}
+        ga={r.GA ?? 0}
+        gd={r.GD ?? 0}
+        points={r.Points ?? 0}
+        isFollowed={isFollowed}
+        onToggleFollow={() => toggleFollow(followKey)}
+      />
+    );
+  };
 
   return (
     <Card className="standings-age-card">
       {heading ? <h3 className="section-title pool-head">{heading}</h3> : null}
       <section style={{ marginBottom: "var(--hj-space-6)" }}>
-        {poolLabel ? <h3 className="section-title pool-head">{poolLabel}</h3> : null}
-
-        {/* Mobile cards */}
-        <div className="standings-cards">
-          {rows.map((r, idx) => {
-            const rowAgeId = ageId || r.__ageId || scopeAgeLabel;
-            const keyFollow = makeTeamFollowKey(rowAgeId, r.Team);
-            const followed = isFollowing(keyFollow);
-            const key = `${r.Age || scopeAgeLabel}-${r.Pool}-${r.Team}-${idx}`;
-            const rank = idx + 1;
-            const badgeBg = colorFromName(r.Team);
-            const init = teamInitials(r.Team);
-            const profilePath = teamProfilePath(rowAgeId, r.Team);
-
-            return (
-              <div
-                key={key}
-                className={`stand-card ${followed ? "card--followed" : ""}`}
-              >
-                <div className="sc-top">
-                  <div className="sc-team">
-                    <div
-                      className="badge"
-                      style={{ background: badgeBg }}
-                      aria-hidden
-                    >
-                      {init}
-                    </div>
-                    <div className="sc-name">
-                      <Link to={profilePath} className="team-link">{r.Team}</Link>
-                    </div>
-                  </div>
-
-                  <div className="sc-right">
-                    <span className="rank-chip">#{rank}</span>
-                    <span className="sc-points">{r.Points ?? 0} pts</span>
-                    <button
-                      className="star-btn"
-                      aria-label={followed ? "Unfollow team" : "Follow team"}
-                      onClick={() => toggleFollow(keyFollow)}
-                      title={followed ? "Unfollow" : "Follow"}
-                    >
-                      <span className={`star ${followed ? "is-on" : "is-off"}`}>
-                        {followed ? "★" : "☆"}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="sc-grid">
-                  <div className="sc-stat">
-                    <span className="lbl">GP</span>
-                    {r.GP}
-                  </div>
-                  <div className="sc-stat">
+        <div className="stand-card">
+          {pools.map((pool) => (
+            <div key={pool.poolKey || pool.poolLabel} className="stand-pool-block">
+              {pool.poolLabel ? (
+                <div className="stand-card-header">
+                  <span className="stand-pool-label">{pool.poolLabel}</span>
+                  <div className="stand-header-stats" aria-hidden="true">
+                    <span className="lbl">P</span>
                     <span className="lbl">W</span>
-                    {r.W}
-                  </div>
-                  <div className="sc-stat">
                     <span className="lbl">D</span>
-                    {r.D}
-                  </div>
-                  <div className="sc-stat">
                     <span className="lbl">L</span>
-                    {r.L}
-                  </div>
-                  <div className="sc-stat">
                     <span className="lbl">GF</span>
-                    {r.GF}
-                  </div>
-                  <div className="sc-stat">
                     <span className="lbl">GA</span>
-                    {r.GA}
-                  </div>
-                  <div className="gd-chip" title="Goal difference">
-                    GD{" "}
-                    <strong>{Number(r.GD) >= 0 ? `+${r.GD}` : r.GD}</strong>
+                    <span className="lbl">GD</span>
+                    <span className="lbl lbl--points">Pts</span>
                   </div>
                 </div>
+              ) : null}
+              <div className="stand-card-body">
+                {pool.rows.map((r, idx) => renderRow(r, idx, pool.poolKey))}
               </div>
-            );
-          })}
-        </div>
-
-        {/* Desktop table */}
-        <div className="table-wrap">
-          <table className="table">
-            <colgroup>
-              <col style={{ width: 36 }} />
-              <col />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-              <col style={{ width: "6ch" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th style={{ width: 36 }} aria-label="follow column"></th>
-                <th className="left">Team</th>
-                <th>GP</th>
-                <th>W</th>
-                <th>D</th>
-                <th>L</th>
-                <th>GF</th>
-                <th>GA</th>
-                <th>GD</th>
-                <th>Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => {
-                const rowAgeId = ageId || r.__ageId || scopeAgeLabel;
-                const keyFollow = makeTeamFollowKey(rowAgeId, r.Team);
-                const followed = isFollowing(keyFollow);
-                const key = `${r.Age || scopeAgeLabel}-${r.Pool}-${r.Team}-${idx}`;
-                const profilePath = teamProfilePath(rowAgeId, r.Team);
-                return (
-                  <tr key={key} className={followed ? "row-following" : ""}>
-                    <td>
-                      <button
-                        className="star-btn"
-                        aria-label={followed ? "Unfollow team" : "Follow team"}
-                        onClick={() => toggleFollow(keyFollow)}
-                        title={followed ? "Unfollow" : "Follow"}
-                      >
-                        <span className={`star ${followed ? "is-on" : "is-off"}`}>
-                          {followed ? "★" : "☆"}
-                        </span>
-                      </button>
-                    </td>
-                    <td className="left team-name-cell">
-                      <Link to={profilePath} className="team-link">{r.Team}</Link>
-                    </td>
-                    <td>{r.GP}</td>
-                    <td>{r.W}</td>
-                    <td>{r.D}</td>
-                    <td>{r.L}</td>
-                    <td>{r.GF}</td>
-                    <td>{r.GA}</td>
-                    <td>{r.GD}</td>
-                    <td>{r.Points}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            </div>
+          ))}
         </div>
       </section>
     </Card>
@@ -369,6 +274,29 @@ export default function Standings({
   const sections = useMemo(() => {
     if (!rowsWithAge.length) return [];
 
+    const buildPoolsForAge = (list, ageKey) => {
+      const ageHasPools = list.some((r) => String(r.Pool || "").trim());
+      const poolMap = new Map();
+      for (const r of list) {
+        const rawPool = String(r.Pool || "").trim();
+        const key = rawPool || (ageHasPools ? "?" : "ALL");
+        if (!poolMap.has(key)) poolMap.set(key, []);
+        poolMap.get(key).push(r);
+      }
+
+      return Array.from(poolMap.entries())
+        .map(([poolKey, poolRows]) => {
+          const rowsSorted = finalize(poolRows, ageKey);
+          return {
+            poolKey,
+            poolLabel: poolLabelFromKey(poolKey),
+            rows: rowsSorted,
+          };
+        })
+        .filter((p) => p.rows.length > 0)
+        .sort((a, b) => a.poolKey.localeCompare(b.poolKey));
+    };
+
     if (isAllAges) {
       const ageBuckets = new Map();
       for (const r of rowsWithAge) {
@@ -377,69 +305,47 @@ export default function Standings({
         ageBuckets.get(key).push(r);
       }
 
-      const grouped = [];
-      for (const [bucketAgeId, list] of ageBuckets.entries()) {
-        const ageHasPools = list.some((r) => String(r.Pool || "").trim());
-        const poolMap = new Map();
-        for (const r of list) {
-          const rawPool = String(r.Pool || "").trim();
-          const key = rawPool || (ageHasPools ? "?" : "ALL");
-          if (!poolMap.has(key)) poolMap.set(key, []);
-          poolMap.get(key).push(r);
-        }
-
-        const ageLabelVal =
-          ageLabelMap.get(bucketAgeId) || bucketAgeId || "Unknown age";
-        for (const [poolKey, poolRows] of poolMap.entries()) {
-          const rowsSorted = finalize(poolRows, bucketAgeId);
-          if (!rowsSorted.length) continue;
-          grouped.push({
-            key: `${bucketAgeId}-${poolKey || "ALL"}`,
+      return Array.from(ageBuckets.entries())
+        .map(([bucketAgeId, list]) => {
+          const ageLabelVal =
+            ageLabelMap.get(bucketAgeId) || bucketAgeId || "Unknown age";
+          return {
+            key: bucketAgeId,
             ageId: bucketAgeId,
             ageLabel: ageLabelVal,
             heading: `${ageLabelVal} — Standings`,
-            poolLabel: poolLabelFromKey(poolKey),
-            rows: rowsSorted,
-            poolKey,
-          });
-        }
-      }
-
-      return grouped.sort((a, b) => {
-        const orderA = ageOrder.has(a.ageId) ? ageOrder.get(a.ageId) : 999;
-        const orderB = ageOrder.has(b.ageId) ? ageOrder.get(b.ageId) : 999;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.poolLabel.localeCompare(b.poolLabel);
-      });
+            pools: buildPoolsForAge(list, bucketAgeId),
+          };
+        })
+        .sort((a, b) => {
+          const orderA = ageOrder.has(a.ageId) ? ageOrder.get(a.ageId) : 999;
+          const orderB = ageOrder.has(b.ageId) ? ageOrder.get(b.ageId) : 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.ageLabel.localeCompare(b.ageLabel);
+        });
     }
 
     const selectedPool =
       showPoolFilter && pool !== "All" ? String(pool || "").trim() : null;
-    const hasPools = rowsWithAge.some((r) => String(r.Pool || "").trim());
-    const poolMap = new Map();
-    for (const r of rowsWithAge) {
-      const rawPool = String(r.Pool || "").trim();
-      if (selectedPool && rawPool !== selectedPool) continue;
-      const key = rawPool || (hasPools ? "?" : "ALL");
-      if (!poolMap.has(key)) poolMap.set(key, []);
-      poolMap.get(key).push(r);
-    }
+    const poolFiltered = selectedPool
+      ? rowsWithAge.filter((r) => String(r.Pool || "").trim() === selectedPool)
+      : rowsWithAge;
+    const pools = buildPoolsForAge(
+      poolFiltered.length ? poolFiltered : rowsWithAge,
+      scopedAgeId
+    );
 
-    if (!poolMap.size && selectedPool) return [];
-    if (!poolMap.size) poolMap.set("ALL", rowsWithAge);
+    if (!pools.length) return [];
 
-    return Array.from(poolMap.entries())
-      .map(([poolKey, poolRows]) => ({
-        key: `${scopedAgeId}-${poolKey || "ALL"}`,
+    return [
+      {
+        key: scopedAgeId,
         ageId: scopedAgeId,
         ageLabel,
         heading: `${ageLabel} — Standings`,
-        poolLabel: poolLabelFromKey(poolKey),
-        rows: finalize(poolRows, scopedAgeId),
-        poolKey,
-      }))
-      .filter((sec) => sec.rows.length > 0)
-      .sort((a, b) => a.poolKey.localeCompare(b.poolKey));
+        pools,
+      },
+    ];
   }, [
     rowsWithAge,
     isAllAges,
@@ -550,10 +456,9 @@ export default function Standings({
           <StandingsSection
             key={sec.key}
             heading={sec.heading}
-            poolLabel={sec.poolLabel}
-            rows={sec.rows}
             ageId={sec.ageId}
             ageLabel={sec.ageLabel}
+            pools={sec.pools}
             isFollowing={isFollowing}
             toggleFollow={toggleFollow}
           />
