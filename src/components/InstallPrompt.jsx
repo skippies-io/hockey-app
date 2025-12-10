@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react'
  * - Android/desktop Chrome/Edge: shows a button when `beforeinstallprompt` fires.
  * - iOS Safari: shows a hint (Share → Add to Home Screen).
  * - Remembers "Not now" per browser via localStorage.
+ * - Added: 1s delay + fade/slide-in animation.
  */
 export default function InstallPrompt() {
   const [supportsPrompt, setSupportsPrompt] = useState(false)
@@ -13,6 +14,16 @@ export default function InstallPrompt() {
   const [dismissed, setDismissed] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [isInStandalone, setIsInStandalone] = useState(false)
+  const [ready, setReady] = useState(false) // delay before showing
+  const [visible, setVisible] = useState(false) // controls fade/slide
+
+  useEffect(() => {
+    // 1s delay before showing (for fade-in)
+    const timer = setTimeout(() => {
+      setReady(true)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     // Detect iOS and standalone mode
@@ -69,17 +80,46 @@ export default function InstallPrompt() {
     setDismissed(true)
   }, [])
 
+  useEffect(() => {
+    if (!ready) {
+      setVisible(false)
+      return
+    }
+
+    const canShow =
+      !installed &&
+      !isInStandalone &&
+      !dismissed &&
+      ((isIOS && !supportsPrompt) || supportsPrompt)
+
+    setVisible(canShow)
+  }, [ready, installed, isInStandalone, dismissed, isIOS, supportsPrompt])
+
   // If already installed (standalone) or dismissed, render nothing
   if (installed || isInStandalone || dismissed) return null
+
+  const animatedBarStyle = {
+    ...barStyle,
+    opacity: visible ? 1 : 0,
+    transform: visible ? 'translate(-50%, 0)' : 'translate(-50%, 12px)',
+    transition: 'opacity 220ms ease-out, transform 220ms ease-out',
+    pointerEvents: visible ? 'auto' : 'none',
+  }
+
+  // Nothing to show
+  if (!supportsPrompt && !isIOS) return null
 
   // iOS hint
   if (isIOS && !supportsPrompt) {
     return (
-      <div style={barStyle}>
+      <div style={animatedBarStyle}>
         <span style={{ lineHeight: 1.4 }}>
-          Add this app to your Home Screen: <strong>Share</strong> → <strong>Add to Home Screen</strong>
+          Add this app to your Home Screen:{' '}
+          <strong>Share</strong> → <strong>Add to Home Screen</strong>
         </span>
-        <button onClick={handleNotNow} style={ghostBtnStyle}>Got it</button>
+        <button onClick={handleNotNow} style={ghostBtnStyle}>
+          Got it
+        </button>
       </div>
     )
   }
@@ -87,11 +127,15 @@ export default function InstallPrompt() {
   // Android/desktop button
   if (supportsPrompt) {
     return (
-      <div style={barStyle}>
+      <div style={animatedBarStyle}>
         <span>Install the HJ app</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={handleNotNow} style={ghostBtnStyle}>Not now</button>
-          <button onClick={handleInstallClick} style={primaryBtnStyle}>Install</button>
+          <button onClick={handleNotNow} style={ghostBtnStyle}>
+            Not now
+          </button>
+          <button onClick={handleInstallClick} style={primaryBtnStyle}>
+            Install
+          </button>
         </div>
       </div>
     )
@@ -104,7 +148,6 @@ const barStyle = {
   position: 'fixed',
   bottom: 12,
   left: '50%',
-  transform: 'translateX(-50%)',
   zIndex: 1000,
   display: 'flex',
   alignItems: 'center',
@@ -115,6 +158,7 @@ const barStyle = {
   borderRadius: 12,
   boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
   maxWidth: '94%',
+  // transform added dynamically for animation
 }
 
 const primaryBtnStyle = {

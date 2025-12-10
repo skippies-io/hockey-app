@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import Card from "../components/Card";
+import PageIntroCard from "../components/PageIntroCard";
 import { sendFeedback } from "../lib/api";
 
 export default function Feedback() {
@@ -36,48 +38,63 @@ export default function Feedback() {
     }
   };
 
-  if (done) {
-    return (
-      <div className="p-4" style={{ maxWidth: 640, margin: "0 auto" }}>
-        <h2>Thanks! 🙌</h2>
-        <p>Your feedback has been sent. We appreciate it.</p>
-        <div style={{ marginTop: 12 }}>
-          <button className="btn-primary" onClick={() => navigate(cancelTo)}>
-            Back to {ageId ? `${ageId} standings` : "home"}
-          </button>
-        </div>
+  const content = done ? (
+    <Card>
+      <h2 className="hj-section-header-title">Thanks! 🙌</h2>
+      <p>Your feedback has been sent. We appreciate it.</p>
+      <div className="hj-form-actions">
+        <button className="btn-primary" onClick={() => navigate(cancelTo)}>
+          Back to {ageId ? `${ageId} standings` : "home"}
+        </button>
       </div>
-    );
-  }
+    </Card>
+  ) : (
+    <Card>
+      <form onSubmit={onSubmit} className="hj-form feedback-form">
+        <div className="hj-form-field">
+          <label className="hj-form-label" htmlFor="fb-name">
+            Name (optional)
+          </label>
+          <input
+            id="fb-name"
+            className="hj-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+          />
+        </div>
 
-  return (
-    <div className="p-4" style={{ maxWidth: 640, margin: "0 auto" }}>
-      <h2 className="title" style={{ marginBottom: 12 }}>Send feedback</h2>
-      <form onSubmit={onSubmit} className="feedback-form" style={{ display: "grid", gap: 10 }}>
-        <label>
-          <div>Name (optional)</div>
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" />
-        </label>
+        <div className="hj-form-field">
+          <label className="hj-form-label" htmlFor="fb-email">
+            Email (optional, for replies)
+          </label>
+          <input
+            id="fb-email"
+            type="email"
+            className="hj-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
+        </div>
 
-        <label>
-          <div>Email (optional, for replies)</div>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
-        </label>
-
-        <label>
-          <div>Message</div>
+        <div className="hj-form-field">
+          <label className="hj-form-label" htmlFor="fb-message">
+            Message
+          </label>
           <textarea
+            id="fb-message"
             required
-            rows={5}
+            className="hj-textarea"
             value={message}
-            onChange={e=>setMessage(e.target.value)}
+            onChange={(e) => setMessage(e.target.value)}
             placeholder="Tell us what's working, what’s confusing, or what you'd love to see…"
           />
-        </label>
+        </div>
 
         {err && <div className="text-red-600" role="alert">Error: {err}</div>}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+        <div className="hj-form-actions">
           <button className="btn-primary" disabled={sending}>
             {sending ? "Sending…" : "Send feedback"}
           </button>
@@ -86,10 +103,23 @@ export default function Feedback() {
           </button>
         </div>
 
-        <div style={{ fontSize: 12, color: "#666" }}>
+        <div className="hj-form-footnote">
           Route: {location.pathname}{ageId ? ` • Age: ${ageId}` : ""}
         </div>
       </form>
+    </Card>
+  );
+
+  return (
+    <div className="page-stack">
+      <div className="page-section">
+        <PageIntroCard
+          eyebrow="Feedback"
+          title="Send feedback"
+          description="Tell us what’s working, what’s confusing, or what you’d love to see."
+        />
+      </div>
+      {content}
     </div>
   );
 }
