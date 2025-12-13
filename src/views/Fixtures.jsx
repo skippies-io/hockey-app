@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
 import FixtureCard from "../components/FixtureCard";
 import PageIntroCard from "../components/PageIntroCard";
+import { useFilterSlot } from "../components/AppLayout";
 import { getFixturesRows } from "../lib/api";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { useShowFollowedPreference } from "../lib/preferences";
@@ -10,12 +11,24 @@ import { teamProfilePath } from "../lib/routes";
 
 /* ---- helpers ---- */
 const MONTH = {
-  january:0,february:1,march:2,april:3,may:4,june:5,
-  july:6,august:7,september:8,october:9,november:10,december:11
+  january: 0,
+  february: 1,
+  march: 2,
+  april: 3,
+  may: 4,
+  june: 5,
+  july: 6,
+  august: 7,
+  september: 8,
+  october: 9,
+  november: 10,
+  december: 11,
 };
 
 function parseDateLabel(s) {
-  const m = String(s || "").trim().match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  const m = String(s || "")
+    .trim()
+    .match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
   if (!m) return NaN;
   const day = +m[1];
   const mon = MONTH[m[2].toLowerCase()];
@@ -41,12 +54,28 @@ const joinMeta = (...parts) =>
     .filter(Boolean)
     .join(" • ");
 
+function groupByDate(items) {
+  // items already sorted by date/time; we preserve order.
+  const out = [];
+  const idx = new Map(); // dateStr -> index in out
+  for (const r of items) {
+    const d = String(r.Date || "").trim() || "Unknown date";
+    if (!idx.has(d)) {
+      idx.set(d, out.length);
+      out.push({ date: d, items: [] });
+    }
+    out[idx.get(d)].items.push(r);
+  }
+  return out;
+}
+
 export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
   const [rows, setRows] = useState([]);
   const [date, setDate] = useState("All");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
-  const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("fixtures");
+  const [onlyFollowing, setOnlyFollowing] =
+    useShowFollowedPreference("fixtures");
 
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const { ageId: routeAgeId } = useParams();
@@ -87,10 +116,16 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
     (async () => {
       try {
         setLoading(true);
+        setErr(null);
+
         if (isAllAges) {
-          const ageList = (ageGroups || []).filter((g) => g.id && g.id !== "all");
+          const ageList = (ageGroups || []).filter(
+            (g) => g.id && g.id !== "all"
+          );
           const results = await Promise.all(
-            ageList.map((g) => getFixturesRows(g.id).catch((e) => ({ __error: e })))
+            ageList.map((g) =>
+              getFixturesRows(g.id).catch((e) => ({ __error: e }))
+            )
           );
 
           if (!alive) return;
@@ -99,9 +134,8 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
           for (let i = 0; i < results.length; i++) {
             const res = results[i];
             const ageKey = ageList[i]?.id;
-            if (res && res.__error) {
-              throw res.__error;
-            }
+            if (res && res.__error) throw res.__error;
+
             for (const r of res || []) {
               const rAge = ageKey || deriveAgeId(r);
               merged.push({ ...r, __ageId: rAge });
@@ -118,16 +152,28 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+
+    return () => {
+      alive = false;
+    };
   }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId]);
 
   const dates = useMemo(() => {
-    const set = new Set(rows.map(r => (r.Date || "").toString().trim()).filter(Boolean));
-    return ["All", ...Array.from(set)];
+    const set = new Set(
+      rows.map((r) => (r.Date || "").toString().trim()).filter(Boolean)
+    );
+    // If you want these sorted chronologically in the dropdown:
+    const list = Array.from(set).sort(
+      (a, b) => parseDateLabel(a) - parseDateLabel(b)
+    );
+    return ["All", ...list];
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const base = date === "All" ? rows : rows.filter(r => String(r.Date).trim() === date);
+    const base =
+      date === "All"
+        ? rows
+        : rows.filter((r) => String(r.Date).trim() === date);
 
     const scoped = onlyFollowing
       ? base.filter((f) => {
@@ -138,15 +184,18 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
         })
       : base;
 
-    return scoped.slice().sort((a, b) => {
-      const da = parseDateLabel(a.Date);
-      const db = parseDateLabel(b.Date);
-      if (da !== db) return da - db;
-      return toMinutes(a.Time) - toMinutes(b.Time);
-    }).map((r) => ({
-      ...r,
-      __ageId: r.__ageId || deriveAgeId(r),
-    }));
+    return scoped
+      .slice()
+      .sort((a, b) => {
+        const da = parseDateLabel(a.Date);
+        const db = parseDateLabel(b.Date);
+        if (da !== db) return da - db;
+        return toMinutes(a.Time) - toMinutes(b.Time);
+      })
+      .map((r) => ({
+        ...r,
+        __ageId: r.__ageId || deriveAgeId(r),
+      }));
   }, [rows, date, onlyFollowing, isFollowing, deriveAgeId]);
 
   const groupedByAge = useMemo(() => {
@@ -184,9 +233,9 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
   );
 
   const filterBar = (
-    <Card className="filters-card">
-      <div className="hj-filter-row">
-        <label className="filter-label">
+    <Card className="filters-card filter-slot-card">
+      <div className="filter-slot-row">
+        <label className="filter-label filter-label--compact">
           Date
           <select value={date} onChange={(e) => setDate(e.target.value)}>
             {dates.map((d) => (
@@ -198,8 +247,12 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
         </label>
 
         <label
-          className="hj-checkbox-label"
-          style={followCount === 0 ? { color: "var(--hj-color-ink-muted)" } : undefined}
+          className="hj-checkbox-label filter-toggle"
+          style={
+            followCount === 0
+              ? { color: "var(--hj-color-ink-muted)" }
+              : undefined
+          }
         >
           <input
             type="checkbox"
@@ -209,27 +262,30 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
           Show only followed teams ({followCount || 0})
           {followCount === 0 && (
             <div className="filter-help">
-              You haven’t followed any teams yet. Tap the ☆ next to a team to follow it.
+              You haven’t followed any teams yet. Tap the ☆ next to a team to
+              follow it.
             </div>
           )}
         </label>
       </div>
     </Card>
   );
+  useFilterSlot(filterBar);
 
   if (loading) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack fixtures-page">
         <Card>Loading fixtures…</Card>
+        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
+
   if (err) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack fixtures-page">
         <Card className="text-red-600">Error: {err}</Card>
+        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
@@ -242,24 +298,35 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
     const star2On = isFollowing(followId2);
     const profilePath1 = teamProfilePath(followAgeId, f.Team1);
     const profilePath2 = teamProfilePath(followAgeId, f.Team2);
+
     const played = hasScore(f.Score1) || hasScore(f.Score2);
     const homeScore = hasScore(f.Score1) ? Number(f.Score1) : null;
     const awayScore = hasScore(f.Score2) ? Number(f.Score2) : null;
-    const venueName = joinMeta(f.Venue, f.Pool || f.Group);
+
+    const rawPool = (f.Pool || f.Group || "").trim();
+    const poolLabel = rawPool
+      ? rawPool.toLowerCase().startsWith("pool")
+        ? rawPool
+        : `Pool ${rawPool}`
+      : "";
+    const venueName = f.Venue ? f.Venue.trim() : "";
+
     const status =
       typeof f.Status === "string" && f.Status.trim()
         ? f.Status.trim().toLowerCase()
         : played
-          ? "final"
-          : "upcoming";
+        ? "final"
+        : "upcoming";
 
     return (
       <FixtureCard
         key={`${f.Date}-${f.Time}-${f.Team1}-${f.Team2}-${idx}-${followAgeId}`}
         date={f.Date}
-        time={f.Time || "TBD"}
-        venueLabel="Venue"
+        time={f.Time}
         venueName={venueName}
+        pool={poolLabel}
+        round={f.Round}
+        showDate={false}
         homeTeam={
           <Link to={profilePath1} className="team-link fixture-team-link">
             {f.Team1}
@@ -284,29 +351,51 @@ export default function Fixtures({ ageId, ageLabel, ageGroups = [] }) {
   const showFollowingEmpty =
     onlyFollowing && rows.length > 0 && filtered.length === 0;
 
-  return (
-    <div className="page-stack">
-      <div className="page-section">
-        {intro}
-        {filterBar}
+  const renderDateGroups = (items, ageKey) => {
+    const groups = groupByDate(items);
+    return groups.map((g) => (
+      <div key={`${ageKey || "age"}-${g.date}`} className="fixtures-date-group">
+        <div className="fixtures-date-head">
+          <div className="fixtures-date-title">{g.date}</div>
+          <div className="fixtures-date-count">{g.items.length}</div>
+        </div>
+        <div className="cards">
+          {g.items.map((f, i) => renderCard(f, i, ageKey))}
+        </div>
       </div>
+    ));
+  };
 
+  const noResults = filtered.length === 0;
+
+  return (
+    <div className="page-stack fixtures-page">
       {showFollowingEmpty ? (
-        <Card>⏱ No fixtures for your followed teams. Check back later or turn off the filter.</Card>
+        <Card>
+          ⏱ No fixtures for your followed teams. Check back later or turn off
+          the filter.
+        </Card>
+      ) : noResults ? (
+        <Card>
+          <div className="fixtures-empty-title">No fixtures found</div>
+          <div className="fixtures-empty-hint">Try changing the date or age filter.</div>
+        </Card>
       ) : isAllAges ? (
         groupedByAge.map((group) => (
           <section key={group.ageId} className="page-section">
-            <h3 className="section-title pool-head">{group.ageLabel} — Fixtures</h3>
-            <div className="cards">
-              {group.items.map((f, i) => renderCard(f, i, group.ageId))}
-            </div>
+            <h3 className="section-title pool-head">
+              {group.ageLabel} — Fixtures
+            </h3>
+            {renderDateGroups(group.items, group.ageId)}
           </section>
         ))
       ) : (
-        <div className="cards">
-          {filtered.map((f, i) => renderCard(f, i, scopedAgeId))}
-        </div>
+        <section className="page-section">
+          {renderDateGroups(filtered, scopedAgeId)}
+        </section>
       )}
+
+      <div className="page-section page-section--subtle">{intro}</div>
     </div>
   );
 }

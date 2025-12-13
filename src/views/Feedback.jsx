@@ -112,13 +112,11 @@ export default function Feedback() {
 
   return (
     <div className="page-stack">
-      <div className="page-section">
-        <PageIntroCard
-          eyebrow="Feedback"
-          title="Send feedback"
-          description="Tell us what’s working, what’s confusing, or what you’d love to see."
-        />
-      </div>
+      <PageIntroCard
+        eyebrow="Feedback"
+        title="Send feedback"
+        description="Tell us what’s working, what’s confusing, or what you’d love to see."
+      />
       {content}
     </div>
   );

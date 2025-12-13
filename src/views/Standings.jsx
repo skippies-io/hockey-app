@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
 import PageIntroCard from "../components/PageIntroCard";
 import StandingsRow from "../components/StandingsRow";
+import { useFilterSlot } from "../components/AppLayout";
 import { getStandingsRows } from "../lib/api";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
@@ -498,10 +499,10 @@ export default function Standings({
   );
 
   const filterBar = (
-    <Card className="filters-card">
-      <div className="hj-filter-row">
+    <Card className="filters-card filter-slot-card">
+      <div className="filter-slot-row">
         {showPoolFilter && (
-          <label className="filter-label">
+          <label className="filter-label filter-label--compact">
             Pool
             <select
               value={pool}
@@ -516,7 +517,7 @@ export default function Standings({
           </label>
         )}
         <label
-          className="hj-checkbox-label"
+          className="hj-checkbox-label filter-toggle"
           style={followCount === 0 ? { color: "var(--hj-color-ink-muted)" } : undefined}
         >
           <input
@@ -534,28 +535,29 @@ export default function Standings({
       </div>
     </Card>
   );
+  useFilterSlot(filterBar);
 
   if (loading) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card>Loading standings…</Card>
+        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
   if (err) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card className="text-red-600">Error: {err}</Card>
+        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
   if (!rowsWithAge.length) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card>No standings available yet for this age group.</Card>
+        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
@@ -564,12 +566,7 @@ export default function Standings({
     onlyFollowing && rowsWithAge.length > 0 && sections.length === 0;
 
   return (
-    <div className="page-stack">
-      <div className="page-section">
-        {intro}
-        {filterBar}
-      </div>
-
+    <div className="page-stack standings-page">
       {!sections.length ? (
         <Card>
           {showFollowingEmpty
@@ -590,6 +587,8 @@ export default function Standings({
           />
         ))
       )}
+
+      <div className="page-section page-section--subtle">{intro}</div>
     </div>
   );
 }
