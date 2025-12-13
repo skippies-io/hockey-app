@@ -8,6 +8,7 @@ import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
 import { teamProfilePath } from "../lib/routes";
 import { useShowFollowedPreference } from "../lib/preferences";
+import useMediaQuery from "../lib/useMediaQuery";
 const poolLabelFromKey = (key) => {
   if (key === "ALL") return "All teams";
   if (key === "?") return "Unassigned pool";
@@ -35,6 +36,84 @@ function sortStandings(a, b) {
   return A.name.localeCompare(B.name);
 }
 
+function StandingsTeamCardRow({
+  teamName,
+  teamLabel,
+  rank,
+  points,
+  played,
+  won,
+  drawn,
+  lost,
+  gf,
+  ga,
+  gd,
+  badgeBg,
+  profilePath,
+  isFollowed,
+  onToggleFollow,
+}) {
+  const handleToggle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleFollow?.();
+  };
+
+  const gdLabel = gd >= 0 ? `GD +${gd}` : `GD ${gd}`;
+  const stats = [
+    { label: "GP", value: played },
+    { label: "W", value: won },
+    { label: "D", value: drawn },
+    { label: "L", value: lost },
+    { label: "GF", value: gf },
+    { label: "GA", value: ga },
+  ];
+
+  return (
+    <Card className={`standings-mobile-card ${isFollowed ? "card--followed" : ""}`}>
+      <Link to={profilePath} className="standings-mobile-link">
+        <div className="smc-header">
+          <div className="smc-left">
+            <div className="badge" style={{ backgroundColor: badgeBg }}>
+              {teamLabel}
+            </div>
+            <div className="smc-name" title={teamName}>{teamName}</div>
+          </div>
+          <div className="smc-right">
+            <span className="rank-chip">#{rank}</span>
+            <span className="smc-points">{points} pts</span>
+            <button
+              type="button"
+              className="star-btn smc-star"
+              aria-label={isFollowed ? "Unfollow team" : "Follow team"}
+              aria-pressed={isFollowed}
+              onClick={handleToggle}
+            >
+              <span className={`star ${isFollowed ? "is-on" : "is-off"}`}>
+                {isFollowed ? "★" : "☆"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="smc-footer">
+          <div className="smc-stats">
+            {stats.map((s) => (
+              <div key={s.label} className="smc-stat">
+                <div className="lbl">{s.label}</div>
+                <div className="smc-val">{s.value}</div>
+              </div>
+            ))}
+          </div>
+          <div className={`smc-gd ${gd >= 0 ? "smc-gd--pos" : "smc-gd--neg"}`}>
+            {gdLabel}
+          </div>
+        </div>
+      </Link>
+    </Card>
+  );
+}
+
 function StandingsSection({
   ageId,
   ageLabel,
@@ -42,6 +121,7 @@ function StandingsSection({
   pools = [],
   isFollowing,
   toggleFollow,
+  isMobile,
 }) {
   if (!pools.length) return null;
 
@@ -53,6 +133,29 @@ function StandingsSection({
     const badgeBg = colorFromName(r.Team);
     const init = teamInitials(r.Team);
     const profilePath = teamProfilePath(rowAgeId, r.Team);
+
+    if (isMobile) {
+      return (
+        <StandingsTeamCardRow
+          key={`${r.Age || rowAgeId}-${poolKey}-${r.Team}-${idx}`}
+          teamName={r.Team}
+          teamLabel={init}
+          rank={rank}
+          points={r.Points ?? 0}
+          played={r.GP ?? r.P ?? 0}
+          won={r.W ?? 0}
+          drawn={r.D ?? 0}
+          lost={r.L ?? 0}
+          gf={r.GF ?? 0}
+          ga={r.GA ?? 0}
+          gd={r.GD ?? 0}
+          badgeBg={badgeBg}
+          profilePath={profilePath}
+          isFollowed={isFollowed}
+          onToggleFollow={() => toggleFollow(followKey)}
+        />
+      );
+    }
 
     return (
       <StandingsRow
@@ -78,6 +181,27 @@ function StandingsSection({
       />
     );
   };
+
+  if (isMobile) {
+    return (
+      <div className="standings-mobile-section">
+        {heading ? <h3 className="section-title pool-head">{heading}</h3> : null}
+        {pools.map((pool) => (
+          <section key={pool.poolKey || pool.poolLabel} className="standings-mobile-pool">
+            {pool.poolLabel ? (
+              <div className="stand-mobile-pool-head">
+                <span className="stand-pool-label">{pool.poolLabel}</span>
+                <span className="stand-mobile-pool-count">{pool.rows.length} teams</span>
+              </div>
+            ) : null}
+            <div className="standings-mobile-list">
+              {pool.rows.map((r, idx) => renderRow(r, idx, pool.poolKey))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <Card className="standings-age-card">
@@ -187,21 +311,21 @@ export default function Standings({
               const rAge = ageKey || deriveAgeId(r);
               merged.push({ ...r, __ageId: rAge });
             }
+          }
+          setRows(merged);
+        } else {
+          const data = await getStandingsRows(scopedAgeId);
+          if (alive) setRows(data || []);
         }
-        setRows(merged);
-      } else {
-        const data = await getStandingsRows(scopedAgeId);
-        if (alive) setRows(data || []);
+      } catch (e) {
+        if (alive) setErr(e.message || String(e));
+      } finally {
+        if (alive) setLoading(false);
       }
-    } catch (e) {
-      if (alive) setErr(e.message || String(e));
-    } finally {
-      if (alive) setLoading(false);
-    }
-  })();
-  return () => {
-    alive = false;
-  };
+    })();
+    return () => {
+      alive = false;
+    };
   }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId]);
 
   // Derive pools from the actual rows (fallback when BE meta is missing)
@@ -359,6 +483,7 @@ export default function Standings({
   ]);
 
   const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const intro = (
     <PageIntroCard
@@ -461,6 +586,7 @@ export default function Standings({
             pools={sec.pools}
             isFollowing={isFollowing}
             toggleFollow={toggleFollow}
+            isMobile={isMobile}
           />
         ))
       )}
