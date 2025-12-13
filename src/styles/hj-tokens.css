@@ -20,15 +20,15 @@
 
   /* ===== Neutral palette ===== */
   /* Text / “ink” */
-  --hj-color-ink: #1f2937;         /* slightly softer than #111827 for polish */
+  --hj-color-ink: #1f2937; /* slightly softer than #111827 for polish */
   --hj-color-ink-muted: #4b5563;
   --hj-color-ink-subtle: #6b7280;
 
   /* Background & surfaces (depth levels) */
-  --hj-color-page: #f8f9fa;        /* page background */
-  --hj-color-surface: #ffffff;     /* default card surface */
-  --hj-color-surface-muted: #f3f4f6;     /* headers, secondary panels */
-  --hj-color-surface-elevated: #ffffff;  /* elevated cards (use with stronger shadow) */
+  --hj-color-page: #f8f9fa; /* page background */
+  --hj-color-surface: #ffffff; /* default card surface */
+  --hj-color-surface-muted: #f3f4f6; /* headers, secondary panels */
+  --hj-color-surface-elevated: #ffffff; /* elevated cards (use with stronger shadow) */
   --hj-color-surface-highlight: #dcfce7; /* for highlight cards, “followed” states, etc. */
 
   /* Borders */
@@ -183,7 +183,7 @@ a {
   box-shadow: var(--hj-shadow-sm);
 }
 
-.app-header-inner {
+.app-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -217,11 +217,20 @@ a {
   line-height: var(--hj-line-height-tight);
 }
 
-.app-header-controls {
+.app-age-row {
+  margin-top: var(--hj-space-2);
+}
+
+.app-nav-row {
   display: flex;
   align-items: center;
   gap: var(--hj-space-3);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 48px;
+  padding-top: var(--hj-space-2);
+  padding-bottom: var(--hj-space-1);
+  border-top: 1px solid var(--hj-color-border-subtle);
+  overflow-x: auto;
 }
 
 .age-chooser {
@@ -330,6 +339,23 @@ select {
   gap: var(--hj-space-4);
 }
 
+.app-filter-slot {
+  width: 100%;
+  min-height: 72px;
+  height: 72px;
+  display: flex;
+  align-items: stretch;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.app-filter-slot-inner {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+}
+
 .page-stack {
   max-width: var(--hj-page-max-width);
   margin: 0 auto;
@@ -346,6 +372,16 @@ select {
   gap: var(--hj-space-3);
   width: 100%;
   margin-bottom: var(--hj-space-6);
+}
+
+.page-section--subtle {
+  margin-bottom: 0;
+  color: var(--hj-color-ink-muted);
+}
+
+.page-section--subtle .page-intro-card {
+  background: var(--hj-color-surface-muted);
+  padding: var(--hj-space-3);
 }
 
 .app-footer {
@@ -375,6 +411,10 @@ select {
 
 .hj-card--highlight {
   background: var(--hj-color-surface-highlight);
+}
+
+.hj-card--no-pad {
+  padding: 0;
 }
 
 .hj-section-header {
@@ -704,6 +744,17 @@ select {
   line-height: var(--hj-line-height-default);
 }
 
+.fixtures-empty-title {
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-md);
+}
+
+.fixtures-empty-hint {
+  margin-top: var(--hj-space-1);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+}
+
 /* Fixture content: single column, rows own left/right alignment */
 .fixture-body {
   display: block; /* full card width, no side-by-side columns anymore */
@@ -729,7 +780,7 @@ select {
 .fi-team-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;   /* team left, score right */
+  justify-content: space-between; /* team left, score right */
   gap: var(--hj-space-3);
   width: 100%;
 }
@@ -788,6 +839,45 @@ select {
   gap: var(--hj-space-3);
 }
 
+.filter-slot-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--hj-color-surface);
+  border: 1px solid var(--hj-color-border-subtle);
+}
+
+.filter-slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filter-label--compact {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.filter-label--compact select {
+  min-width: 140px;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+}
+
 .filters-row {
   display: flex;
   flex-wrap: wrap;
@@ -814,6 +904,193 @@ select {
   margin-top: var(--hj-space-1);
   color: var(--hj-color-ink-muted);
   font-size: var(--hj-font-size-xs);
+}
+
+/* ===== Fixtures: clean card layout ===== */
+.fixture-card {
+  height: 100%;
+}
+
+.fixture-card--canonical .fixture-card-shell {
+  padding: var(--hj-space-4);
+  display: grid;
+  gap: var(--hj-space-3);
+}
+
+.fixture-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+}
+
+.fixture-card-when {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fixture-card-date {
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-lg);
+  line-height: var(--hj-line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.fixture-card-time {
+  font-weight: var(--hj-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
+.fixture-card-status {
+  font-size: var(--hj-font-size-xs);
+  font-weight: var(--hj-font-weight-semibold);
+  color: var(--hj-color-ink-muted);
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: var(--hj-radius-pill);
+  border: 1px solid var(--hj-color-border-subtle);
+  background: var(--hj-color-surface-muted);
+}
+
+.fixture-status--live {
+  color: var(--hj-color-info);
+  border-color: var(--hj-color-info);
+  background: var(--hj-color-info-soft);
+}
+.fixture-status--final {
+  color: var(--hj-color-ink-muted);
+}
+.fixture-status--upcoming {
+  color: var(--hj-color-ink-muted);
+}
+.fixture-status--warn {
+  color: var(--hj-color-warning);
+  border-color: var(--hj-color-warning);
+  background: var(--hj-color-warning-soft);
+}
+.fixture-status--danger {
+  color: var(--hj-color-danger);
+  border-color: var(--hj-color-danger);
+  background: var(--hj-color-danger-soft);
+}
+.fixture-status--muted {
+  color: var(--hj-color-ink-subtle);
+}
+
+.fixture-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+  line-height: var(--hj-line-height-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fixture-teams {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.fixture-teams--aligned .fixture-team-row {
+  grid-template-columns: 1fr auto;
+}
+
+.fixture-team-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr auto;
+  gap: var(--hj-space-3);
+}
+
+.fixture-team-main {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  min-width: 0;
+}
+
+.fixture-team-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.fixture-star {
+  padding: 0 var(--hj-space-1);
+}
+
+.fixture-team-score {
+  font-weight: var(--hj-font-weight-bold);
+  font-size: var(--hj-font-size-md);
+  text-align: right;
+  min-width: 3.5ch; /* prevents TBD wrapping */
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fixtures filter bar */
+.fixtures-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  flex-wrap: wrap;
+}
+
+.fixtures-filter-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.fixtures-filter-title {
+  white-space: nowrap;
+}
+
+.fixtures-filter-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
+/* ===== Fixtures: date grouping headers (additive) ===== */
+.fixtures-date-group {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.fixtures-date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  padding: 6px 2px;
+}
+
+.fixtures-date-title {
+  font-size: var(--hj-font-size-sm);
+  font-weight: var(--hj-font-weight-semibold);
+  color: var(--hj-color-ink);
+}
+
+.fixtures-date-count {
+  font-size: var(--hj-font-size-xs);
+  color: var(--hj-color-ink-muted);
+  background: var(--hj-color-surface-muted);
+  border: 1px solid var(--hj-color-border-subtle);
+  border-radius: var(--hj-radius-pill);
+  padding: 2px 8px;
 }
 
 /* Standings cards */
@@ -1196,29 +1473,42 @@ select {
     padding: var(--hj-space-2) var(--hj-space-3);
   }
 
-  .app-header-inner {
+  .app-header-top {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--hj-space-2);
   }
 
-  .app-header-controls {
+  .app-age-row {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--hj-space-2);
   }
 
   .pills {
     width: 100%;
     overflow-x: auto;
     white-space: nowrap;
-    padding-bottom: var(--hj-space-1);
     -webkit-overflow-scrolling: touch;
+
+    /* key fixes */
+    padding-right: calc(var(--hj-space-3) + env(safe-area-inset-right));
+    scroll-padding-right: calc(var(--hj-space-3) + env(safe-area-inset-right));
+    scroll-snap-type: x proximity;
   }
 
   .pill {
     flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .app-filter-slot {
+    min-height: 72px;
+    height: 72px;
+    padding: 0;
+  }
+
+  .app-filter-slot-inner {
+    min-height: 72px;
+    height: 72px;
   }
 
   .age-chooser {
@@ -1240,9 +1530,9 @@ select {
   }
 
   .filters-card {
-    padding: var(--hj-space-3);
-    gap: var(--hj-space-2);
-  }
+  padding: var(--hj-space-3);
+  gap: var(--hj-space-2);
+}
 
   .hj-filter-row {
     gap: var(--hj-space-2);
@@ -1263,5 +1553,32 @@ select {
 
   .hj-checkbox-label input {
     margin-top: 2px;
+  }
+
+  .fixtures-filterbar {
+    align-items: flex-start;
+  }
+
+  .fixtures-filter-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fixtures-filter-left select {
+    width: auto;
+    min-width: 140px;
+  }
+
+  .filter-slot-card {
+    padding: var(--hj-space-3);
+  }
+
+  .filter-slot-row {
+    gap: var(--hj-space-2);
+    align-items: flex-start;
+  }
+
+  .filter-label--compact select {
+    min-width: 0;
   }
 }
