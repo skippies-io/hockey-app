@@ -18,7 +18,7 @@ import { getGroups, getStandingsRows } from "./lib/api";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
-import AppLayout from "./components/AppLayout";
+import AppLayout, { useFilterSlot } from "./components/AppLayout";
 import Feedback from "./views/Feedback";
 import InstallBanner from "./components/InstallBanner";
 import TeamProfile from "./views/TeamProfile";
@@ -161,9 +161,6 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
   const filterTeams = (list, teamAgeId) =>
     onlyFollowing ? list.filter((t) => isFav(t.name, teamAgeId)) : list;
 
-  if (loading) return <div className="p-4">Loading teams…</div>;
-  if (err) return <div className="p-4 text-red-600">Error: {err}</div>;
-
   const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
   const introCard = (
     <PageIntroCard
@@ -178,10 +175,10 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
   );
 
   const filterBar = (
-    <Card className="filters-card">
-      <div className="hj-filter-row">
+    <Card className="filters-card filter-slot-card">
+      <div className="filter-slot-row">
         <label
-          className="hj-checkbox-label"
+          className="hj-checkbox-label filter-toggle"
           style={followCount === 0 ? { color: "var(--hj-color-ink-muted)" } : undefined}
         >
           <input
@@ -199,17 +196,34 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
       </div>
     </Card>
   );
+  useFilterSlot(filterBar);
 
   const hasAnyTeams = teams.some((bucket) => (bucket?.teams || []).length > 0);
+
+  if (loading) {
+    return (
+      <div className="page-stack teams-page">
+        <Card>Loading teams…</Card>
+        <div className="page-section page-section--subtle">{introCard}</div>
+      </div>
+    );
+  }
+  if (err) {
+    return (
+      <div className="page-stack teams-page">
+        <Card className="text-red-600">Error: {err}</Card>
+        <div className="page-section page-section--subtle">{introCard}</div>
+      </div>
+    );
+  }
 
   if (!teams.length || !hasAnyTeams) {
     return (
       <div className="page-stack teams-page">
-        {introCard}
-        {filterBar}
         <Card>
           No teams found for this {isAllAges ? "selection" : "age group"}.
         </Card>
+        <div className="page-section page-section--subtle">{introCard}</div>
       </div>
     );
   }
@@ -227,9 +241,6 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
 
     return (
       <div className="page-stack teams-page">
-        {introCard}
-        {filterBar}
-
         {showFollowingEmpty && (
           <Card>⭐ No followed teams yet. Star a few teams to build your list.</Card>
         )}
@@ -269,6 +280,8 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
             </div>
           </Card>
         ))}
+
+        <div className="page-section page-section--subtle">{introCard}</div>
       </div>
     );
   }
@@ -279,8 +292,6 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
 
   return (
     <div className="page-stack teams-page">
-      {introCard}
-      {filterBar}
       {showFollowingEmpty && (
         <Card>⭐ No followed teams yet. Star a few teams to build your list.</Card>
       )}
@@ -317,6 +328,8 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
           })}
         </div>
       </Card>
+
+      <div className="page-section page-section--subtle">{introCard}</div>
     </div>
   );
 }
@@ -424,6 +437,7 @@ function FeedbackPage({ groups }) {
       onAgeChange={handleAgeChange}
       currentTab="feedback"
       showAgeSelector={false}
+      enableFilterSlot={false}
     >
       <Feedback />
     </AppLayout>
