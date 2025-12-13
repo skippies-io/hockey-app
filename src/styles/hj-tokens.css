@@ -293,10 +293,12 @@ select {
 .pills {
   display: flex;
   gap: var(--hj-space-2);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .pill {
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--hj-color-border-subtle);
   border-radius: var(--hj-radius-pill);
   background: var(--hj-color-surface-muted);
@@ -316,6 +318,9 @@ select {
   background: var(--hj-color-brand-soft);
   border-color: var(--hj-color-brand);
   color: var(--hj-color-ink);
+}
+.pills::-webkit-scrollbar {
+  display: none;
 }
 
 /* Main layout */
@@ -1184,4 +1189,79 @@ select {
 .teams-footer-link {
   margin-top: var(--hj-space-3);
   font-weight: var(--hj-font-weight-semibold);
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: var(--hj-space-2) var(--hj-space-3);
+  }
+
+  .app-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--hj-space-2);
+  }
+
+  .app-header-controls {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--hj-space-2);
+  }
+
+  .pills {
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: var(--hj-space-1);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pill {
+    flex: 0 0 auto;
+  }
+
+  .age-chooser {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--hj-space-2);
+  }
+
+  .age-chooser label {
+    white-space: nowrap;
+    font-weight: var(--hj-font-weight-medium);
+  }
+
+  .age-chooser select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filters-card {
+    padding: var(--hj-space-3);
+    gap: var(--hj-space-2);
+  }
+
+  .hj-filter-row {
+    gap: var(--hj-space-2);
+    margin-bottom: var(--hj-space-3);
+    align-items: flex-start;
+  }
+
+  .filters-row {
+    gap: var(--hj-space-2);
+  }
+
+  .hj-checkbox-label {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--hj-space-1);
+    line-height: 1.4;
+  }
+
+  .hj-checkbox-label input {
+    margin-top: 2px;
+  }
 }
