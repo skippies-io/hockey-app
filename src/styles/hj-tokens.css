@@ -995,6 +995,123 @@ select {
   padding-bottom: 4px;
 }
 
+.standings-mobile-section {
+  display: grid;
+  gap: var(--hj-space-3);
+  margin: 0 var(--hj-space-4) var(--hj-space-5);
+}
+
+.standings-mobile-pool {
+  display: grid;
+  gap: var(--hj-space-3);
+}
+
+.stand-mobile-pool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: var(--hj-font-weight-semibold);
+  padding: 0 var(--hj-space-1);
+}
+
+.stand-mobile-pool-count {
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+}
+
+.standings-mobile-list {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.standings-mobile-card {
+  padding: var(--hj-space-3);
+}
+
+.standings-mobile-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hj-space-3);
+  color: inherit;
+  text-decoration: none;
+}
+
+.smc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+}
+
+.smc-left {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  min-width: 0;
+}
+
+.smc-name {
+  font-weight: var(--hj-font-weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.smc-right {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+}
+
+.smc-points {
+  font-weight: var(--hj-font-weight-bold);
+  white-space: nowrap;
+}
+
+.smc-star {
+  padding: 0 var(--hj-space-1);
+}
+
+.smc-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+}
+
+.smc-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--hj-space-1);
+  flex: 1;
+}
+
+.smc-stat {
+  text-align: center;
+}
+
+.smc-val {
+  font-weight: var(--hj-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.smc-gd {
+  padding: var(--hj-space-2) var(--hj-space-3);
+  border-radius: var(--hj-radius-sm);
+  font-weight: var(--hj-font-weight-bold);
+  white-space: nowrap;
+}
+
+.smc-gd--pos {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.smc-gd--neg {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .welcome-card {
   max-width: 560px;
   margin: 0 auto;
