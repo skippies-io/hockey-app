@@ -18,11 +18,12 @@ import { getGroups, getStandingsRows } from "./lib/api";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
-import AppLayout, { useFilterSlot } from "./components/AppLayout";
+import AppLayout from "./components/AppLayout";
 import Feedback from "./views/Feedback";
 import InstallBanner from "./components/InstallBanner";
 import TeamProfile from "./views/TeamProfile";
 import Welcome from "./views/Welcome";
+import { useFilterSlot } from "./components/filterSlotContext";
 
 // Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
 function isRealTeamName(name) {

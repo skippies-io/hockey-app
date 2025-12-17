@@ -1,16 +1,6 @@
 import { Link } from "react-router-dom";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-
-const FilterSlotContext = createContext({ setFilters: () => {} });
-
-export function useFilterSlot(content) {
-  const ctx = useContext(FilterSlotContext);
-
-  useEffect(() => {
-    ctx?.setFilters?.(content || null);
-    return () => ctx?.setFilters?.(null);
-  }, [content, ctx]);
-}
+import { useEffect, useMemo, useState } from "react";
+import { FilterSlotContext } from "./filterSlotContext";
 
 export default function AppLayout({
   children,
