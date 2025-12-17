@@ -28,6 +28,19 @@ const MONTH = {
 
 const DATE_LABEL_RE = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/;
 
+const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function formatDateLabelDisplay(label) {
+  const ms = parseDateLabel(label);
+  if (Number.isNaN(ms)) return String(label || "").trim();
+  return DATE_FMT.format(new Date(ms));
+}
+
 function parseDateLabel(s) {
   const m = DATE_LABEL_RE.exec(String(s || "").trim());
   if (!m) return Number.NaN;
@@ -257,7 +270,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
       <select value={date} onChange={(e) => setDate(e.target.value)}>
         {dates.map((d) => (
           <option key={d} value={d}>
-            {d}
+            {d === "All" ? "All" : formatDateLabelDisplay(d)}
           </option>
         ))}
       </select>
@@ -334,7 +347,9 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
     return groups.map((g) => (
       <div key={`${ageKey || "age"}-${g.date}`} className="fixtures-date-group">
         <div className="fixtures-date-head">
-          <div className="fixtures-date-title">{g.date}</div>
+          <div className="fixtures-date-title">
+            {formatDateLabelDisplay(g.date)}
+          </div>
           <div className="fixtures-date-count">{g.items.length}</div>
         </div>
         <div className="cards">
