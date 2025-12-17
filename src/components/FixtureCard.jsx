@@ -16,29 +16,48 @@ const MONTH = [
   "December",
 ];
 
-const MONTH_IDX = new Map(
-  MONTH.map((name, idx) => [name.toLowerCase(), idx])
-);
+const MONTH_IDX = new Map(MONTH.map((name, idx) => [name.toLowerCase(), idx]));
 
+const DATE_LABEL_RE = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/;
+const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+// NOTE: We deliberately *do not* show pills for "final" or "upcoming".
+// Pills are reserved for exceptional states (live, postponed, cancelled, tbc).
 const statusMeta = {
   live: { label: "Live", className: "fixture-status--live" },
-  final: { label: "Final", className: "fixture-status--final" },
   postponed: { label: "Postponed", className: "fixture-status--warn" },
   cancelled: { label: "Cancelled", className: "fixture-status--danger" },
   tbc: { label: "TBC", className: "fixture-status--muted" },
-  upcoming: { label: "Upcoming", className: "fixture-status--upcoming" },
 };
 
+function parseDateLabelToUTCms(raw) {
+  const m = DATE_LABEL_RE.exec(String(raw || "").trim());
+  if (!m) return Number.NaN;
+
+  const day = Number(m[1]);
+  const monthIdx = MONTH_IDX.get(String(m[2]).toLowerCase());
+  const year = Number(m[3]);
+
+  if (monthIdx == null || !year || !day) return Number.NaN;
+  return Date.UTC(year, monthIdx, day);
+}
+
 function formatDate(raw) {
-  const m = String(raw || "")
+  const ms = parseDateLabelToUTCms(raw);
+  if (Number.isNaN(ms)) return raw || "Date TBD";
+  return DATE_FMT.format(new Date(ms));
+}
+
+function normalizeStatusKey(status) {
+  const s = String(status || "")
     .trim()
-    .match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-  if (!m) return raw || "Date TBD";
-  const day = m[1].padStart(2, "0");
-  const monthIdx = MONTH_IDX.get(m[2].toLowerCase());
-  const year = m[3];
-  if (monthIdx == null) return raw;
-  return `${day} ${MONTH[monthIdx]} ${year}`;
+    .toLowerCase();
+  return s || "upcoming";
 }
 
 export default function FixtureCard({
@@ -58,10 +77,9 @@ export default function FixtureCard({
   onToggleAwayFollow,
   showDate = true,
 }) {
-  const statusKey = (status || "").toString().trim().toLowerCase();
-  const meta = statusMeta[statusKey] || statusMeta.upcoming;
-  const statusLabel = meta.label;
-  const statusClass = meta.className;
+  const statusKey = normalizeStatusKey(status);
+  const pill = statusMeta[statusKey] || null;
+
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
   const metaLine = [pool, venueName, round].filter(Boolean).join(" • ");
@@ -75,6 +93,16 @@ export default function FixtureCard({
     fn?.();
   };
 
+  const teamNameForAria = (node) => {
+    // If caller passes a <Link> with text, aria-label can still be generic.
+    // Best effort: fall back to a generic label if we can't reliably extract text.
+    if (typeof node === "string") return node;
+    return "team";
+  };
+
+  const homeName = teamNameForAria(homeTeam);
+  const awayName = teamNameForAria(awayTeam);
+
   return (
     <Card className="fixture-card fixture-card--canonical" noPad>
       <div className="fixture-card-shell">
@@ -85,9 +113,12 @@ export default function FixtureCard({
             ) : null}
             <div className="fixture-card-time">{timeLabel}</div>
           </div>
-          <div className={`fixture-card-status ${statusClass}`}>
-            {statusLabel}
-          </div>
+
+          {pill ? (
+            <div className={`fixture-card-status ${pill.className}`}>
+              {pill.label}
+            </div>
+          ) : null}
         </div>
 
         {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
@@ -98,7 +129,9 @@ export default function FixtureCard({
               <button
                 type="button"
                 className="star-btn fixture-star"
-                aria-label={homeIsFollowed ? "Unfollow team" : "Follow team"}
+                aria-label={
+                  homeIsFollowed ? `Unfollow ${homeName}` : `Follow ${homeName}`
+                }
                 aria-pressed={!!homeIsFollowed}
                 onClick={(e) => onStarClick(e, onToggleHomeFollow)}
               >
@@ -118,7 +151,9 @@ export default function FixtureCard({
               <button
                 type="button"
                 className="star-btn fixture-star"
-                aria-label={awayIsFollowed ? "Unfollow team" : "Follow team"}
+                aria-label={
+                  awayIsFollowed ? `Unfollow ${awayName}` : `Follow ${awayName}`
+                }
                 aria-pressed={!!awayIsFollowed}
                 onClick={(e) => onStarClick(e, onToggleAwayFollow)}
               >
