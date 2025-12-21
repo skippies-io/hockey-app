@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Card from "../components/Card";
-import PageIntroCard from "../components/PageIntroCard";
 import { sendFeedback } from "../lib/api";
 
 export default function Feedback() {
@@ -112,11 +111,6 @@ export default function Feedback() {
 
   return (
     <div className="page-stack">
-      <PageIntroCard
-        eyebrow="Feedback"
-        title="Send feedback"
-        description="Tell us what’s working, what’s confusing, or what you’d love to see."
-      />
       {content}
     </div>
   );

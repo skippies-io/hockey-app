@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
-import PageIntroCard from "../components/PageIntroCard";
 import StandingsRow from "../components/StandingsRow";
 import { useFilterSlot } from "../components/filterSlotContext";
 import FilterBar from "../components/FilterBar";
@@ -484,20 +483,7 @@ export default function Standings({
     ageLabelMap,
   ]);
 
-  const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
   const isMobile = useMediaQuery("(max-width: 640px)");
-
-  const intro = (
-    <PageIntroCard
-      eyebrow="Standings"
-      title={`${displayAgeLabel} — Standings`}
-      description={
-        format === "POOL_STAGES"
-          ? "Standings by pool. Track ranks, points, and followed teams."
-          : "Overall standings. Track ranks, points, and followed teams."
-      }
-    />
-  );
 
   const poolSelector = showPoolFilter ? (
     <label className="filter-label filter-label--compact">
@@ -529,7 +515,6 @@ export default function Standings({
     return (
       <div className="page-stack standings-page">
         <Card>Loading standings…</Card>
-        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
@@ -537,7 +522,6 @@ export default function Standings({
     return (
       <div className="page-stack standings-page">
         <Card className="text-red-600">Error: {err}</Card>
-        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
@@ -545,7 +529,6 @@ export default function Standings({
     return (
       <div className="page-stack standings-page">
         <Card>No standings available yet for this age group.</Card>
-        <div className="page-section page-section--subtle">{intro}</div>
       </div>
     );
   }
@@ -575,8 +558,6 @@ export default function Standings({
           />
         ))
       )}
-
-      <div className="page-section page-section--subtle">{intro}</div>
     </div>
   );
 }
