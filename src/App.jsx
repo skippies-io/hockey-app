@@ -43,7 +43,7 @@ function isRealTeamName(name) {
   return true;
 }
 
-function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
+function TeamsPage({ ageId, ageGroups = [] }) {
   const [teams, setTeams] = useState([]); // [{ ageId, ageLabel, teams: [{ name, pool }] }]
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -164,8 +164,6 @@ function TeamsPage({ ageId, ageLabel, ageGroups = [] }) {
 
   const filterTeams = (list, teamAgeId) =>
     onlyFollowing ? list.filter((t) => isFav(t.name, teamAgeId)) : list;
-
-  const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
 
   const filterBar = (
     <Card className="filters-card filter-slot-card">
