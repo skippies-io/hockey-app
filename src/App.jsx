@@ -19,7 +19,6 @@ import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
 import AppLayout from "./components/AppLayout";
 import Feedback from "./views/Feedback";
-import InstallBanner from "./components/InstallBanner";
 import TeamProfile from "./views/TeamProfile";
 import Welcome from "./views/Welcome";
 import { useFilterSlot } from "./components/filterSlotContext";
@@ -476,7 +475,6 @@ export default function App() {
 
   return (
     <>
-      <InstallBanner />
       <Routes>
         <Route
           path="/"
