@@ -321,6 +321,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
         pool={poolLabel}
         round={f?.Round}
         showDate={false}
+        showPool={isAllAges}
         homeTeam={
           <Link to={profilePath1} className="team-link fixture-team-link">
             {f?.Team1}

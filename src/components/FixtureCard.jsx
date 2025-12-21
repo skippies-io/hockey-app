@@ -76,13 +76,21 @@ export default function FixtureCard({
   onToggleHomeFollow,
   onToggleAwayFollow,
   showDate = true,
+  showPool = true,
+  showRound = false,
 }) {
   const statusKey = normalizeStatusKey(status);
   const pill = statusMeta[statusKey] || null;
 
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
-  const metaLine = [pool, venueName, round].filter(Boolean).join(" • ");
+  const metaLine = [
+    showPool ? pool : null,
+    venueName,
+    showRound ? round : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   const renderScore = (v) =>
     v === null || v === undefined || v === "" ? "TBD" : String(v);
