@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import Card from "../components/Card";
 import FixtureCard from "../components/FixtureCard";
-import StatPill from "../components/StatPill";
 import { getFixturesRows } from "../lib/api";
 import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
@@ -114,6 +113,11 @@ export default function TeamProfile() {
       if (nt2 === normTarget) nameFromData = t2 || nameFromData;
 
       const poolRaw = String(f.Pool || f.Group || "").trim();
+      const poolLabel = poolRaw
+        ? poolRaw.toLowerCase().startsWith("pool")
+          ? poolRaw
+          : `Pool ${poolRaw}`
+        : "";
       if (!poolFromData && poolRaw) {
         poolFromData = poolRaw.toLowerCase().startsWith("pool") ? poolRaw : `Pool ${poolRaw}`;
       }
@@ -158,6 +162,7 @@ export default function TeamProfile() {
         teamB: t2,
         venueName: joinMeta(f.Venue, f.Pool || f.Group),
         pool: poolRaw,
+        poolLabel,
         round: f.Round || "",
         score1: f.Score1,
         score2: f.Score2,
@@ -185,6 +190,7 @@ export default function TeamProfile() {
   const { isFollowing, toggleFollow } = useFollows();
   const followKey = makeTeamFollowKey(ageId, displayName);
   const isFollowed = isFollowing(followKey);
+  const gdLabel = stats.gd >= 0 ? `+${stats.gd}` : `${stats.gd}`;
 
   const filteredFixtures = useMemo(() => {
     if (filter === "upcoming") return teamFixtures.filter((fx) => !fx.played);
@@ -198,6 +204,7 @@ export default function TeamProfile() {
       selectedAge={ageId}
       currentTab="teams"
       showAgeSelector={false}
+      enableFilterSlot={false}
     >
       <div className="page-stack team-profile">
         <div className="page-section">
@@ -212,8 +219,8 @@ export default function TeamProfile() {
               <div>Loading team…</div>
             ) : (
               <>
-                <div className="team-hero-head">
-                  <div className="team-hero-main">
+                <div className="hj-team-hero-top">
+                  <div className="hj-team-hero-main">
                     <div
                       className="badge"
                       aria-hidden
@@ -237,14 +244,37 @@ export default function TeamProfile() {
                       </span>
                     </button>
                   </div>
-                </div>
-
-                <div className="hj-stats-row team-hero-stats">
-                  <StatPill label="Played" value={stats.played} />
-                  <StatPill label="Wins" value={stats.wins} />
-                  <StatPill label="Draws" value={stats.draws} />
-                  <StatPill label="Losses" value={stats.losses} />
-                  <StatPill label="Goal Diff" value={stats.gd} emphasis="strong" />
+                  <div className="hj-team-hero-summary">
+                    <div className="hj-team-hero-summary-strip">
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">W</div>
+                        <div className="hj-team-hero-summary-value">{stats.wins}</div>
+                      </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">D</div>
+                        <div className="hj-team-hero-summary-value">{stats.draws}</div>
+                      </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">L</div>
+                        <div className="hj-team-hero-summary-value">{stats.losses}</div>
+                      </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">GF</div>
+                        <div className="hj-team-hero-summary-value">{stats.gf}</div>
+                      </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">GA</div>
+                        <div className="hj-team-hero-summary-value">{stats.ga}</div>
+                      </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">GD</div>
+                        <div className="hj-team-hero-summary-value">{gdLabel}</div>
+                      </div>
+                    </div>
+                    <div className="hj-team-meta">
+                      {`GP ${stats.played} • ${stats.pts} pts • Win ${stats.winPct}`}
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -281,14 +311,17 @@ export default function TeamProfile() {
                     const awayScore = hasScore(fx.score2) ? Number(fx.score2) : null;
                     const profilePath1 = teamProfilePath(fx.ageId, fx.teamA);
                     const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
+                    const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
+                    const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
 
                     return (
                       <li key={fx.id || `${fx.date}-${idx}`}>
                         <FixtureCard
                           date={fx.date}
                           time={fx.time || "TBD"}
-                          venueLabel="Venue"
                           venueName={fx.venueName}
+                          pool={fx.poolLabel}
+                          round={fx.round}
                           homeTeam={
                             <Link to={profilePath1} className="team-link fixture-team-link">
                               {fx.teamA}
@@ -302,8 +335,10 @@ export default function TeamProfile() {
                           homeScore={homeScore}
                           awayScore={awayScore}
                           status={fx.status}
-                          isFollowed={false}
-                          onToggleFollow={undefined}
+                          homeIsFollowed={isFollowing(followKey1)}
+                          awayIsFollowed={isFollowing(followKey2)}
+                          onToggleHomeFollow={() => toggleFollow(followKey1)}
+                          onToggleAwayFollow={() => toggleFollow(followKey2)}
                         />
                       </li>
                     );

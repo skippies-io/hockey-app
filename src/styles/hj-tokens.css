@@ -8,28 +8,26 @@
 
 :root {
   /* ===== Brand palette ===== */
-  /* Primary brand: bright, energetic green (logo-inspired) */
   --hj-color-brand: #1ed760;
   --hj-color-brand-soft: #dcfce7;
-  --hj-color-brand-strong: #16a34a; /* previous brand green becomes strong / hover */
+  --hj-color-brand-strong: #16a34a;
 
-  /* Secondary accent: modern electric blue */
+  /* Secondary accent */
   --hj-color-accent: #3b82f6;
   --hj-color-accent-soft: #dbeafe;
   --hj-color-accent-strong: #1d4ed8;
 
   /* ===== Neutral palette ===== */
-  /* Text / “ink” */
-  --hj-color-ink: #1f2937;         /* slightly softer than #111827 for polish */
+  --hj-color-ink: #1f2937;
   --hj-color-ink-muted: #4b5563;
   --hj-color-ink-subtle: #6b7280;
 
-  /* Background & surfaces (depth levels) */
-  --hj-color-page: #f8f9fa;        /* page background */
-  --hj-color-surface: #ffffff;     /* default card surface */
-  --hj-color-surface-muted: #f3f4f6;     /* headers, secondary panels */
-  --hj-color-surface-elevated: #ffffff;  /* elevated cards (use with stronger shadow) */
-  --hj-color-surface-highlight: #dcfce7; /* for highlight cards, “followed” states, etc. */
+  /* Background & surfaces */
+  --hj-color-page: #f8f9fa;
+  --hj-color-surface: #ffffff;
+  --hj-color-surface-muted: #f3f4f6;
+  --hj-color-surface-elevated: #ffffff;
+  --hj-color-surface-highlight: #dcfce7; /* highlight cards, “followed” states */
 
   /* Borders */
   --hj-color-border-subtle: #e5e7eb;
@@ -38,15 +36,15 @@
   /* ===== Status colors ===== */
   --hj-color-success: #16a34a;
   --hj-color-success-soft: #dcfce7;
+  --hj-color-success-ink: #166534;
 
   --hj-color-danger: #dc2626;
   --hj-color-danger-soft: #fee2e2;
+  --hj-color-danger-ink: #991b1b;
 
-  /* Slightly softer, more modern warning */
   --hj-color-warning: #f59e0b;
   --hj-color-warning-soft: #ffedd5;
 
-  /* Info aligned with accent blue */
   --hj-color-info: #3b82f6;
   --hj-color-info-soft: #dbeafe;
 
@@ -89,7 +87,6 @@
 
   /* ===== Elevation ===== */
   --hj-shadow-none: none;
-  /* Slightly stronger small shadow for better card separation */
   --hj-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
   --hj-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.12);
   --hj-shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.18);
@@ -104,7 +101,7 @@
   /* ===== Layout ===== */
   --hj-page-max-width: 1120px;
 
-  /* ===== Generic aliases (optional, for future theming) ===== */
+  /* ===== Generic aliases (optional) ===== */
   --color-brand: var(--hj-color-brand);
   --color-accent: var(--hj-color-accent);
 
@@ -126,7 +123,7 @@ body {
   margin: 0;
   font-family: var(--hj-font-family-sans);
   color: var(--hj-color-ink);
-  background: var(--hj-color-surface-muted);
+  background: var(--hj-color-page);
 }
 
 a {
@@ -134,6 +131,7 @@ a {
   text-decoration: none;
 }
 
+/* Headings / meta */
 .hj-heading-page {
   margin: 0 0 var(--hj-space-2);
   font-size: var(--hj-font-size-xl);
@@ -163,7 +161,7 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-4);
-  background: var(--hj-color-surface-muted);
+  background: var(--hj-color-page);
 }
 
 .app-shell-inner {
@@ -183,7 +181,7 @@ a {
   box-shadow: var(--hj-shadow-sm);
 }
 
-.app-header-inner {
+.app-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -208,7 +206,7 @@ a {
   height: 48px;
   border-radius: var(--hj-radius-sm);
   object-fit: cover;
-  border: 0px solid var(--hj-color-border-subtle);
+  border: 0;
 }
 
 .brand-title {
@@ -217,11 +215,20 @@ a {
   line-height: var(--hj-line-height-tight);
 }
 
-.app-header-controls {
+.app-age-row {
+  margin-top: var(--hj-space-2);
+}
+
+.app-nav-row {
   display: flex;
   align-items: center;
   gap: var(--hj-space-3);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 48px;
+  padding-top: var(--hj-space-2);
+  padding-bottom: var(--hj-space-1);
+  border-top: 1px solid var(--hj-color-border-subtle);
+  overflow-x: auto;
 }
 
 .age-chooser {
@@ -239,6 +246,7 @@ select {
   font-size: var(--hj-font-size-sm);
 }
 
+/* Buttons */
 .btn,
 .btn-primary,
 .btn-secondary {
@@ -319,6 +327,7 @@ select {
   border-color: var(--hj-color-brand);
   color: var(--hj-color-ink);
 }
+
 .pills::-webkit-scrollbar {
   display: none;
 }
@@ -330,6 +339,27 @@ select {
   gap: var(--hj-space-4);
 }
 
+/* Filter slot: single source of truth for the 72px contract */
+.app-filter-slot {
+  width: 100%;
+  min-height: 72px;
+  height: 72px;
+  display: flex;
+  align-items: stretch;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.app-filter-slot-inner {
+  flex: 1;
+  display: flex;
+  align-items: center; /* toolbar feel */
+  min-height: 72px;
+  height: 72px;
+}
+
+/* Page layout helpers */
 .page-stack {
   max-width: var(--hj-page-max-width);
   margin: 0 auto;
@@ -346,6 +376,16 @@ select {
   gap: var(--hj-space-3);
   width: 100%;
   margin-bottom: var(--hj-space-6);
+}
+
+.page-section--subtle {
+  margin-bottom: 0;
+  color: var(--hj-color-ink-muted);
+}
+
+.page-section--subtle .page-intro-card {
+  background: var(--hj-color-surface-muted);
+  padding: var(--hj-space-3);
 }
 
 .app-footer {
@@ -375,6 +415,10 @@ select {
 
 .hj-card--highlight {
   background: var(--hj-color-surface-highlight);
+}
+
+.hj-card--no-pad {
+  padding: 0;
 }
 
 .hj-section-header {
@@ -416,6 +460,7 @@ select {
   color: var(--hj-color-ink-muted);
 }
 
+/* Forms */
 .hj-form {
   display: flex;
   flex-direction: column;
@@ -472,6 +517,38 @@ select {
   color: var(--hj-color-ink-muted);
 }
 
+/* Card wrapper for lists */
+.cards {
+  display: grid;
+  gap: var(--hj-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+/* Stars */
+.star-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0 var(--hj-space-1);
+}
+
+.star {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.star.is-on {
+  color: var(--hj-color-brand-strong);
+}
+
+.star.is-off {
+  color: var(--hj-color-border-strong);
+}
+
+/* ===== Team profile / hero ===== */
 .hj-team-hero {
   padding-top: var(--hj-space-6);
   padding-bottom: var(--hj-space-4);
@@ -611,38 +688,8 @@ select {
   color: var(--hj-color-ink-muted);
 }
 
-/* Card wrapper for lists */
-.cards {
-  display: grid;
-  gap: var(--hj-space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  width: 100%;
-}
-
-/* Stars */
-.star-btn {
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 0 var(--hj-space-1);
-}
-
-.star {
-  font-size: 16px;
-  line-height: 1;
-}
-
-.star.is-on {
-  color: var(--hj-color-brand-strong);
-}
-
-.star.is-off {
-  color: var(--hj-color-border-strong);
-}
-
-/* Fixtures */
+/* ===== Fixtures (legacy layout bits) ===== */
+/* Keep until everything is fully on fixture-card--canonical */
 .fixture-header {
   display: flex;
   align-items: flex-start;
@@ -704,12 +751,21 @@ select {
   line-height: var(--hj-line-height-default);
 }
 
-/* Fixture content: single column, rows own left/right alignment */
-.fixture-body {
-  display: block; /* full card width, no side-by-side columns anymore */
+.fixtures-empty-title {
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-md);
 }
 
-/* Left column becomes a full-width vertical stack */
+.fixtures-empty-hint {
+  margin-top: var(--hj-space-1);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+}
+
+.fixture-body {
+  display: block;
+}
+
 .fixture-body-left {
   display: flex;
   flex-direction: column;
@@ -718,18 +774,16 @@ select {
   min-width: 0;
 }
 
-/* Team rows: one per team */
 .fi-team-rows {
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-1);
 }
 
-/* Each row spans the card and pushes score to the right edge */
 .fi-team-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;   /* team left, score right */
+  justify-content: space-between;
   gap: var(--hj-space-3);
   width: 100%;
 }
@@ -749,22 +803,6 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-.match {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.teams {
-  font-weight: var(--hj-font-weight-semibold);
-}
-
-.score {
-  font-weight: var(--hj-font-weight-bold);
-  min-width: 40px;
-  text-align: right;
-}
-
 .fixture-item-meta {
   color: var(--hj-color-ink-muted);
   font-size: var(--hj-font-size-sm);
@@ -778,7 +816,7 @@ select {
 }
 
 .fi-time--spacer {
-  visibility: hidden; /* keeps the second row aligned when only first has time */
+  visibility: hidden;
 }
 
 /* Filters */
@@ -786,6 +824,44 @@ select {
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-3);
+}
+
+.filter-slot-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-3);
+  padding: var(--hj-space-2) var(--hj-space-3);
+  border-radius: var(--hj-radius-md);
+  background: var(--hj-color-surface-muted);
+  border: 1px solid var(--hj-color-border-subtle);
+}
+
+.filter-slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filter-label--compact {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.filter-label--compact select {
+  min-width: 140px;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
 }
 
 .filters-row {
@@ -816,7 +892,199 @@ select {
   font-size: var(--hj-font-size-xs);
 }
 
-/* Standings cards */
+/* ===== Fixtures: canonical card layout ===== */
+.fixture-card {
+  height: 100%;
+}
+
+.fixture-card--canonical .fixture-card-shell {
+  padding: var(--hj-space-4);
+  display: grid;
+  gap: var(--hj-space-3);
+}
+
+.fixture-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+}
+
+.fixture-card-when {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fixture-card-date {
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-lg);
+  line-height: var(--hj-line-height-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.fixture-card-time {
+  font-weight: var(--hj-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
+.fixture-card-status {
+  font-size: var(--hj-font-size-xs);
+  font-weight: var(--hj-font-weight-semibold);
+  color: var(--hj-color-ink-muted);
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: var(--hj-radius-pill);
+  border: 1px solid var(--hj-color-border-subtle);
+  background: var(--hj-color-surface-muted);
+}
+
+.fixture-status--live {
+  color: var(--hj-color-info);
+  border-color: var(--hj-color-info);
+  background: var(--hj-color-info-soft);
+}
+
+.fixture-status--final {
+  color: var(--hj-color-ink-muted);
+}
+
+.fixture-status--upcoming {
+  color: var(--hj-color-ink-muted);
+}
+
+.fixture-status--warn {
+  color: var(--hj-color-warning);
+  border-color: var(--hj-color-warning);
+  background: var(--hj-color-warning-soft);
+}
+
+.fixture-status--danger {
+  color: var(--hj-color-danger);
+  border-color: var(--hj-color-danger);
+  background: var(--hj-color-danger-soft);
+}
+
+.fixture-status--muted {
+  color: var(--hj-color-ink-subtle);
+}
+
+.fixture-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+  line-height: var(--hj-line-height-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fixture-teams {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.fixture-teams--aligned .fixture-team-row {
+  grid-template-columns: 1fr auto;
+}
+
+.fixture-team-row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 1fr auto;
+  gap: var(--hj-space-3);
+}
+
+.fixture-team-main {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  min-width: 0;
+}
+
+.fixture-team-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.fixture-star {
+  padding: 0 var(--hj-space-1);
+}
+
+.fixture-team-score {
+  font-weight: var(--hj-font-weight-bold);
+  font-size: var(--hj-font-size-md);
+  text-align: right;
+  min-width: 3.5ch; /* prevents TBD wrapping */
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fixtures filter bar */
+.fixtures-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  flex-wrap: wrap;
+}
+
+.fixtures-filter-left {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.fixtures-filter-title {
+  white-space: nowrap;
+}
+
+.fixtures-filter-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
+/* Fixtures: date grouping headers */
+.fixtures-date-group {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.fixtures-date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+  padding: 6px 2px;
+}
+
+.fixtures-date-title {
+  font-size: var(--hj-font-size-sm);
+  font-weight: var(--hj-font-weight-semibold);
+  color: var(--hj-color-ink);
+}
+
+.fixtures-date-count {
+  font-size: var(--hj-font-size-xs);
+  color: var(--hj-color-ink-muted);
+  background: var(--hj-color-surface-muted);
+  border: 1px solid var(--hj-color-border-subtle);
+  border-radius: var(--hj-radius-pill);
+  padding: 2px 8px;
+}
+
+/* ===== Standings cards ===== */
 .standings-cards {
   display: grid;
   gap: var(--hj-space-3);
@@ -956,14 +1224,7 @@ select {
   padding-right: 0;
 }
 
-.stand-row-stats {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(8, minmax(0, 24px));
-  column-gap: var(--hj-space-2);
-  justify-items: center;
-}
-
+.stand-row-stats,
 .stand-header-stats {
   display: grid;
   grid-auto-flow: column;
@@ -1000,6 +1261,7 @@ select {
   padding-bottom: 4px;
 }
 
+/* Standings mobile */
 .standings-mobile-section {
   display: grid;
   gap: var(--hj-space-3);
@@ -1108,15 +1370,16 @@ select {
 }
 
 .smc-gd--pos {
-  background: #ecfdf3;
-  color: #166534;
+  background: var(--hj-color-success-soft);
+  color: var(--hj-color-success-ink);
 }
 
 .smc-gd--neg {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--hj-color-danger-soft);
+  color: var(--hj-color-danger-ink);
 }
 
+/* Welcome */
 .welcome-card {
   max-width: 560px;
   margin: 0 auto;
@@ -1168,6 +1431,7 @@ select {
   margin-top: var(--hj-space-2);
 }
 
+/* Teams list */
 .teams-list {
   list-style: none;
   margin: 0;
@@ -1191,34 +1455,35 @@ select {
   font-weight: var(--hj-font-weight-semibold);
 }
 
+/* Mobile */
 @media (max-width: 640px) {
   .app-header {
     padding: var(--hj-space-2) var(--hj-space-3);
   }
 
-  .app-header-inner {
+  .app-header-top {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--hj-space-2);
   }
 
-  .app-header-controls {
+  .app-age-row {
     width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--hj-space-2);
   }
 
   .pills {
     width: 100%;
     overflow-x: auto;
     white-space: nowrap;
-    padding-bottom: var(--hj-space-1);
     -webkit-overflow-scrolling: touch;
+    padding-right: calc(var(--hj-space-3) + env(safe-area-inset-right));
+    scroll-padding-right: calc(var(--hj-space-3) + env(safe-area-inset-right));
+    scroll-snap-type: x proximity;
   }
 
   .pill {
     flex: 0 0 auto;
+    scroll-snap-align: start;
   }
 
   .age-chooser {
@@ -1263,5 +1528,28 @@ select {
 
   .hj-checkbox-label input {
     margin-top: 2px;
+  }
+
+  .fixtures-filterbar {
+    align-items: flex-start;
+  }
+
+  .fixtures-filter-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .fixtures-filter-left select {
+    width: auto;
+    min-width: 140px;
+  }
+
+  .filter-slot-row {
+    gap: var(--hj-space-2);
+    align-items: flex-start;
+  }
+
+  .filter-label--compact select {
+    min-width: 0;
   }
 }

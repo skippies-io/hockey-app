@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
-import PageIntroCard from "../components/PageIntroCard";
 import StandingsRow from "../components/StandingsRow";
+import { useFilterSlot } from "../components/filterSlotContext";
+import FilterBar from "../components/FilterBar";
 import { getStandingsRows } from "../lib/api";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
@@ -482,79 +483,51 @@ export default function Standings({
     ageLabelMap,
   ]);
 
-  const displayAgeLabel = isAllAges ? "All ages" : ageLabel;
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  const intro = (
-    <PageIntroCard
-      eyebrow="Standings"
-      title={`${displayAgeLabel} — Standings`}
-      description={
-        format === "POOL_STAGES"
-          ? "Standings by pool. Track ranks, points, and followed teams."
-          : "Overall standings. Track ranks, points, and followed teams."
-      }
-    />
-  );
+  const poolSelector = showPoolFilter ? (
+    <label className="filter-label filter-label--compact">
+      Pool
+      <select
+        value={pool}
+        onChange={(e) => setPool(e.target.value)}
+      >
+        {poolOptions.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+    </label>
+  ) : null;
 
   const filterBar = (
-    <Card className="filters-card">
-      <div className="hj-filter-row">
-        {showPoolFilter && (
-          <label className="filter-label">
-            Pool
-            <select
-              value={pool}
-              onChange={(e) => setPool(e.target.value)}
-            >
-              {poolOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <label
-          className="hj-checkbox-label"
-          style={followCount === 0 ? { color: "var(--hj-color-ink-muted)" } : undefined}
-        >
-          <input
-            type="checkbox"
-            checked={onlyFollowing}
-            onChange={(e) => setOnlyFollowing(e.target.checked)}
-          />
-          Show only followed teams ({followCount || 0})
-          {followCount === 0 && (
-            <div className="filter-help">
-              You haven’t followed any teams yet. Tap the ☆ next to a team to follow it.
-            </div>
-          )}
-        </label>
-      </div>
-    </Card>
+    <FilterBar
+      rightSlot={poolSelector}
+      showFavourites={onlyFollowing}
+      onToggleFavourites={setOnlyFollowing}
+      favouritesCount={followCount}
+    />
   );
+  useFilterSlot(filterBar);
 
   if (loading) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card>Loading standings…</Card>
       </div>
     );
   }
   if (err) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card className="text-red-600">Error: {err}</Card>
       </div>
     );
   }
   if (!rowsWithAge.length) {
     return (
-      <div className="page-stack">
-        {intro}
+      <div className="page-stack standings-page">
         <Card>No standings available yet for this age group.</Card>
       </div>
     );
@@ -564,12 +537,7 @@ export default function Standings({
     onlyFollowing && rowsWithAge.length > 0 && sections.length === 0;
 
   return (
-    <div className="page-stack">
-      <div className="page-section">
-        {intro}
-        {filterBar}
-      </div>
-
+    <div className="page-stack standings-page">
       {!sections.length ? (
         <Card>
           {showFollowingEmpty
