@@ -9,6 +9,8 @@ import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
 import { parseDateToUTCms } from "../lib/date";
 
+const RECENT_COMPLETED_COUNT = 3;
+
 function toMinutes(t) {
   if (!t) return 0;
   const [hh, mm] = String(t).split(":").map(Number);
@@ -180,11 +182,61 @@ export default function TeamProfile() {
   };
   const gdLabel = statValues.gd >= 0 ? `+${statValues.gd}` : `${statValues.gd}`;
 
-  const filteredFixtures = useMemo(() => {
-    if (filter === "upcoming") return teamFixtures.filter((fx) => !fx.played);
-    if (filter === "results") return teamFixtures.filter((fx) => fx.played);
-    return teamFixtures;
-  }, [filter, teamFixtures]);
+  const { completedFixtures, liveFixtures, upcomingFixtures } = useMemo(() => {
+    const completed = [];
+    const live = [];
+    const upcoming = [];
+
+    for (const fx of teamFixtures) {
+      if (fx.status === "live") {
+        live.push(fx);
+      } else if (fx.played) {
+        completed.push(fx);
+      } else {
+        upcoming.push(fx);
+      }
+    }
+
+    const bySoonest = (a, b) => a.ts - b.ts;
+    const byMostRecent = (a, b) => b.ts - a.ts;
+
+    return {
+      completedFixtures: completed.slice().sort(byMostRecent),
+      liveFixtures: live.slice().sort(bySoonest),
+      upcomingFixtures: upcoming.slice().sort(bySoonest),
+    };
+  }, [teamFixtures]);
+
+  const sections = useMemo(() => {
+    if (filter === "past") {
+      return [{ title: null, items: completedFixtures }];
+    }
+
+    if (filter === "live") {
+      return [{ title: null, items: liveFixtures }];
+    }
+
+    if (filter === "upcoming") {
+      return [{ title: null, items: upcomingFixtures }];
+    }
+
+    if (liveFixtures.length > 0) {
+      return [
+        { title: "Live", items: liveFixtures },
+        { title: "Upcoming", items: upcomingFixtures },
+      ];
+    }
+
+    return [
+      {
+        title: "Recent",
+        items: completedFixtures.slice(0, RECENT_COMPLETED_COUNT),
+      },
+      { title: "Upcoming", items: upcomingFixtures },
+    ];
+  }, [filter, completedFixtures, liveFixtures, upcomingFixtures]);
+
+  const visibleSections = sections.filter((section) => section.items.length > 0);
 
   return (
     <AppLayout
@@ -319,55 +371,80 @@ export default function TeamProfile() {
                     onChange={(e) => setFilter(e.target.value)}
                   >
                     <option value="all">All</option>
+                    <option value="past">Past</option>
+                    <option value="live">Live</option>
                     <option value="upcoming">Upcoming</option>
-                    <option value="results">Results</option>
                   </select>
                 </div>
               </header>
 
-              {filteredFixtures.length === 0 ? (
+              {teamFixtures.length === 0 || visibleSections.length === 0 ? (
                 <div className="tp-empty">No fixtures for this team yet.</div>
               ) : (
-                <ul className="cards fixtures-list">
-                  {filteredFixtures.map((fx, idx) => {
-                    const homeScore = hasScore(fx.score1) ? Number(fx.score1) : null;
-                    const awayScore = hasScore(fx.score2) ? Number(fx.score2) : null;
-                    const profilePath1 = teamProfilePath(fx.ageId, fx.teamA);
-                    const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
-                    const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
-                    const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
+                <div className="cards fixtures-list">
+                  {visibleSections.map((section, sectionIdx) => (
+                    <div
+                      key={`${section.title || "section"}-${sectionIdx}`}
+                      className="fixtures-date-group"
+                    >
+                      {section.title ? (
+                        <div className="fixtures-date-head">
+                          <div className="fixtures-date-title">{section.title}</div>
+                        </div>
+                      ) : null}
+                      <ul className="cards fixtures-list">
+                        {section.items.map((fx, idx) => {
+                          const homeScore = hasScore(fx.score1)
+                            ? Number(fx.score1)
+                            : null;
+                          const awayScore = hasScore(fx.score2)
+                            ? Number(fx.score2)
+                            : null;
+                          const profilePath1 = teamProfilePath(fx.ageId, fx.teamA);
+                          const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
+                          const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
+                          const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
 
-                    return (
-                      <li key={fx.id || `${fx.date}-${idx}`}>
-                        <FixtureCard
-                          date={fx.date}
-                          time={fx.time || "TBD"}
-                          venueName={fx.venueName}
-                          pool={fx.poolLabel}
-                          round={fx.round}
-                          showDate={true}
-                          homeTeam={
-                            <Link to={profilePath1} className="team-link fixture-team-link">
-                              {fx.teamA}
-                            </Link>
-                          }
-                          awayTeam={
-                            <Link to={profilePath2} className="team-link fixture-team-link">
-                              {fx.teamB}
-                            </Link>
-                          }
-                          homeScore={homeScore}
-                          awayScore={awayScore}
-                          status={fx.status}
-                          homeIsFollowed={isFollowing(followKey1)}
-                          awayIsFollowed={isFollowing(followKey2)}
-                          onToggleHomeFollow={() => toggleFollow(followKey1)}
-                          onToggleAwayFollow={() => toggleFollow(followKey2)}
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
+                          return (
+                            <li key={fx.id || `${fx.date}-${idx}`}>
+                              <FixtureCard
+                                date={fx.date}
+                                time={fx.time || "TBD"}
+                                venueName={fx.venueName}
+                                pool={fx.poolLabel}
+                                round={fx.round}
+                                showDate={true}
+                                homeTeam={
+                                  <Link
+                                    to={profilePath1}
+                                    className="team-link fixture-team-link"
+                                  >
+                                    {fx.teamA}
+                                  </Link>
+                                }
+                                awayTeam={
+                                  <Link
+                                    to={profilePath2}
+                                    className="team-link fixture-team-link"
+                                  >
+                                    {fx.teamB}
+                                  </Link>
+                                }
+                                homeScore={homeScore}
+                                awayScore={awayScore}
+                                status={fx.status}
+                                homeIsFollowed={isFollowing(followKey1)}
+                                awayIsFollowed={isFollowing(followKey2)}
+                                onToggleHomeFollow={() => toggleFollow(followKey1)}
+                                onToggleAwayFollow={() => toggleFollow(followKey2)}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               )}
             </Card>
           </section>
