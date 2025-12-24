@@ -46,11 +46,8 @@ export default function FixtureCard({
 
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
-  const metaLine = [
-    showPool ? pool : null,
-    venueName,
-    showRound ? round : null,
-  ]
+  const timeVenueLine = [timeLabel, venueName].filter(Boolean).join(" • ");
+  const metaLine = [showPool ? pool : null, showRound ? round : null]
     .filter(Boolean)
     .join(" • ");
 
@@ -81,7 +78,7 @@ export default function FixtureCard({
             {formattedDate ? (
               <div className="fixture-card-date">{formattedDate}</div>
             ) : null}
-            <div className="fixture-card-time">{timeLabel}</div>
+            <div className="fixture-card-time">{timeVenueLine}</div>
           </div>
 
           {pill ? (

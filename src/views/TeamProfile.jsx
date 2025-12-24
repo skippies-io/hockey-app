@@ -345,6 +345,7 @@ export default function TeamProfile() {
                           venueName={fx.venueName}
                           pool={fx.poolLabel}
                           round={fx.round}
+                          showDate={true}
                           homeTeam={
                             <Link to={profilePath1} className="team-link fixture-team-link">
                               {fx.teamA}

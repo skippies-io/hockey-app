@@ -1043,6 +1043,11 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+.team-profile .fixture-card-date {
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
 .fixture-card-time {
   font-weight: var(--hj-font-weight-semibold);
   font-variant-numeric: tabular-nums;
