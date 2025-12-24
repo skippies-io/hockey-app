@@ -7,33 +7,7 @@ import { getFixturesRows } from "../lib/api";
 import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
-
-const MONTH = {
-  january: 0,
-  february: 1,
-  march: 2,
-  april: 3,
-  may: 4,
-  june: 5,
-  july: 6,
-  august: 7,
-  september: 8,
-  october: 9,
-  november: 10,
-  december: 11,
-};
-
-function parseDateLabel(s) {
-  const m = String(s || "")
-    .trim()
-    .match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-  if (!m) return NaN;
-  const day = +m[1];
-  const mon = MONTH[m[2].toLowerCase()];
-  const year = +m[3];
-  if (mon == null || !year || !day) return NaN;
-  return Date.UTC(year, mon, day);
-}
+import { parseDateToUTCms } from "../lib/date";
 
 function toMinutes(t) {
   if (!t) return 0;
@@ -123,7 +97,7 @@ export default function TeamProfile() {
       }
 
       const playedMatch = hasScore(f.Score1) || hasScore(f.Score2);
-      const tsDate = parseDateLabel(f.Date);
+      const tsDate = parseDateToUTCms(f.Date);
       const ts = (Number.isNaN(tsDate) ? 0 : tsDate) + toMinutes(f.Time);
       const isHome = nt1 === normTarget;
       const ourScore = isHome ? f.Score1 : f.Score2;
@@ -229,20 +203,25 @@ export default function TeamProfile() {
                       {teamInitials(displayName)}
                     </div>
                     <div className="team-hero-title">
-                      <h1 className="team-hero-name">{displayName}</h1>
-                      <div className="team-hero-meta">{joinMeta(ageId, poolLabel)}</div>
+                      <div className="team-hero-title-row">
+                        <h1 className="team-hero-name">{displayName}</h1>
+                        <button
+                          type="button"
+                          className="star-btn team-hero-star"
+                          aria-pressed={isFollowed}
+                          aria-label={isFollowed ? "Unfollow team" : "Follow team"}
+                          onClick={() => toggleFollow(followKey)}
+                        >
+                          <span className={`star ${isFollowed ? "is-on" : "is-off"}`}>
+                            {isFollowed ? "★" : "☆"}
+                          </span>
+                        </button>
+                      </div>
+                      <div className="team-hero-meta-row">
+                        {ageId ? <span className="team-hero-age">{ageId}</span> : null}
+                        {poolLabel ? <span className="team-hero-meta">{poolLabel}</span> : null}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      className="star-btn team-hero-star"
-                      aria-pressed={isFollowed}
-                      aria-label={isFollowed ? "Unfollow team" : "Follow team"}
-                      onClick={() => toggleFollow(followKey)}
-                    >
-                      <span className={`star ${isFollowed ? "is-on" : "is-off"}`}>
-                        {isFollowed ? "★" : "☆"}
-                      </span>
-                    </button>
                   </div>
                   <div className="hj-team-hero-summary">
                     <div className="hj-team-hero-summary-strip">
