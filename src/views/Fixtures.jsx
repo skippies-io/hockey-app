@@ -9,48 +9,15 @@ import { getFixturesRows } from "../lib/api";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { useShowFollowedPreference } from "../lib/preferences";
 import { teamProfilePath } from "../lib/routes";
+import { formatFixtureDate, parseDateToUTCms } from "../lib/date";
 
 /* ---- helpers ---- */
-const MONTH = {
-  january: 0,
-  february: 1,
-  march: 2,
-  april: 3,
-  may: 4,
-  june: 5,
-  july: 6,
-  august: 7,
-  september: 8,
-  october: 9,
-  november: 10,
-  december: 11,
-};
-
-const DATE_LABEL_RE = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/;
-
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 function formatDateLabelDisplay(label) {
-  const ms = parseDateLabel(label);
-  if (Number.isNaN(ms)) return String(label || "").trim();
-  return DATE_FMT.format(new Date(ms));
+  return formatFixtureDate(label);
 }
 
 function parseDateLabel(s) {
-  const m = DATE_LABEL_RE.exec(String(s || "").trim());
-  if (!m) return Number.NaN;
-
-  const day = Number(m[1]);
-  const mon = MONTH[String(m[2]).toLowerCase()];
-  const year = Number(m[3]);
-
-  if (mon == null || !year || !day) return Number.NaN;
-  return Date.UTC(year, mon, day); // UTC to avoid TZ shifts
+  return parseDateToUTCms(s);
 }
 
 function toMinutes(t) {

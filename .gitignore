@@ -27,3 +27,6 @@ public/*.xcf
 public/*_original.*
 public/*_cropped.*
 diff.txt
+
+# Local exports
+fs.txt

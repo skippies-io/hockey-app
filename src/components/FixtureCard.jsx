@@ -1,30 +1,6 @@
 import React from "react";
 import Card from "./Card";
-
-const MONTH = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const MONTH_IDX = new Map(MONTH.map((name, idx) => [name.toLowerCase(), idx]));
-
-const DATE_LABEL_RE = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/;
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+import { formatFixtureDate } from "../lib/date";
 
 // NOTE: We deliberately *do not* show pills for "final" or "upcoming".
 // Pills are reserved for exceptional states (live, postponed, cancelled, tbc).
@@ -35,22 +11,8 @@ const statusMeta = {
   tbc: { label: "TBC", className: "fixture-status--muted" },
 };
 
-function parseDateLabelToUTCms(raw) {
-  const m = DATE_LABEL_RE.exec(String(raw || "").trim());
-  if (!m) return Number.NaN;
-
-  const day = Number(m[1]);
-  const monthIdx = MONTH_IDX.get(String(m[2]).toLowerCase());
-  const year = Number(m[3]);
-
-  if (monthIdx == null || !year || !day) return Number.NaN;
-  return Date.UTC(year, monthIdx, day);
-}
-
 function formatDate(raw) {
-  const ms = parseDateLabelToUTCms(raw);
-  if (Number.isNaN(ms)) return raw || "Date TBD";
-  return DATE_FMT.format(new Date(ms));
+  return formatFixtureDate(raw);
 }
 
 function normalizeStatusKey(status) {
@@ -84,11 +46,8 @@ export default function FixtureCard({
 
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
-  const metaLine = [
-    showPool ? pool : null,
-    venueName,
-    showRound ? round : null,
-  ]
+  const timeVenueLine = [timeLabel, venueName].filter(Boolean).join(" • ");
+  const metaLine = [showPool ? pool : null, showRound ? round : null]
     .filter(Boolean)
     .join(" • ");
 
@@ -119,7 +78,7 @@ export default function FixtureCard({
             {formattedDate ? (
               <div className="fixture-card-date">{formattedDate}</div>
             ) : null}
-            <div className="fixture-card-time">{timeLabel}</div>
+            <div className="fixture-card-time">{timeVenueLine}</div>
           </div>
 
           {pill ? (

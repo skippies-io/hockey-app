@@ -7,33 +7,7 @@ import { getFixturesRows } from "../lib/api";
 import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
-
-const MONTH = {
-  january: 0,
-  february: 1,
-  march: 2,
-  april: 3,
-  may: 4,
-  june: 5,
-  july: 6,
-  august: 7,
-  september: 8,
-  october: 9,
-  november: 10,
-  december: 11,
-};
-
-function parseDateLabel(s) {
-  const m = String(s || "")
-    .trim()
-    .match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
-  if (!m) return NaN;
-  const day = +m[1];
-  const mon = MONTH[m[2].toLowerCase()];
-  const year = +m[3];
-  if (mon == null || !year || !day) return NaN;
-  return Date.UTC(year, mon, day);
-}
+import { parseDateToUTCms } from "../lib/date";
 
 function toMinutes(t) {
   if (!t) return 0;
@@ -123,7 +97,7 @@ export default function TeamProfile() {
       }
 
       const playedMatch = hasScore(f.Score1) || hasScore(f.Score2);
-      const tsDate = parseDateLabel(f.Date);
+      const tsDate = parseDateToUTCms(f.Date);
       const ts = (Number.isNaN(tsDate) ? 0 : tsDate) + toMinutes(f.Time);
       const isHome = nt1 === normTarget;
       const ourScore = isHome ? f.Score1 : f.Score2;
@@ -190,7 +164,21 @@ export default function TeamProfile() {
   const { isFollowing, toggleFollow } = useFollows();
   const followKey = makeTeamFollowKey(ageId, displayName);
   const isFollowed = isFollowing(followKey);
-  const gdLabel = stats.gd >= 0 ? `+${stats.gd}` : `${stats.gd}`;
+  const toSafeNum = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+  };
+  const statValues = {
+    gp: toSafeNum(stats.played),
+    w: toSafeNum(stats.wins),
+    d: toSafeNum(stats.draws),
+    l: toSafeNum(stats.losses),
+    gf: toSafeNum(stats.gf),
+    ga: toSafeNum(stats.ga),
+    gd: toSafeNum(stats.gd),
+    pts: toSafeNum(stats.pts),
+  };
+  const gdLabel = statValues.gd >= 0 ? `+${statValues.gd}` : `${statValues.gd}`;
 
   const filteredFixtures = useMemo(() => {
     if (filter === "upcoming") return teamFixtures.filter((fx) => !fx.played);
@@ -219,22 +207,37 @@ export default function TeamProfile() {
               <div>Loading team…</div>
             ) : (
               <>
-                <div className="hj-team-hero-top">
-                  <div className="hj-team-hero-main">
-                    <div
-                      className="badge"
-                      aria-hidden
-                      style={{ backgroundColor: colorFromName(displayName) }}
-                    >
-                      {teamInitials(displayName)}
-                    </div>
-                    <div className="team-hero-title">
-                      <h1 className="team-hero-name">{displayName}</h1>
-                      <div className="team-hero-meta">{joinMeta(ageId, poolLabel)}</div>
+                <div className="hj-team-hero-top hj-team-hero__stack">
+                  <div className="hj-team-hero-main hj-team-hero__header">
+                    <div className="hj-team-hero__title">
+                      <div className="hj-team-hero__title-row">
+                        <div
+                          className="badge"
+                          aria-hidden
+                          style={{ backgroundColor: colorFromName(displayName) }}
+                        >
+                          {teamInitials(displayName)}
+                        </div>
+                        <h1 className="team-hero-name hj-team-hero__name">
+                          {displayName}
+                        </h1>
+                      </div>
+                      <div className="team-hero-meta-row hj-team-hero__meta">
+                        {ageId ? (
+                          <span className="team-hero-age hj-team-hero__age">
+                            {ageId}
+                          </span>
+                        ) : null}
+                        {poolLabel ? (
+                          <span className="team-hero-meta hj-team-hero__pool">
+                            {poolLabel}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <button
                       type="button"
-                      className="star-btn team-hero-star"
+                      className="star-btn team-hero-star hj-team-hero__star"
                       aria-pressed={isFollowed}
                       aria-label={isFollowed ? "Unfollow team" : "Follow team"}
                       onClick={() => toggleFollow(followKey)}
@@ -244,36 +247,56 @@ export default function TeamProfile() {
                       </span>
                     </button>
                   </div>
-                  <div className="hj-team-hero-summary">
-                    <div className="hj-team-hero-summary-strip">
+                  <div className="hj-team-hero-summary hj-team-hero__summary">
+                    <div className="hj-team-hero-summary-strip hj-team-hero__stats">
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">GP</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.gp}
+                        </div>
+                      </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">W</div>
-                        <div className="hj-team-hero-summary-value">{stats.wins}</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.w}
+                        </div>
                       </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">D</div>
-                        <div className="hj-team-hero-summary-value">{stats.draws}</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.d}
+                        </div>
                       </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">L</div>
-                        <div className="hj-team-hero-summary-value">{stats.losses}</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.l}
+                        </div>
                       </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">GF</div>
-                        <div className="hj-team-hero-summary-value">{stats.gf}</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.gf}
+                        </div>
                       </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">GA</div>
-                        <div className="hj-team-hero-summary-value">{stats.ga}</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.ga}
+                        </div>
                       </div>
                       <div className="hj-team-hero-summary-cell">
                         <div className="hj-team-hero-summary-label">GD</div>
                         <div className="hj-team-hero-summary-value">{gdLabel}</div>
                       </div>
+                      <div className="hj-team-hero-summary-cell">
+                        <div className="hj-team-hero-summary-label">PTS</div>
+                        <div className="hj-team-hero-summary-value">
+                          {statValues.pts}
+                        </div>
+                      </div>
                     </div>
-                    <div className="hj-team-meta">
-                      {`GP ${stats.played} • ${stats.pts} pts • Win ${stats.winPct}`}
-                    </div>
+                    <div className="hj-team-meta">{`Win ${stats.winPct}`}</div>
                   </div>
                 </div>
               </>
@@ -322,6 +345,7 @@ export default function TeamProfile() {
                           venueName={fx.venueName}
                           pool={fx.poolLabel}
                           round={fx.round}
+                          showDate={true}
                           homeTeam={
                             <Link to={profilePath1} className="team-link fixture-team-link">
                               {fx.teamA}
