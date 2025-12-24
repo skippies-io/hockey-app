@@ -432,6 +432,8 @@ export default function TeamProfile() {
                                 pool={fx.poolLabel}
                                 round={fx.round}
                                 showDate={true}
+                                showResultPill
+                                teamKey={displayName}
                                 homeTeam={
                                   <Link
                                     to={profilePath1}
