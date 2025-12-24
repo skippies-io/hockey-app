@@ -1185,6 +1185,11 @@ select {
   text-overflow: ellipsis;
 }
 
+.fixture-card-details {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
 .fixture-team-name {
   min-width: 0;
   overflow: hidden;

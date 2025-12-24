@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Card from "./Card";
 import { formatFixtureDate } from "../lib/date";
 
@@ -42,9 +42,12 @@ export default function FixtureCard({
   showRound = false,
   showResultPill = false,
   resultPill,
+  expandable = false,
+  notes,
 }) {
   const statusKey = normalizeStatusKey(status);
   const pill = statusMeta[statusKey] || null;
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
@@ -55,6 +58,20 @@ export default function FixtureCard({
 
   const renderScore = (v) =>
     v === null || v === undefined || v === "" ? "TBD" : String(v);
+
+  const toggleExpand = (e) => {
+    if (!expandable) return;
+    if (e?.target?.closest?.("button, a")) return;
+    setIsExpanded((prev) => !prev);
+  };
+
+  const onKeyToggle = (e) => {
+    if (!expandable) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setIsExpanded((prev) => !prev);
+    }
+  };
 
   const onStarClick = (e, fn) => {
     e.preventDefault();
@@ -82,7 +99,14 @@ export default function FixtureCard({
 
   return (
     <Card className="fixture-card fixture-card--canonical" noPad>
-      <div className="fixture-card-shell">
+      <div
+        className="fixture-card-shell"
+        role={expandable ? "button" : undefined}
+        tabIndex={expandable ? 0 : undefined}
+        aria-expanded={expandable ? isExpanded : undefined}
+        onClick={expandable ? toggleExpand : undefined}
+        onKeyDown={expandable ? onKeyToggle : undefined}
+      >
         <div className="fixture-card-grid">
           <div className="fixture-grid-date">
             {formattedDate ? (
@@ -155,6 +179,18 @@ export default function FixtureCard({
         </div>
 
         {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
+        {expandable && isExpanded ? (
+          <div className="fixture-card-details">
+            {venueName ? (
+              <div className="fixture-card-meta">Venue: {venueName}</div>
+            ) : null}
+            {pool ? <div className="fixture-card-meta">Pool: {pool}</div> : null}
+            {round ? (
+              <div className="fixture-card-meta">Round: {round}</div>
+            ) : null}
+            {notes ? <div className="fixture-card-meta">Notes: {notes}</div> : null}
+          </div>
+        ) : null}
       </div>
     </Card>
   );

@@ -447,6 +447,7 @@ export default function TeamProfile() {
                                 showDate={true}
                                 showResultPill
                                 resultPill={resultPill}
+                                expandable
                                 homeTeam={
                                   <Link
                                     to={profilePath1}
