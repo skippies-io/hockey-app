@@ -193,7 +193,6 @@ export default function TeamProfile() {
       for (const fx of teamFixtures) {
         const state = classifyFixtureState({
           status: fx.status,
-          live: fx.status === "live",
           homeScore: fx.score1,
           awayScore: fx.score2,
           date: fx.date,
