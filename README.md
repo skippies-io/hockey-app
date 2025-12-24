@@ -21,3 +21,7 @@ git push origin vX.Y.Z
 ```
 
 Build artifacts are uploaded to GitHub Releases as `dist.zip` (and `specs.zip` when present).
+
+## UI Roadmap (Draft)
+
+- [FixtureCard evolution](docs/ui/fixturecard-evolution.md)
