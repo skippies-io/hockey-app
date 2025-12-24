@@ -9,6 +9,7 @@ import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
 import { parseDateToUTCms } from "../lib/date";
 import { classifyFixtureState, FixtureState } from "../lib/fixtureState.js";
+import { sortRecent, sortUpcoming } from "../lib/fixtureSort.js";
 
 const RECENT_COMPLETED_COUNT = 3;
 
@@ -217,9 +218,18 @@ export default function TeamProfile() {
       };
     }, [teamFixtures]);
 
+  const sortedRecentFixtures = useMemo(
+    () => sortRecent(recentFixtures),
+    [recentFixtures]
+  );
+  const sortedUpcomingFixtures = useMemo(
+    () => sortUpcoming(upcomingFixtures),
+    [upcomingFixtures]
+  );
+
   const sections = useMemo(() => {
     if (filter === "past") {
-      return [{ title: null, items: recentFixtures }];
+      return [{ title: null, items: sortedRecentFixtures }];
     }
 
     if (filter === "live") {
@@ -227,16 +237,22 @@ export default function TeamProfile() {
     }
 
     if (filter === "upcoming") {
-      return [{ title: null, items: upcomingFixtures }];
+      return [{ title: null, items: sortedUpcomingFixtures }];
     }
 
     return [
       { title: "Live", items: liveFixtures },
-      { title: "Recent", items: recentFixtures },
-      { title: "Upcoming", items: upcomingFixtures },
+      { title: "Recent", items: sortedRecentFixtures },
+      { title: "Upcoming", items: sortedUpcomingFixtures },
       { title: "Other", items: unknownFixtures },
     ];
-  }, [filter, liveFixtures, recentFixtures, upcomingFixtures, unknownFixtures]);
+  }, [
+    filter,
+    liveFixtures,
+    sortedRecentFixtures,
+    sortedUpcomingFixtures,
+    unknownFixtures,
+  ]);
 
   const visibleSections = sections.filter((section) => section.items.length > 0);
 
