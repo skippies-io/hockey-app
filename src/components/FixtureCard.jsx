@@ -91,25 +91,23 @@ export default function FixtureCard({
             <div className="fixture-card-time">{timeVenueLine}</div>
           </div>
 
-          {pill || (showResultPill && resultPill) ? (
+          {pill ? (
             <div className="fixture-card-pills">
-              {pill ? (
-                <div className={`fixture-card-status ${pill.className}`}>
-                  {pill.label}
-                </div>
-              ) : null}
-              {showResultPill && resultPill ? (
-                <div className={`fixture-card-status ${resultClass}`}>
-                  {resultPill}
-                </div>
-              ) : null}
+              <div className={`fixture-card-status ${pill.className}`}>
+                {pill.label}
+              </div>
             </div>
           ) : null}
         </div>
 
         {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
 
-        <div className="fixture-teams fixture-teams--aligned">
+        <div className="fixture-teams fixture-teams--aligned fixture-teams--with-pill">
+          {showResultPill && resultPill ? (
+            <div className={`fixture-card-status ${resultClass} fixture-card-result`}>
+              {resultPill}
+            </div>
+          ) : null}
           <div className="fixture-team-row">
             <div className="fixture-team-main">
               <button

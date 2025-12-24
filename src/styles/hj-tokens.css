@@ -1135,6 +1135,17 @@ select {
 .fixture-teams {
   display: grid;
   gap: var(--hj-space-2);
+  position: relative;
+}
+
+.fixture-card-result {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.fixture-teams--with-pill .fixture-team-score {
+  margin-right: 48px;
 }
 
 .fixture-teams--aligned .fixture-team-row {
