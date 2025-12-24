@@ -40,14 +40,16 @@ jobs:
           echo "${GITHUB_SHA}" > _release/commit.txt
           echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > _release/built_at_utc.txt
           echo "${GITHUB_REF_NAME}" > _release/tag.txt
-          zip -r _release/dist.zip dist
+          (cd dist && zip -r ../_release/dist.zip .)
           if [ -d specs ]; then
-            zip -r _release/specs.zip specs
+            (cd specs && zip -r ../_release/specs.zip .)
           fi
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
           fail_on_unmatched_files: false
           files: |
             _release/dist.zip
