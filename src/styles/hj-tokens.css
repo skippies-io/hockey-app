@@ -1066,6 +1066,12 @@ select {
   background: var(--hj-color-surface-muted);
 }
 
+.fixture-card-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+}
+
 .fixture-status--live {
   color: var(--hj-color-info);
   border-color: var(--hj-color-info);
@@ -1084,6 +1090,24 @@ select {
   color: var(--hj-color-warning);
   border-color: var(--hj-color-warning);
   background: var(--hj-color-warning-soft);
+}
+
+.fixture-status--win {
+  color: var(--hj-color-success);
+  border-color: var(--hj-color-success);
+  background: var(--hj-color-success-soft);
+}
+
+.fixture-status--draw {
+  color: var(--hj-color-warning);
+  border-color: var(--hj-color-warning);
+  background: var(--hj-color-warning-soft);
+}
+
+.fixture-status--loss {
+  color: var(--hj-color-danger);
+  border-color: var(--hj-color-danger);
+  background: var(--hj-color-danger-soft);
 }
 
 .fixture-status--danger {

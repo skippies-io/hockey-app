@@ -1,7 +1,6 @@
 import React from "react";
 import Card from "./Card";
 import { formatFixtureDate } from "../lib/date";
-import { computeResultPill } from "../lib/fixtureState.js";
 
 // NOTE: We deliberately *do not* show pills for "final" or "upcoming".
 // Pills are reserved for exceptional states (live, postponed, cancelled, tbc).
@@ -42,7 +41,7 @@ export default function FixtureCard({
   showPool = true,
   showRound = false,
   showResultPill = false,
-  teamKey,
+  resultPill,
 }) {
   const statusKey = normalizeStatusKey(status);
   const pill = statusMeta[statusKey] || null;
@@ -70,41 +69,16 @@ export default function FixtureCard({
     return "team";
   };
 
-  const teamNameForResult = (node) => {
-    if (typeof node === "string") return node;
-    if (React.isValidElement(node)) {
-      const child = node.props?.children;
-      if (typeof child === "string") return child;
-      if (Array.isArray(child)) {
-        const text = child.filter((c) => typeof c === "string").join("").trim();
-        return text || null;
-      }
-    }
-    return null;
-  };
-
   const homeName = teamNameForAria(homeTeam);
   const awayName = teamNameForAria(awayTeam);
-  const homeNameForResult = teamNameForResult(homeTeam);
-  const awayNameForResult = teamNameForResult(awayTeam);
-  const resultPill =
-    showResultPill && teamKey && homeNameForResult && awayNameForResult
-      ? computeResultPill({
-          fixture: {
-            homeTeam: homeNameForResult,
-            awayTeam: awayNameForResult,
-            homeScore,
-            awayScore,
-          },
-          teamKey,
-        })
-      : null;
-  const resultSide =
-    resultPill && teamKey === homeNameForResult
-      ? "home"
-      : resultPill && teamKey === awayNameForResult
-        ? "away"
-        : null;
+  const resultClass =
+    resultPill === "W"
+      ? "fixture-status--win"
+      : resultPill === "D"
+        ? "fixture-status--draw"
+        : resultPill === "L"
+          ? "fixture-status--loss"
+          : "";
 
   return (
     <Card className="fixture-card fixture-card--canonical" noPad>
@@ -117,9 +91,18 @@ export default function FixtureCard({
             <div className="fixture-card-time">{timeVenueLine}</div>
           </div>
 
-          {pill ? (
-            <div className={`fixture-card-status ${pill.className}`}>
-              {pill.label}
+          {pill || (showResultPill && resultPill) ? (
+            <div className="fixture-card-pills">
+              {pill ? (
+                <div className={`fixture-card-status ${pill.className}`}>
+                  {pill.label}
+                </div>
+              ) : null}
+              {showResultPill && resultPill ? (
+                <div className={`fixture-card-status ${resultClass}`}>
+                  {resultPill}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -146,17 +129,7 @@ export default function FixtureCard({
               <div className="fixture-team-name">{homeTeam}</div>
             </div>
 
-            <div className="fixture-team-score">
-              {renderScore(homeScore)}
-              {resultSide === "home" ? (
-                <span
-                  className="fixture-card-status fixture-status--muted"
-                  style={{ marginLeft: "6px" }}
-                >
-                  {resultPill}
-                </span>
-              ) : null}
-            </div>
+            <div className="fixture-team-score">{renderScore(homeScore)}</div>
           </div>
 
           <div className="fixture-team-row">
@@ -178,17 +151,7 @@ export default function FixtureCard({
               <div className="fixture-team-name">{awayTeam}</div>
             </div>
 
-            <div className="fixture-team-score">
-              {renderScore(awayScore)}
-              {resultSide === "away" ? (
-                <span
-                  className="fixture-card-status fixture-status--muted"
-                  style={{ marginLeft: "6px" }}
-                >
-                  {resultPill}
-                </span>
-              ) : null}
-            </div>
+            <div className="fixture-team-score">{renderScore(awayScore)}</div>
           </div>
         </div>
       </div>
