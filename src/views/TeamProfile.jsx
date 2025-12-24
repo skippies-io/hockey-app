@@ -8,7 +8,11 @@ import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
 import { parseDateToUTCms } from "../lib/date";
-import { classifyFixtureState, FixtureState } from "../lib/fixtureState.js";
+import {
+  classifyFixtureState,
+  computeResultPill,
+  FixtureState,
+} from "../lib/fixtureState.js";
 import { sortRecent, sortUpcoming } from "../lib/fixtureSort.js";
 
 const RECENT_COMPLETED_COUNT = 3;
@@ -422,6 +426,15 @@ export default function TeamProfile() {
                           const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
                           const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
                           const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
+                          const resultPill = computeResultPill({
+                            fixture: {
+                              homeTeam: fx.teamA,
+                              awayTeam: fx.teamB,
+                              homeScore: fx.score1,
+                              awayScore: fx.score2,
+                            },
+                            teamKey: displayName,
+                          });
 
                           return (
                             <li key={fx.id || `${fx.date}-${idx}`}>
@@ -432,6 +445,9 @@ export default function TeamProfile() {
                                 pool={fx.poolLabel}
                                 round={fx.round}
                                 showDate={true}
+                                showResultPill
+                                resultPill={resultPill}
+                                expandable
                                 homeTeam={
                                   <Link
                                     to={profilePath1}
