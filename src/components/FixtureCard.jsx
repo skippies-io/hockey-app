@@ -83,75 +83,78 @@ export default function FixtureCard({
   return (
     <Card className="fixture-card fixture-card--canonical" noPad>
       <div className="fixture-card-shell">
-        <div className="fixture-card-head">
-          <div className="fixture-card-when">
+        <div className="fixture-card-grid">
+          <div className="fixture-grid-date">
             {formattedDate ? (
               <div className="fixture-card-date">{formattedDate}</div>
             ) : null}
-            <div className="fixture-card-time">{timeVenueLine}</div>
-          </div>
-
-          {pill ? (
-            <div className="fixture-card-pills">
+            {pill ? (
               <div className={`fixture-card-status ${pill.className}`}>
                 {pill.label}
               </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
 
-        {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
+          <div className="fixture-grid-when">
+            <div className="fixture-card-time">{timeVenueLine}</div>
+          </div>
 
-        <div className="fixture-teams fixture-teams--aligned fixture-teams--with-pill">
           {showResultPill && resultPill ? (
-            <div className={`fixture-card-status ${resultClass} fixture-card-result`}>
+            <div className={`fixture-card-status ${resultClass} fixture-grid-result`}>
               {resultPill}
             </div>
           ) : null}
-          <div className="fixture-team-row">
-            <div className="fixture-team-main">
-              <button
-                type="button"
-                className="star-btn fixture-star"
-                aria-label={
-                  homeIsFollowed ? `Unfollow ${homeName}` : `Follow ${homeName}`
-                }
-                aria-pressed={!!homeIsFollowed}
-                onClick={(e) => onStarClick(e, onToggleHomeFollow)}
-              >
-                <span className={`star ${homeIsFollowed ? "is-on" : "is-off"}`}>
-                  {homeIsFollowed ? "★" : "☆"}
-                </span>
-              </button>
 
-              <div className="fixture-team-name">{homeTeam}</div>
-            </div>
-
-            <div className="fixture-team-score">{renderScore(homeScore)}</div>
+          <div className="fixture-grid-star1">
+            <button
+              type="button"
+              className="star-btn fixture-star"
+              aria-label={
+                homeIsFollowed ? `Unfollow ${homeName}` : `Follow ${homeName}`
+              }
+              aria-pressed={!!homeIsFollowed}
+              onClick={(e) => onStarClick(e, onToggleHomeFollow)}
+            >
+              <span className={`star ${homeIsFollowed ? "is-on" : "is-off"}`}>
+                {homeIsFollowed ? "★" : "☆"}
+              </span>
+            </button>
           </div>
 
-          <div className="fixture-team-row">
-            <div className="fixture-team-main">
-              <button
-                type="button"
-                className="star-btn fixture-star"
-                aria-label={
-                  awayIsFollowed ? `Unfollow ${awayName}` : `Follow ${awayName}`
-                }
-                aria-pressed={!!awayIsFollowed}
-                onClick={(e) => onStarClick(e, onToggleAwayFollow)}
-              >
-                <span className={`star ${awayIsFollowed ? "is-on" : "is-off"}`}>
-                  {awayIsFollowed ? "★" : "☆"}
-                </span>
-              </button>
+          <div className="fixture-grid-team1">
+            <div className="fixture-team-name">{homeTeam}</div>
+          </div>
 
-              <div className="fixture-team-name">{awayTeam}</div>
-            </div>
+          <div className="fixture-team-score fixture-grid-score1">
+            {renderScore(homeScore)}
+          </div>
 
-            <div className="fixture-team-score">{renderScore(awayScore)}</div>
+          <div className="fixture-grid-star2">
+            <button
+              type="button"
+              className="star-btn fixture-star"
+              aria-label={
+                awayIsFollowed ? `Unfollow ${awayName}` : `Follow ${awayName}`
+              }
+              aria-pressed={!!awayIsFollowed}
+              onClick={(e) => onStarClick(e, onToggleAwayFollow)}
+            >
+              <span className={`star ${awayIsFollowed ? "is-on" : "is-off"}`}>
+                {awayIsFollowed ? "★" : "☆"}
+              </span>
+            </button>
+          </div>
+
+          <div className="fixture-grid-team2">
+            <div className="fixture-team-name">{awayTeam}</div>
+          </div>
+
+          <div className="fixture-team-score fixture-grid-score2">
+            {renderScore(awayScore)}
           </div>
         </div>
+
+        {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
       </div>
     </Card>
   );
