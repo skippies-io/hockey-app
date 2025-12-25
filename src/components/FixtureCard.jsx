@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Card from "./Card";
 import { formatFixtureDate } from "../lib/date";
 
@@ -40,9 +40,14 @@ export default function FixtureCard({
   showDate = true,
   showPool = true,
   showRound = false,
+  showResultPill = false,
+  resultPill,
+  expandable = false,
+  notes,
 }) {
   const statusKey = normalizeStatusKey(status);
   const pill = statusMeta[statusKey] || null;
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const formattedDate = showDate ? formatDate(date) : null;
   const timeLabel = time || "TBD";
@@ -53,6 +58,20 @@ export default function FixtureCard({
 
   const renderScore = (v) =>
     v === null || v === undefined || v === "" ? "TBD" : String(v);
+
+  const toggleExpand = (e) => {
+    if (!expandable) return;
+    if (e?.target?.closest?.("button, a")) return;
+    setIsExpanded((prev) => !prev);
+  };
+
+  const onKeyToggle = (e) => {
+    if (!expandable) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setIsExpanded((prev) => !prev);
+    }
+  };
 
   const onStarClick = (e, fn) => {
     e.preventDefault();
@@ -69,72 +88,109 @@ export default function FixtureCard({
 
   const homeName = teamNameForAria(homeTeam);
   const awayName = teamNameForAria(awayTeam);
+  const resultClass =
+    resultPill === "W"
+      ? "fixture-status--win"
+      : resultPill === "D"
+        ? "fixture-status--draw"
+        : resultPill === "L"
+          ? "fixture-status--loss"
+          : "";
 
   return (
     <Card className="fixture-card fixture-card--canonical" noPad>
-      <div className="fixture-card-shell">
-        <div className="fixture-card-head">
-          <div className="fixture-card-when">
+      <div
+        className="fixture-card-shell"
+        role={expandable ? "button" : undefined}
+        tabIndex={expandable ? 0 : undefined}
+        aria-expanded={expandable ? isExpanded : undefined}
+        onClick={expandable ? toggleExpand : undefined}
+        onKeyDown={expandable ? onKeyToggle : undefined}
+      >
+        <div className="fixture-card-grid">
+          <div className="fixture-grid-date">
             {formattedDate ? (
               <div className="fixture-card-date">{formattedDate}</div>
             ) : null}
+            {pill ? (
+              <div className={`fixture-card-status ${pill.className}`}>
+                {pill.label}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="fixture-grid-when">
             <div className="fixture-card-time">{timeVenueLine}</div>
           </div>
 
-          {pill ? (
-            <div className={`fixture-card-status ${pill.className}`}>
-              {pill.label}
+          {showResultPill && resultPill ? (
+            <div className={`fixture-card-status ${resultClass} fixture-grid-result`}>
+              {resultPill}
             </div>
           ) : null}
+
+          <div className="fixture-grid-star1">
+            <button
+              type="button"
+              className="star-btn fixture-star"
+              aria-label={
+                homeIsFollowed ? `Unfollow ${homeName}` : `Follow ${homeName}`
+              }
+              aria-pressed={!!homeIsFollowed}
+              onClick={(e) => onStarClick(e, onToggleHomeFollow)}
+            >
+              <span className={`star ${homeIsFollowed ? "is-on" : "is-off"}`}>
+                {homeIsFollowed ? "★" : "☆"}
+              </span>
+            </button>
+          </div>
+
+          <div className="fixture-grid-team1">
+            <div className="fixture-team-name">{homeTeam}</div>
+          </div>
+
+          <div className="fixture-team-score fixture-grid-score1">
+            {renderScore(homeScore)}
+          </div>
+
+          <div className="fixture-grid-star2">
+            <button
+              type="button"
+              className="star-btn fixture-star"
+              aria-label={
+                awayIsFollowed ? `Unfollow ${awayName}` : `Follow ${awayName}`
+              }
+              aria-pressed={!!awayIsFollowed}
+              onClick={(e) => onStarClick(e, onToggleAwayFollow)}
+            >
+              <span className={`star ${awayIsFollowed ? "is-on" : "is-off"}`}>
+                {awayIsFollowed ? "★" : "☆"}
+              </span>
+            </button>
+          </div>
+
+          <div className="fixture-grid-team2">
+            <div className="fixture-team-name">{awayTeam}</div>
+          </div>
+
+          <div className="fixture-team-score fixture-grid-score2">
+            {renderScore(awayScore)}
+          </div>
         </div>
 
         {metaLine ? <div className="fixture-card-meta">{metaLine}</div> : null}
-
-        <div className="fixture-teams fixture-teams--aligned">
-          <div className="fixture-team-row">
-            <div className="fixture-team-main">
-              <button
-                type="button"
-                className="star-btn fixture-star"
-                aria-label={
-                  homeIsFollowed ? `Unfollow ${homeName}` : `Follow ${homeName}`
-                }
-                aria-pressed={!!homeIsFollowed}
-                onClick={(e) => onStarClick(e, onToggleHomeFollow)}
-              >
-                <span className={`star ${homeIsFollowed ? "is-on" : "is-off"}`}>
-                  {homeIsFollowed ? "★" : "☆"}
-                </span>
-              </button>
-
-              <div className="fixture-team-name">{homeTeam}</div>
-            </div>
-
-            <div className="fixture-team-score">{renderScore(homeScore)}</div>
+        {expandable && isExpanded ? (
+          <div className="fixture-card-details">
+            {venueName ? (
+              <div className="fixture-card-meta">Venue: {venueName}</div>
+            ) : null}
+            {pool ? <div className="fixture-card-meta">Pool: {pool}</div> : null}
+            {round ? (
+              <div className="fixture-card-meta">Round: {round}</div>
+            ) : null}
+            {notes ? <div className="fixture-card-meta">Notes: {notes}</div> : null}
           </div>
-
-          <div className="fixture-team-row">
-            <div className="fixture-team-main">
-              <button
-                type="button"
-                className="star-btn fixture-star"
-                aria-label={
-                  awayIsFollowed ? `Unfollow ${awayName}` : `Follow ${awayName}`
-                }
-                aria-pressed={!!awayIsFollowed}
-                onClick={(e) => onStarClick(e, onToggleAwayFollow)}
-              >
-                <span className={`star ${awayIsFollowed ? "is-on" : "is-off"}`}>
-                  {awayIsFollowed ? "★" : "☆"}
-                </span>
-              </button>
-
-              <div className="fixture-team-name">{awayTeam}</div>
-            </div>
-
-            <div className="fixture-team-score">{renderScore(awayScore)}</div>
-          </div>
-        </div>
+        ) : null}
       </div>
     </Card>
   );

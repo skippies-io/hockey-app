@@ -8,6 +8,12 @@ import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
 import { parseDateToUTCms } from "../lib/date";
+import {
+  classifyFixtureState,
+  computeResultPill,
+  FixtureState,
+} from "../lib/fixtureState.js";
+import { sortRecent, sortUpcoming } from "../lib/fixtureSort.js";
 
 const RECENT_COMPLETED_COUNT = 3;
 
@@ -182,34 +188,52 @@ export default function TeamProfile() {
   };
   const gdLabel = statValues.gd >= 0 ? `+${statValues.gd}` : `${statValues.gd}`;
 
-  const { completedFixtures, liveFixtures, upcomingFixtures } = useMemo(() => {
-    const completed = [];
-    const live = [];
-    const upcoming = [];
+  const { liveFixtures, recentFixtures, upcomingFixtures, unknownFixtures } =
+    useMemo(() => {
+      const live = [];
+      const recent = [];
+      const upcoming = [];
+      const unknown = [];
 
-    for (const fx of teamFixtures) {
-      if (fx.status === "live") {
-        live.push(fx);
-      } else if (fx.played) {
-        completed.push(fx);
-      } else {
-        upcoming.push(fx);
+      for (const fx of teamFixtures) {
+        const state = classifyFixtureState({
+          status: fx.status,
+          homeScore: fx.score1,
+          awayScore: fx.score2,
+          date: fx.date,
+        });
+
+        if (state === FixtureState.LIVE) {
+          live.push(fx);
+        } else if (state === FixtureState.RECENT) {
+          recent.push(fx);
+        } else if (state === FixtureState.UPCOMING) {
+          upcoming.push(fx);
+        } else {
+          unknown.push(fx);
+        }
       }
-    }
 
-    const bySoonest = (a, b) => a.ts - b.ts;
-    const byMostRecent = (a, b) => b.ts - a.ts;
+      return {
+        liveFixtures: live,
+        recentFixtures: recent,
+        upcomingFixtures: upcoming,
+        unknownFixtures: unknown,
+      };
+    }, [teamFixtures]);
 
-    return {
-      completedFixtures: completed.slice().sort(byMostRecent),
-      liveFixtures: live.slice().sort(bySoonest),
-      upcomingFixtures: upcoming.slice().sort(bySoonest),
-    };
-  }, [teamFixtures]);
+  const sortedRecentFixtures = useMemo(
+    () => sortRecent(recentFixtures),
+    [recentFixtures]
+  );
+  const sortedUpcomingFixtures = useMemo(
+    () => sortUpcoming(upcomingFixtures),
+    [upcomingFixtures]
+  );
 
   const sections = useMemo(() => {
     if (filter === "past") {
-      return [{ title: null, items: completedFixtures }];
+      return [{ title: null, items: sortedRecentFixtures }];
     }
 
     if (filter === "live") {
@@ -217,24 +241,22 @@ export default function TeamProfile() {
     }
 
     if (filter === "upcoming") {
-      return [{ title: null, items: upcomingFixtures }];
-    }
-
-    if (liveFixtures.length > 0) {
-      return [
-        { title: "Live", items: liveFixtures },
-        { title: "Upcoming", items: upcomingFixtures },
-      ];
+      return [{ title: null, items: sortedUpcomingFixtures }];
     }
 
     return [
-      {
-        title: "Recent",
-        items: completedFixtures.slice(0, RECENT_COMPLETED_COUNT),
-      },
-      { title: "Upcoming", items: upcomingFixtures },
+      { title: "Live", items: liveFixtures },
+      { title: "Recent", items: sortedRecentFixtures },
+      { title: "Upcoming", items: sortedUpcomingFixtures },
+      { title: "Other", items: unknownFixtures },
     ];
-  }, [filter, completedFixtures, liveFixtures, upcomingFixtures]);
+  }, [
+    filter,
+    liveFixtures,
+    sortedRecentFixtures,
+    sortedUpcomingFixtures,
+    unknownFixtures,
+  ]);
 
   const visibleSections = sections.filter((section) => section.items.length > 0);
 
@@ -404,6 +426,15 @@ export default function TeamProfile() {
                           const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
                           const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
                           const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
+                          const resultPill = computeResultPill({
+                            fixture: {
+                              homeTeam: fx.teamA,
+                              awayTeam: fx.teamB,
+                              homeScore: fx.score1,
+                              awayScore: fx.score2,
+                            },
+                            teamKey: displayName,
+                          });
 
                           return (
                             <li key={fx.id || `${fx.date}-${idx}`}>
@@ -414,6 +445,9 @@ export default function TeamProfile() {
                                 pool={fx.poolLabel}
                                 round={fx.round}
                                 showDate={true}
+                                showResultPill
+                                resultPill={resultPill}
+                                expandable
                                 homeTeam={
                                   <Link
                                     to={profilePath1}
