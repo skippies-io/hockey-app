@@ -36,3 +36,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate truth snapshots
+        run: |
+          node scripts/truth/validateSnapshot.mjs specs/fixtures
