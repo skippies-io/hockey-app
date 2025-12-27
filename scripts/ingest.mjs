@@ -33,7 +33,8 @@ const DEFAULTS = {
 function parseArgs(argv) {
   const out = { commit: false };
   const boolKeys = new Set(["commit", "debugArgs", "help"]);
-  const normalizeKey = (rawKey) => rawKey.replace(/-([a-z0-9])/g, (_, ch) => ch.toUpperCase());
+  const normalizeKey = (rawKey) =>
+    rawKey.replace(/-([a-z0-9])/g, (_, ch) => ch.toUpperCase());
   const setValue = (rawKey, value) => {
     const key = normalizeKey(rawKey);
     out[key] = value;
@@ -92,8 +93,10 @@ function slug(input) {
 function stableStringify(obj) {
   if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
   if (Array.isArray(obj)) return `[${obj.map(stableStringify).join(",")}]`;
-  const keys = Object.keys(obj).sort();
-  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
+  const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
+  return `{${keys
+    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`)
+    .join(",")}}`;
 }
 
 function parseCsv(text) {
@@ -142,7 +145,9 @@ function parseCsv(text) {
 }
 
 function csvToObjects(text) {
-  const rows = parseCsv(text).filter((r) => r.some((c) => String(c).trim() !== ""));
+  const rows = parseCsv(text).filter((r) =>
+    r.some((c) => String(c).trim() !== "")
+  );
   if (!rows.length) return [];
   const header = rows[0].map((h) => String(h || "").trim());
   const data = [];
@@ -159,7 +164,9 @@ function csvToObjects(text) {
 }
 
 function isPlaceholderTeam(name) {
-  const n = String(name || "").trim().toLowerCase();
+  const n = String(name || "")
+    .trim()
+    .toLowerCase();
   if (!n) return false;
   if (/^\d+(st|nd|rd|th)\s+place$/.test(n)) return true;
   if (n.startsWith("winner ") || n.startsWith("loser ")) return true;
@@ -363,7 +370,9 @@ function buildFixtures({ tournamentId, fixturesByGroup, errors }) {
       const team1 = String(row.Team1 || "").trim();
       const team2 = String(row.Team2 || "").trim();
       if (!team1 || !team2) {
-        errors.push(`Fixture missing Team1/Team2 in group ${groupId} (${date})`);
+        errors.push(
+          `Fixture missing Team1/Team2 in group ${groupId} (${date})`
+        );
         continue;
       }
 
@@ -422,7 +431,15 @@ async function writeReport(reportDir, payload) {
   return outPath;
 }
 
-async function upsertAll({ databaseUrl, tournamentId, source, groups, teams, fixtures, results }) {
+async function upsertAll({
+  databaseUrl,
+  tournamentId,
+  source,
+  groups,
+  teams,
+  fixtures,
+  results,
+}) {
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
 
@@ -453,7 +470,17 @@ async function upsertAll({ databaseUrl, tournamentId, source, groups, teams, fix
         `INSERT INTO team (tournament_id, id, group_id, name, is_placeholder, created_at, source, source_row_hash, ingested_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (tournament_id, id) DO UPDATE SET name = EXCLUDED.name, is_placeholder = EXCLUDED.is_placeholder, source = EXCLUDED.source, source_row_hash = EXCLUDED.source_row_hash, ingested_at = EXCLUDED.ingested_at`,
-        [tournamentId, t.id, t.group_id, t.name, t.is_placeholder, now, source, rowHash, now]
+        [
+          tournamentId,
+          t.id,
+          t.group_id,
+          t.name,
+          t.is_placeholder,
+          now,
+          source,
+          rowHash,
+          now,
+        ]
       );
     }
 
@@ -491,7 +518,17 @@ async function upsertAll({ databaseUrl, tournamentId, source, groups, teams, fix
         `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, updated_at, source, source_row_hash, ingested_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (tournament_id, fixture_id) DO UPDATE SET score1 = EXCLUDED.score1, score2 = EXCLUDED.score2, status = EXCLUDED.status, updated_at = EXCLUDED.updated_at, source = EXCLUDED.source, source_row_hash = EXCLUDED.source_row_hash, ingested_at = EXCLUDED.ingested_at`,
-        [tournamentId, r.fixture_id, r.score1, r.score2, r.status, now, source, rowHash, now]
+        [
+          tournamentId,
+          r.fixture_id,
+          r.score1,
+          r.score2,
+          r.status,
+          now,
+          source,
+          rowHash,
+          now,
+        ]
       );
     }
 
@@ -518,16 +555,24 @@ async function main() {
     return undefined;
   };
 
-  const tournamentId = getArg("tournamentId", "tournament-id") ?? DEFAULTS.tournamentId;
-  const fixturesSheetId = getArg("fixturesSheetId", "fixtures-sheet-id") ?? DEFAULTS.fixturesSheetId;
-  const teamsSheetId = getArg("teamsSheetId", "teams-sheet-id") ?? DEFAULTS.teamsSheetId;
+  const tournamentId =
+    getArg("tournamentId", "tournament-id") ?? DEFAULTS.tournamentId;
+  const fixturesSheetId =
+    getArg("fixturesSheetId", "fixtures-sheet-id") ?? DEFAULTS.fixturesSheetId;
+  const teamsSheetId =
+    getArg("teamsSheetId", "teams-sheet-id") ?? DEFAULTS.teamsSheetId;
   const reportDir = getArg("reportDir", "report-dir") ?? DEFAULTS.reportDir;
   const apiBaseArg = getArg("apiBase", "api-base");
-  const apiBase = apiBaseArg !== undefined ? apiBaseArg : process.env.VITE_API_BASE || "";
-  const databaseUrl = getArg("databaseUrl", "database-url") || process.env.DATABASE_URL || "";
+  const apiBase =
+    apiBaseArg !== undefined ? apiBaseArg : process.env.VITE_API_BASE || "";
+  const databaseUrl =
+    getArg("databaseUrl", "database-url") || process.env.DATABASE_URL || "";
   const limitGroupsRaw = getArg("limitGroups", "limit-groups");
   const limitGroups = limitGroupsRaw
-    ? limitGroupsRaw.split(",").map((v) => v.trim()).filter(Boolean)
+    ? limitGroupsRaw
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean)
     : [];
   const debugArgs = !!getArg("debugArgs", "debug-args");
 
@@ -578,7 +623,11 @@ async function main() {
     if (apiBase) {
       provider = await loadFromApi({ apiBase, limitGroups });
     } else {
-      provider = await loadFromCsv({ fixturesSheetId, teamsSheetId, limitGroups });
+      provider = await loadFromCsv({
+        fixturesSheetId,
+        teamsSheetId,
+        limitGroups,
+      });
     }
     source = provider.source;
   } catch (err) {
