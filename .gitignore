@@ -30,3 +30,6 @@ diff.txt
 
 # Local exports
 fs.txt
+
+# local ingest reports
+reports/

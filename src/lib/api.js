@@ -1,12 +1,16 @@
 // src/lib/api.js
-export const API_BASE = import.meta.env.VITE_API_BASE;
+const PROVIDER = import.meta.env.VITE_PROVIDER || "apps";
+export const API_BASE =
+  PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
 const APP_VER  = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
 
 function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
 
 async function fetchJSON(url, { revalidate = true } = {}) {
-  if (!API_BASE) throw new Error("Missing VITE_API_BASE");
+  if (!API_BASE) {
+    throw new Error(`Missing API base for provider: ${PROVIDER}`);
+  }
 
   const key = cacheKey(url);
   const cached = sessionStorage.getItem(key);
