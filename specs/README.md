@@ -22,6 +22,13 @@ validated snapshots to ensure safe deployments and prevent drift.
 ## Contracts
 
 - [Truth Snapshot Contract](contracts/Truth_Snapshot_Contract.md)
+- [Groups Read Model](contracts/Groups_ReadModel_Contract.md)
+- [Fixtures Read Model](contracts/Fixtures_ReadModel_Contract.md)
+- [Standings Read Model](contracts/Standings_ReadModel_Contract.md)
+- [v1 Groups Read Model](contracts/v1/Groups_ReadModel_Contract.md)
+- [v1 Fixtures Read Model](contracts/v1/Fixtures_ReadModel_Contract.md)
+- [v1 Standings Read Model](contracts/v1/Standings_ReadModel_Contract.md)
+- [Contracts Versioning Rules](contracts/README.md)
 
 ## Acceptance
 

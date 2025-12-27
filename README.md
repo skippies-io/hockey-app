@@ -11,6 +11,36 @@ Currently, two official plugins are available:
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Dev: UI + DB API
+
+Run the DB API server and Vite together (no UI changes needed):
+
+```sh
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/hockey"
+export TOURNAMENT_ID="hj-indoor-allstars-2025"
+export VITE_PROVIDER="db"
+export VITE_DB_API_BASE="http://localhost:8787/api"
+npm run dev:full
+```
+
+If you prefer two terminals:
+
+```sh
+# terminal 1
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/hockey"
+export TOURNAMENT_ID="hj-indoor-allstars-2025"
+npm run server
+```
+
+```sh
+# terminal 2
+export VITE_PROVIDER="db"
+export VITE_DB_API_BASE="http://localhost:8787/api"
+npm run dev
+```
+
+Smoke test examples are listed in `specs/db/ingestion_v1.6.md`.
+
 ## Shipping
 
 Tag a release (e.g., `v1.2.3`) and push the tag to trigger the release workflow:
