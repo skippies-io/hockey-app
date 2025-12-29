@@ -12,4 +12,4 @@ ENV PORT=8787
 
 EXPOSE 8787
 
-CMD ["node", "api/server.js"]
+CMD ["node", "server/index.mjs"]
