@@ -9,7 +9,11 @@
     "dev:full": "node scripts/dev-full.mjs",
     "build": "vite build",
     "lint": "eslint .",
+    "smoke:apps": "node scripts/smoke.mjs --provider apps",
+    "smoke:db": "node scripts/smoke.mjs --provider db",
     "test": "vitest run",
+    "test:app:sheets": "node scripts/test-app.mjs --provider apps",
+    "test:app:db": "node scripts/test-app.mjs --provider db",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
