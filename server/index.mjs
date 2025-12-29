@@ -5,13 +5,16 @@ const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
 const DATABASE_URL = process.env.DATABASE_URL || "";
+const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
+const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 
-if (!DATABASE_URL) {
-  console.error("Missing DATABASE_URL for DB API server.");
+if (PROVIDER_MODE === "db" && !DATABASE_URL) {
+  console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL });
+const pool =
+  PROVIDER_MODE === "db" ? new Pool({ connectionString: DATABASE_URL }) : null;
 
 function sendJson(res, status, payload) {
   res.writeHead(status, {
@@ -73,6 +76,9 @@ function mapStandingsRow(row) {
 }
 
 async function handleGroups(res) {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
   const result = await pool.query(
     `SELECT id, label
      FROM groups
@@ -84,6 +90,9 @@ async function handleGroups(res) {
 }
 
 async function handleFixtures(res, ageId) {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
   const result = await pool.query(
     `SELECT
        to_char(f.date, 'YYYY-MM-DD') AS date,
@@ -115,6 +124,9 @@ async function handleFixtures(res, ageId) {
 }
 
 async function handleStandings(res, ageId) {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
   const result = await pool.query(
     `SELECT
        "Team" AS team,
@@ -138,6 +150,32 @@ async function handleStandings(res, ageId) {
   sendJson(res, 200, { rows: result.rows.map(mapStandingsRow) });
 }
 
+async function proxyApps(res, targetUrl) {
+  if (!APPS_SCRIPT_BASE_URL) {
+    sendJson(res, 500, {
+      ok: false,
+      error: "Missing APPS_SCRIPT_BASE_URL for apps mode",
+    });
+    return;
+  }
+  const upstream = await fetch(targetUrl, {
+    headers: { Accept: "application/json" },
+  });
+  try {
+    const body = await upstream.json();
+    sendJson(res, upstream.status, body);
+  } catch {
+    const text = await upstream.text().catch(() => "");
+    const bodySnippet = text.slice(0, 200);
+    sendJson(res, upstream.status, {
+      ok: false,
+      error: "Upstream non-JSON response",
+      status: upstream.status,
+      bodySnippet,
+    });
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") {
@@ -157,7 +195,12 @@ const server = http.createServer(async (req, res) => {
 
     const params = url.searchParams;
     if (params.get("groups") === "1") {
-      await handleGroups(res);
+      if (PROVIDER_MODE === "db") {
+        await handleGroups(res);
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?groups=1`;
+        await proxyApps(res, targetUrl);
+      }
       return;
     }
 
@@ -173,11 +216,21 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (sheet === "Fixtures") {
-      await handleFixtures(res, ageId);
+      if (PROVIDER_MODE === "db") {
+        await handleFixtures(res, ageId);
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
+        await proxyApps(res, targetUrl);
+      }
       return;
     }
     if (sheet === "Standings") {
-      await handleStandings(res, ageId);
+      if (PROVIDER_MODE === "db") {
+        await handleStandings(res, ageId);
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+        await proxyApps(res, targetUrl);
+      }
       return;
     }
 

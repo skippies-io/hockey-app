@@ -65,7 +65,7 @@ async function main() {
       if (!process.env.DATABASE_URL) {
         throw new Error("Missing DATABASE_URL for DB provider test");
       }
-      const serverEnv = { ...process.env };
+      const serverEnv = { ...process.env, PROVIDER_MODE: "db" };
       const server = spawnNpm(["run", "server"], serverEnv);
       childProcs.push(server);
       const apiBase = process.env.VITE_DB_API_BASE || API_DEFAULT;
