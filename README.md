@@ -23,6 +23,15 @@ export VITE_DB_API_BASE="http://localhost:8787/api"
 npm run dev:full
 ```
 
+Create a local DB env file once (not committed):
+
+```sh
+cat <<'EOF' > .env.db.local
+DATABASE_URL=postgres://localhost:5432/hockey
+TOURNAMENT_ID=hj-indoor-allstars-2025
+EOF
+```
+
 If you prefer two terminals:
 
 ```sh
@@ -60,7 +69,7 @@ npm run test:app:sheets
 DB provider:
 
 ```sh
-DATABASE_URL="postgres://localhost:5432/hockey" TOURNAMENT_ID="hj-indoor-allstars-2025" npm run test:app:db
+npm run test:app:db:local
 ```
 
 ## Shipping
