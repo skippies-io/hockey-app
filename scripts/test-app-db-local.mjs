@@ -37,8 +37,13 @@ for (const line of envLines) {
   env[key] = value;
 }
 
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const result = spawnSync(npm, ["run", "test:app:db"], {
+const npmExecPath = process.env.npm_execpath;
+if (!npmExecPath) {
+  console.error("Missing npm_execpath; run this via npm scripts.");
+  process.exit(1);
+}
+
+const result = spawnSync(process.execPath, [npmExecPath, "run", "test:app:db"], {
   stdio: "inherit",
   env: { ...process.env, ...env },
 });

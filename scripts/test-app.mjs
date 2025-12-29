@@ -28,14 +28,16 @@ function parseArgs(argv) {
   return out;
 }
 
-function npmCmd() {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
-}
+const NPM_EXEC_PATH = process.env.npm_execpath;
 
-function spawnProcess(command, args, env) {
-  return spawn(command, args, {
+// Avoid shell spawning (Sonar S4721); run npm via Node + npm_execpath.
+function spawnProcess(args, env) {
+  if (!NPM_EXEC_PATH) {
+    throw new Error("Missing npm_execpath; run this via npm scripts.");
+  }
+  return spawn(process.execPath, [NPM_EXEC_PATH, ...args], {
     stdio: "inherit",
-    shell: true,
+    shell: false,
     env,
   });
 }
@@ -78,7 +80,7 @@ async function assertUiReady() {
 
 async function runSmoke(provider, age) {
   const args = ["scripts/smoke.mjs", "--provider", provider, "--age", age];
-  const child = spawnProcess(process.execPath, args, process.env);
+  const child = spawn(process.execPath, args, { stdio: "inherit", env: process.env });
   const code = await new Promise((resolve) => {
     child.on("exit", (exitCode) => resolve(exitCode ?? 1));
   });
@@ -118,7 +120,7 @@ async function main() {
         throw new Error("Missing DATABASE_URL for DB provider test");
       }
       const serverEnv = { ...process.env };
-      const server = spawnProcess(npmCmd(), ["run", "server"], serverEnv);
+      const server = spawnProcess(["run", "server"], serverEnv);
       childProcs.push(server);
       const apiBase = process.env.VITE_DB_API_BASE || API_DEFAULT;
       await waitFor(() => fetchJsonOk(`${apiBase}?groups=1`), WAIT_TIMEOUT_MS, WAIT_INTERVAL_MS);
@@ -129,7 +131,6 @@ async function main() {
         VITE_DB_API_BASE: apiBase,
       };
       const vite = spawnProcess(
-        npmCmd(),
         ["run", "dev", "--", "--port", String(VITE_PORT), "--strictPort"],
         viteEnv
       );
@@ -137,7 +138,6 @@ async function main() {
     } else {
       const viteEnv = { ...process.env, VITE_PROVIDER: "apps" };
       const vite = spawnProcess(
-        npmCmd(),
         ["run", "dev", "--", "--port", String(VITE_PORT), "--strictPort"],
         viteEnv
       );
