@@ -1,74 +1,11 @@
-import fs from "node:fs";
-import path from "node:path";
+import {
+  assert,
+  fetchJsonFollow,
+  parseArgs,
+  readDotEnvValue,
+} from "./_devtools.mjs";
 
 const DEFAULT_AGE = "U13B";
-const MAX_REDIRECTS = 5;
-
-function parseArgs(argv) {
-  const out = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const raw = argv[i];
-    if (!raw.startsWith("--")) continue;
-    const arg = raw.slice(2);
-    const eqIndex = arg.indexOf("=");
-    const key = eqIndex === -1 ? arg : arg.slice(0, eqIndex);
-    const inlineValue = eqIndex === -1 ? undefined : arg.slice(eqIndex + 1);
-    if (inlineValue !== undefined) {
-      out[key] = inlineValue;
-      continue;
-    }
-    const next = argv[i + 1];
-    if (!next || next.startsWith("--")) continue;
-    out[key] = next;
-    i += 1;
-  }
-  return out;
-}
-
-function readDotEnvValue(key) {
-  const envPath = path.resolve(process.cwd(), ".env");
-  if (!fs.existsSync(envPath)) return "";
-  const contents = fs.readFileSync(envPath, "utf8");
-  const lines = contents.split(/\r?\n/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIndex = trimmed.indexOf("=");
-    if (eqIndex === -1) continue;
-    const k = trimmed.slice(0, eqIndex).trim();
-    if (k !== key) continue;
-    let value = trimmed.slice(eqIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    return value;
-  }
-  return "";
-}
-
-async function fetchJsonFollow(url, hops = 0) {
-  if (hops > MAX_REDIRECTS) {
-    throw new Error(`Too many redirects for ${url}`);
-  }
-  const res = await fetch(url, { redirect: "manual" });
-  if ([301, 302, 303, 307, 308].includes(res.status)) {
-    const location = res.headers.get("location");
-    if (!location) throw new Error(`Redirect with no location for ${url}`);
-    const nextUrl = new URL(location, url).toString();
-    return fetchJsonFollow(nextUrl, hops + 1);
-  }
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} for ${url}`);
-  }
-  return res.json();
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
 
 function getAppsBase(baseOverride) {
   if (baseOverride) return baseOverride;

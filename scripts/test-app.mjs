@@ -1,4 +1,11 @@
 import { spawn } from "node:child_process";
+import {
+  fetchJsonOk,
+  fetchOk,
+  parseArgs,
+  spawnNpm,
+  waitFor,
+} from "./_devtools.mjs";
 
 const DEFAULT_AGE = "U13B";
 const VITE_PORT = 5173;
@@ -6,67 +13,6 @@ const API_DEFAULT = "http://localhost:8787/api";
 const WAIT_TIMEOUT_MS = 60_000;
 const WAIT_INTERVAL_MS = 500;
 const KILL_TIMEOUT_MS = 5_000;
-
-function parseArgs(argv) {
-  const out = {};
-  for (let i = 0; i < argv.length; i += 1) {
-    const raw = argv[i];
-    if (!raw.startsWith("--")) continue;
-    const arg = raw.slice(2);
-    const eqIndex = arg.indexOf("=");
-    const key = eqIndex === -1 ? arg : arg.slice(0, eqIndex);
-    const inlineValue = eqIndex === -1 ? undefined : arg.slice(eqIndex + 1);
-    if (inlineValue !== undefined) {
-      out[key] = inlineValue;
-      continue;
-    }
-    const next = argv[i + 1];
-    if (!next || next.startsWith("--")) continue;
-    out[key] = next;
-    i += 1;
-  }
-  return out;
-}
-
-const NPM_EXEC_PATH = process.env.npm_execpath;
-
-// Avoid shell spawning (Sonar S4721); run npm via Node + npm_execpath.
-function spawnProcess(args, env) {
-  if (!NPM_EXEC_PATH) {
-    throw new Error("Missing npm_execpath; run this via npm scripts.");
-  }
-  return spawn(process.execPath, [NPM_EXEC_PATH, ...args], {
-    stdio: "inherit",
-    shell: false,
-    env,
-  });
-}
-
-async function waitFor(checkFn, timeoutMs, intervalMs) {
-  const start = Date.now();
-  while (Date.now() - start < timeoutMs) {
-    try {
-      const ok = await checkFn();
-      if (ok) return;
-    } catch {
-      // ignore and retry
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-  throw new Error("Timed out waiting for service");
-}
-
-async function fetchOk(url) {
-  const res = await fetch(url);
-  return res.ok;
-}
-
-async function fetchJsonOk(url) {
-  const res = await fetch(url);
-  if (!res.ok) return false;
-  await res.json();
-  return true;
-}
 
 async function assertUiReady() {
   const url = `http://localhost:${VITE_PORT}/`;
@@ -120,7 +66,7 @@ async function main() {
         throw new Error("Missing DATABASE_URL for DB provider test");
       }
       const serverEnv = { ...process.env };
-      const server = spawnProcess(["run", "server"], serverEnv);
+      const server = spawnNpm(["run", "server"], serverEnv);
       childProcs.push(server);
       const apiBase = process.env.VITE_DB_API_BASE || API_DEFAULT;
       await waitFor(() => fetchJsonOk(`${apiBase}?groups=1`), WAIT_TIMEOUT_MS, WAIT_INTERVAL_MS);
@@ -130,14 +76,14 @@ async function main() {
         VITE_PROVIDER: "db",
         VITE_DB_API_BASE: apiBase,
       };
-      const vite = spawnProcess(
+      const vite = spawnNpm(
         ["run", "dev", "--", "--port", String(VITE_PORT), "--strictPort"],
         viteEnv
       );
       childProcs.push(vite);
     } else {
       const viteEnv = { ...process.env, VITE_PROVIDER: "apps" };
-      const vite = spawnProcess(
+      const vite = spawnNpm(
         ["run", "dev", "--", "--port", String(VITE_PORT), "--strictPort"],
         viteEnv
       );
