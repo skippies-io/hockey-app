@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:app:sheets": "node scripts/test-app.mjs --provider apps",
     "test:app:db": "node scripts/test-app.mjs --provider db",
+    "test:app:db:local": "node scripts/test-app-db-local.mjs",
     "test:watch": "vitest",
     "preview": "vite preview"
   },
