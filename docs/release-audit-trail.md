@@ -4,6 +4,11 @@ This document records what shipped to users and what is planned next.
 It is meant to be a lightweight, release-friendly summary for quick reference.
 
 ## Shipped (most recent first)
+- 2025-12-29 — tag v1.6.0 — DB-backed read models + API provider switch.
+  - User-visible change: v1.6 DB schema/migrations and ingestion for read models.
+  - User-visible change: Minimal DB-backed `/api` server compatible with Apps Script endpoints.
+  - User-visible change: Provider switching via env (defaults to Sheets).
+  - User-visible change: One-command smoke/app tests (`test:app:sheets`, `test:app:db:local`).
 - 2025-12-25 — commit c2a4412 — Team Profile fixture cards can expand to show details.
   - User-visible change: Tap on a Team Profile fixture card to reveal venue/pool/round/notes.
 - 2025-12-25 — commit 11449f2 — Column-3 alignment tightened for FixtureCard result pill/scores.
