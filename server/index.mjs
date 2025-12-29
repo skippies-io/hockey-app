@@ -158,9 +158,22 @@ async function proxyApps(res, targetUrl) {
     });
     return;
   }
-  const upstream = await fetch(targetUrl);
-  const body = await upstream.json().catch(() => null);
-  sendJson(res, upstream.status, body ?? { ok: false, error: "Invalid JSON" });
+  const upstream = await fetch(targetUrl, {
+    headers: { Accept: "application/json" },
+  });
+  try {
+    const body = await upstream.json();
+    sendJson(res, upstream.status, body);
+  } catch {
+    const text = await upstream.text().catch(() => "");
+    const bodySnippet = text.slice(0, 200);
+    sendJson(res, upstream.status, {
+      ok: false,
+      error: "Upstream non-JSON response",
+      status: upstream.status,
+      bodySnippet,
+    });
+  }
 }
 
 const server = http.createServer(async (req, res) => {
