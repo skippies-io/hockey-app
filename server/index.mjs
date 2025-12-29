@@ -5,13 +5,15 @@ const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
 const DATABASE_URL = process.env.DATABASE_URL || "";
+const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 
-if (!DATABASE_URL) {
-  console.error("Missing DATABASE_URL for DB API server.");
+if (PROVIDER_MODE === "db" && !DATABASE_URL) {
+  console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL });
+const pool =
+  PROVIDER_MODE === "db" ? new Pool({ connectionString: DATABASE_URL }) : null;
 
 function sendJson(res, status, payload) {
   res.writeHead(status, {
@@ -73,6 +75,13 @@ function mapStandingsRow(row) {
 }
 
 async function handleGroups(res) {
+  if (!pool) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "DB provider disabled; set PROVIDER_MODE=db",
+    });
+    return;
+  }
   const result = await pool.query(
     `SELECT id, label
      FROM groups
@@ -84,6 +93,13 @@ async function handleGroups(res) {
 }
 
 async function handleFixtures(res, ageId) {
+  if (!pool) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "DB provider disabled; set PROVIDER_MODE=db",
+    });
+    return;
+  }
   const result = await pool.query(
     `SELECT
        to_char(f.date, 'YYYY-MM-DD') AS date,
@@ -115,6 +131,13 @@ async function handleFixtures(res, ageId) {
 }
 
 async function handleStandings(res, ageId) {
+  if (!pool) {
+    sendJson(res, 503, {
+      ok: false,
+      error: "DB provider disabled; set PROVIDER_MODE=db",
+    });
+    return;
+  }
   const result = await pool.query(
     `SELECT
        "Team" AS team,
