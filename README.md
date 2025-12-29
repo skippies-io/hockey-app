@@ -23,6 +23,15 @@ export VITE_DB_API_BASE="http://localhost:8787/api"
 npm run dev:full
 ```
 
+Create a local DB env file once (not committed):
+
+```sh
+cat <<'EOF' > .env.db.local
+DATABASE_URL=postgres://localhost:5432/hockey
+TOURNAMENT_ID=hj-indoor-allstars-2025
+EOF
+```
+
 If you prefer two terminals:
 
 ```sh
@@ -40,6 +49,28 @@ npm run dev
 ```
 
 Smoke test examples are listed in `specs/db/ingestion_v1.6.md`.
+
+## Local provider switch
+
+- Default provider is Sheets (Apps Script). If `VITE_PROVIDER` is unset, the UI uses `VITE_API_BASE`.
+- DB provider requires Postgres + ingestion, plus `DATABASE_URL` and `TOURNAMENT_ID` for the API server.
+- Switch to DB locally:
+  - `export VITE_PROVIDER="db"`
+  - `export VITE_DB_API_BASE="http://localhost:8787/api"`
+
+## One-command tests
+
+Sheets provider (default):
+
+```sh
+npm run test:app:sheets
+```
+
+DB provider:
+
+```sh
+npm run test:app:db:local
+```
 
 ## Shipping
 
