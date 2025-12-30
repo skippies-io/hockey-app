@@ -14,3 +14,4 @@ Common failure modes:
 Verification:
 - `curl -i "https://<PUBLIC_DNS>/"` -> `404 {"ok":false,"error":"Not found"}`
 - `curl -i "https://<PUBLIC_DNS>/api?sheet=Fixtures&age=U13B"` -> `200 {"ok":true,...}`
+- `curl -i "https://<PUBLIC_DNS>/health"` -> `200 {"ok":true,...}`

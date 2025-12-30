@@ -188,6 +188,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, service: "hj-api" }));
+      return;
+    }
     if (url.pathname !== API_PATH) {
       sendJson(res, 404, { ok: false, error: "Not found" });
       return;
