@@ -13,6 +13,12 @@
 - [ ] Screenshots attached (UI changes)
 - [ ] Notes added for release / stakeholders (if relevant)
 
+## Release / Production changes
+
+- [ ] I ran `docs/release-hygiene-checklist.md` (required if prod/release/cutover)
+- [ ] This PR changes production env/provider behaviour (yes/no)
+- [ ] Rollback plan included (env toggle + restart)
+
 ## Risk
 
 - Risk level: Low / Medium / High
