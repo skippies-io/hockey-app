@@ -7,6 +7,8 @@ const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
+const sslFlag = (process.env.PG_SSL_REJECT_UNAUTHORIZED || "").toLowerCase();
+const rejectUnauthorized = !["0", "false", "no"].includes(sslFlag);
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
@@ -14,7 +16,9 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
 }
 
 const pool =
-  PROVIDER_MODE === "db" ? new Pool({ connectionString: DATABASE_URL }) : null;
+  PROVIDER_MODE === "db"
+    ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized } })
+    : null;
 
 function sendJson(res, status, payload) {
   res.writeHead(status, {
