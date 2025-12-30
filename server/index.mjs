@@ -10,23 +10,22 @@ const DATABASE_URL_PG = DATABASE_URL.split("?")[0];
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
-let rejectUnauthorized = true;
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
 
-// Local escape hatch only — secure by default
-if (PROVIDER_MODE === "db" && ["1", "true", "yes"].includes(tlsInsecureFlag)) {
-  rejectUnauthorized = false;
-}
+const ssl =
+  PROVIDER_MODE === "db"
+    ? { rejectUnauthorized: !["1", "true", "yes"].includes(tlsInsecureFlag) }
+    : false;
 
 const pool =
   PROVIDER_MODE === "db"
     ? new Pool({
         connectionString: DATABASE_URL_PG,
-        ssl: { rejectUnauthorized },
+        ssl,
       })
     : null;
 
