@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env.supabase.local
+.env.*.local
 .env.db.local
 
 # Editor directories and files
