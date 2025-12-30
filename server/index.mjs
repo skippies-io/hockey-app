@@ -8,6 +8,7 @@ const DATABASE_URL = process.env.DATABASE_URL || "";
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
+let rejectUnauthorized = true;
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
@@ -15,8 +16,9 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
 }
 
 // Local escape hatch only — secure by default
-if (PROVIDER_MODE === "db" && ["1", "true"].includes(tlsInsecureFlag)) {
+if (PROVIDER_MODE === "db" && ["1", "true", "yes"].includes(tlsInsecureFlag)) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  rejectUnauthorized = false;
 }
 
 const pool =
