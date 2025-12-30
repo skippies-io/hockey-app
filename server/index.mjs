@@ -5,6 +5,8 @@ const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
 const DATABASE_URL = process.env.DATABASE_URL || "";
+// node-postgres does not accept libpq query params like ?sslmode=require.
+const DATABASE_URL_PG = DATABASE_URL.split("?")[0];
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
@@ -17,13 +19,15 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
 
 // Local escape hatch only — secure by default
 if (PROVIDER_MODE === "db" && ["1", "true", "yes"].includes(tlsInsecureFlag)) {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   rejectUnauthorized = false;
 }
 
 const pool =
   PROVIDER_MODE === "db"
-    ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized } })
+    ? new Pool({
+        connectionString: DATABASE_URL_PG,
+        ssl: { rejectUnauthorized },
+      })
     : null;
 
 function sendJson(res, status, payload) {
