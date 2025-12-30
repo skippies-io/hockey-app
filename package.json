@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "smoke:apps": "node scripts/smoke.mjs --provider apps",
     "smoke:db": "node scripts/smoke.mjs --provider db",
+    "smoke:db:server": "node scripts/smoke-with-server.mjs --provider db",
     "test": "vitest run",
     "test:app:sheets": "node scripts/test-app.mjs --provider apps",
     "test:app:db": "node scripts/test-app.mjs --provider db",
