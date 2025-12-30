@@ -14,12 +14,15 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   process.exit(1);
 }
 
+// Local escape hatch only — secure by default
 if (PROVIDER_MODE === "db" && ["1", "true"].includes(tlsInsecureFlag)) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
 const pool =
-  PROVIDER_MODE === "db" ? new Pool({ connectionString: DATABASE_URL }) : null;
+  PROVIDER_MODE === "db"
+    ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized } })
+    : null;
 
 function sendJson(res, status, payload) {
   res.writeHead(status, {
