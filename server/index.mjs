@@ -7,12 +7,16 @@ const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
 const DATABASE_URL = process.env.DATABASE_URL || "";
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
-const sslFlag = (process.env.PG_SSL_REJECT_UNAUTHORIZED || "").toLowerCase();
-const rejectUnauthorized = !["0", "false", "no"].includes(sslFlag);
+const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
+}
+
+// Local escape hatch only — secure by default
+if (PROVIDER_MODE === "db" && ["1", "true"].includes(tlsInsecureFlag)) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
 const pool =
