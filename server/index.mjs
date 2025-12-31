@@ -32,20 +32,22 @@ const pool =
 function sendJson(res, status, payload) {
   res.writeHead(status, {
     "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
   });
   res.end(JSON.stringify(payload));
 }
 
-function handleOptions(res) {
-  res.writeHead(204, {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  });
-  res.end();
+// Allow GitHub Pages + local dev to access the API in browsers.
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  const allowlist = new Set([
+    "https://skippies-io.github.io",
+    "http://localhost:5173",
+  ]);
+  if (!origin || !allowlist.has(origin)) return;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function mapFixtureRow(row) {
@@ -191,23 +193,29 @@ async function proxyApps(res, targetUrl) {
 
 const server = http.createServer(async (req, res) => {
   try {
-    if (req.method === "OPTIONS") {
-      handleOptions(res);
-      return;
-    }
-    if (req.method !== "GET") {
-      sendJson(res, 405, { ok: false, error: "Method not allowed" });
-      return;
-    }
-
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname === "/health") {
+      if (req.method !== "GET") {
+        sendJson(res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true, service: "hj-api" }));
       return;
     }
     if (url.pathname !== API_PATH) {
       sendJson(res, 404, { ok: false, error: "Not found" });
+      return;
+    }
+
+    applyCors(req, res);
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+    if (req.method !== "GET") {
+      sendJson(res, 405, { ok: false, error: "Method not allowed" });
       return;
     }
 
