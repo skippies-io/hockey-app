@@ -65,10 +65,13 @@ git push origin vX.Y.Z
 ```bash
 export PROD_API_BASE="https://p01--hj-api--wlt9xynp45bk.code.run"
 curl -i "$PROD_API_BASE/health"
+curl -sS "$PROD_API_BASE/version"
 curl -sS "$PROD_API_BASE/api?groups=1"
 curl -sS "$PROD_API_BASE/api?sheet=Fixtures&age=U13B" | head -c 200
 ```
 
+- Verify running build: `curl -sS "$PROD_API_BASE/version"`
+- Note: `HEAD` requests to `/health` and `/api` may return HTTP 200 once merged.
 - Monitor logs/errors and note rollout status
 - Record the release in `docs/release-audit-trail.md`
 
