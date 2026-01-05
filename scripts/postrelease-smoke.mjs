@@ -18,15 +18,17 @@ function fail(message) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const base = args.base || process.env.PROD_API_BASE || "";
+  const rawBase = args.base || process.env.PROD_API_BASE || "";
 
-  if (!base) fail("Missing base URL. Set PROD_API_BASE or pass --base.");
+  if (!rawBase) fail("Missing base URL. Set PROD_API_BASE or pass --base.");
 
-  const env = { ...process.env, PROD_API_BASE: base };
+  const rootBase = rawBase.replace(/\/$/, "");
+  const apiBase = `${rootBase}/api`;
+  const env = { ...process.env, PROD_API_BASE: rootBase };
 
   const versionResult = await runNodeScript(
     "version",
-    ["scripts/version-smoke.mjs", "--base", base],
+    ["scripts/version-smoke.mjs", "--base", rootBase],
     env
   );
   if (versionResult.code !== 0) {
@@ -36,12 +38,12 @@ async function main() {
   const burstResults = await Promise.all([
     runNodeScript(
       "fixtures",
-      ["scripts/fixtures-burst.mjs", "--base", base],
+      ["scripts/fixtures-burst.mjs", "--api-base", apiBase],
       env
     ),
     runNodeScript(
       "standings",
-      ["scripts/standings-burst.mjs", "--base", base],
+      ["scripts/standings-burst.mjs", "--api-base", apiBase],
       env
     ),
   ]);

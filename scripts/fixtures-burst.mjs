@@ -1,4 +1,16 @@
-import { fetchJsonFollow, parseArgs } from "./_devtools.mjs";
+import { parseArgs } from "./_devtools.mjs";
+
+const AGE_IDS = [
+  "U11B",
+  "U11G",
+  "U13B",
+  "U13G",
+  "U14B",
+  "U14G",
+  "U16B",
+  "U16G",
+  "U18G",
+];
 
 function normalizeApiBase(raw) {
   const base = String(raw || "").trim();
@@ -14,10 +26,7 @@ async function fetchStatus(url) {
     await res.text().catch(() => "");
     return { status: res.status };
   } catch (err) {
-    return {
-      error: err && err.message ? err.message : String(err),
-      name: err && err.name ? err.name : "Error",
-    };
+    return { error: err && err.message ? err.message : String(err) };
   }
 }
 
@@ -31,18 +40,8 @@ async function main() {
     process.exit(1);
   }
 
-  const groups = await fetchJsonFollow(`${apiBase}?groups=1`);
-  const ages = (groups && groups.groups ? groups.groups : [])
-    .map((g) => g && g.id)
-    .filter(Boolean);
-
-  if (!ages.length) {
-    console.error("No age groups returned from groups endpoint.");
-    process.exit(1);
-  }
-
-  const requests = ages.map((ageId) => {
-    const url = `${apiBase}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+  const requests = AGE_IDS.map((ageId) => {
+    const url = `${apiBase}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
     return fetchStatus(url).then((result) => ({ ageId, result }));
   });
 
@@ -52,7 +51,7 @@ async function main() {
 
   for (const { ageId, result } of results) {
     if (result.error) {
-      console.log(`${ageId}: error=${result.error} name=${result.name}`);
+      console.log(`${ageId}: error=${result.error}`);
       failCount += 1;
       continue;
     }
