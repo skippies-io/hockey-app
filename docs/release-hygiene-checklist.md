@@ -89,6 +89,7 @@ npm run standings:burst -- --provider db --base "$PROD_API_BASE/api"
 - Verify running build: `curl -sS "$PROD_API_BASE/version"`
 - Note: `HEAD` requests to `/health` and `/api` may return HTTP 200 once merged.
 - /version supports `GET`/`HEAD`/`OPTIONS` and returns SHA from Northflank-injected env (`GIT_SHA`).
+- One-command post-release smoke: `npm run postrelease:smoke -- --base "$PROD_API_BASE"`
 - Monitor logs/errors and note rollout status
 - Record the release in `docs/release-audit-trail.md`
 

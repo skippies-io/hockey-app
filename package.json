@@ -15,6 +15,7 @@
     "fixtures:burst": "node scripts/fixtures-burst.mjs",
     "standings:burst": "node scripts/standings-burst.mjs",
     "version:smoke": "node scripts/version-smoke.mjs",
+    "postrelease:smoke": "node scripts/postrelease-smoke.mjs",
     "test": "vitest run",
     "test:app:sheets": "node scripts/test-app.mjs --provider apps",
     "test:app:db": "node scripts/test-app.mjs --provider db",
