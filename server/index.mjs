@@ -10,6 +10,7 @@ const DATABASE_URL_PG = DATABASE_URL.split("?")[0];
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
+const BUILD_SHA = process.env.GIT_SHA || process.env.BUILD_SHA || "unknown";
 const FIXTURES_CACHE_TTL_MS = 60_000;
 const STANDINGS_CACHE_TTL_MS = 60_000;
 const fixturesCache = new Map();
@@ -258,15 +259,25 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/version") {
       applyCors(req, res);
-      if (req.method !== "GET") {
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "GET" && !isHead) {
         sendJson(res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
-      sendJson(res, 200, {
-        ok: true,
-        sha: process.env.BUILD_SHA || "unknown",
-        provider: PROVIDER_MODE,
-      });
+      sendJson(
+        res,
+        200,
+        {
+          ok: true,
+          sha: BUILD_SHA,
+          provider: PROVIDER_MODE,
+        },
+        { head: isHead }
+      );
       return;
     }
     if (url.pathname !== API_PATH) {

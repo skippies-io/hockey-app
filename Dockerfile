@@ -9,6 +9,8 @@ COPY . .
 
 ENV NODE_ENV=production
 ENV PORT=8787
+ARG GIT_SHA="unknown"
+ENV GIT_SHA=$GIT_SHA
 
 EXPOSE 8787
 
