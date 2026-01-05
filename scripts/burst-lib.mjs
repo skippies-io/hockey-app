@@ -27,15 +27,33 @@ export function resolveApiBase(args, env) {
 }
 
 export async function fetchStatus(url) {
-  try {
-    const res = await fetch(url);
-    await res.text().catch(() => "");
-    return { status: res.status };
-  } catch (err) {
-    return {
-      error: err && err.message ? err.message : String(err),
-      name: err && err.name ? err.name : "Error",
-    };
+  const RETRYABLE = new Set([502, 503, 504]);
+  const delays = [250, 500];
+  let attempt = 0;
+
+  while (true) {
+    try {
+      const res = await fetch(url);
+      await res.text().catch(() => "");
+      if (RETRYABLE.has(res.status) && attempt < delays.length) {
+        const delay = delays[attempt];
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        attempt += 1;
+        continue;
+      }
+      return { status: res.status };
+    } catch (err) {
+      if (attempt < delays.length) {
+        const delay = delays[attempt];
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        attempt += 1;
+        continue;
+      }
+      return {
+        error: err && err.message ? err.message : String(err),
+        name: err && err.name ? err.name : "Error",
+      };
+    }
   }
 }
 
