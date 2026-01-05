@@ -4,10 +4,42 @@ export const API_BASE =
   PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
 const APP_VER  = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+const DEFAULT_RETRY = { retries: 2, baseDelayMs: 300 };
 
 function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
 
-async function fetchJSON(url, { revalidate = true } = {}) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, retryOptions = {}) {
+  const { retries, baseDelayMs } = { ...DEFAULT_RETRY, ...retryOptions };
+  let attempt = 0;
+
+  while (true) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = new Error(`HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
+      }
+      return res;
+    } catch (err) {
+      const status = err && err.status;
+      const isNetworkError = err instanceof TypeError;
+      const shouldRetry =
+        (status && RETRYABLE_STATUS.has(status)) || isNetworkError;
+      if (!shouldRetry || attempt >= retries) throw err;
+      const delay = baseDelayMs * 2 ** attempt;
+      await sleep(delay);
+      attempt += 1;
+    }
+  }
+}
+
+async function fetchJSON(url, { revalidate = true, retry } = {}) {
   if (!API_BASE) {
     throw new Error(`Missing API base for provider: ${PROVIDER}`);
   }
@@ -33,8 +65,14 @@ async function fetchJSON(url, { revalidate = true } = {}) {
     }
   }
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = retry
+    ? await fetchWithRetry(url, retry === true ? DEFAULT_RETRY : retry)
+    : await fetch(url);
+  if (!res.ok) {
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   const data = await res.json();
   if (data && data.ok === false) throw new Error(data.error || "API error");
   sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data }));
@@ -70,13 +108,13 @@ export async function getGroups() {
 
 export async function getStandingsRows(ageId) {
   const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
-  const j = await fetchJSON(url);
+  const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 
 export async function getFixturesRows(ageId) {
   const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
-  const j = await fetchJSON(url);
+  const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 

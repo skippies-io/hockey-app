@@ -10,6 +10,9 @@ const DATABASE_URL_PG = DATABASE_URL.split("?")[0];
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
+const FIXTURES_CACHE_TTL_MS = 60_000;
+const fixturesCache = new Map();
+const standingsCache = new Map();
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
@@ -90,6 +93,48 @@ function mapStandingsRow(row) {
   };
 }
 
+function getFixturesCacheKey(sheet, ageId) {
+  return `${sheet}:${ageId}:${PROVIDER_MODE}`;
+}
+
+function getCachedFixtures(cacheKey) {
+  const cached = fixturesCache.get(cacheKey);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAt) {
+    fixturesCache.delete(cacheKey);
+    return null;
+  }
+  return cached.payload;
+}
+
+function setCachedFixtures(cacheKey, payload) {
+  fixturesCache.set(cacheKey, {
+    expiresAt: Date.now() + FIXTURES_CACHE_TTL_MS,
+    payload,
+  });
+}
+
+function getStandingsCacheKey(sheet, ageId) {
+  return `${sheet}:${ageId}:${PROVIDER_MODE}`;
+}
+
+function getCachedStandings(cacheKey) {
+  const cached = standingsCache.get(cacheKey);
+  if (!cached) return null;
+  if (Date.now() > cached.expiresAt) {
+    standingsCache.delete(cacheKey);
+    return null;
+  }
+  return cached.payload;
+}
+
+function setCachedStandings(cacheKey, payload) {
+  standingsCache.set(cacheKey, {
+    expiresAt: Date.now() + FIXTURES_CACHE_TTL_MS,
+    payload,
+  });
+}
+
 async function handleGroups(res) {
   if (!pool) {
     throw new Error("DB provider disabled");
@@ -104,7 +149,7 @@ async function handleGroups(res) {
   sendJson(res, 200, { groups: result.rows });
 }
 
-async function handleFixtures(res, ageId) {
+async function getFixturesPayload(ageId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -135,10 +180,10 @@ async function handleFixtures(res, ageId) {
      ORDER BY f.date, f.time, f.fixture_key`,
     [TOURNAMENT_ID, ageId]
   );
-  sendJson(res, 200, { rows: result.rows.map(mapFixtureRow) });
+  return { rows: result.rows.map(mapFixtureRow) };
 }
 
-async function handleStandings(res, ageId) {
+async function getStandingsPayload(ageId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -162,7 +207,7 @@ async function handleStandings(res, ageId) {
      ORDER BY "Pool", "Rank", "Team"`,
     [TOURNAMENT_ID, ageId]
   );
-  sendJson(res, 200, { rows: result.rows.map(mapStandingsRow) });
+  return { rows: result.rows.map(mapStandingsRow) };
 }
 
 async function proxyApps(res, targetUrl) {
@@ -188,6 +233,35 @@ async function proxyApps(res, targetUrl) {
       status: upstream.status,
       bodySnippet,
     });
+  }
+}
+
+async function fetchAppsJson(targetUrl) {
+  if (!APPS_SCRIPT_BASE_URL) {
+    return {
+      status: 500,
+      body: { ok: false, error: "Missing APPS_SCRIPT_BASE_URL for apps mode" },
+    };
+  }
+
+  const upstream = await fetch(targetUrl, {
+    headers: { Accept: "application/json" },
+  });
+  try {
+    const body = await upstream.json();
+    return { status: upstream.status, body };
+  } catch {
+    const text = await upstream.text().catch(() => "");
+    const bodySnippet = text.slice(0, 200);
+    return {
+      status: upstream.status,
+      body: {
+        ok: false,
+        error: "Upstream non-JSON response",
+        status: upstream.status,
+        bodySnippet,
+      },
+    };
   }
 }
 
@@ -242,20 +316,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (sheet === "Fixtures") {
+      const cacheKey = getFixturesCacheKey(sheet, ageId);
+      const cached = getCachedFixtures(cacheKey);
+      if (cached) {
+        sendJson(res, 200, cached);
+        return;
+      }
       if (PROVIDER_MODE === "db") {
-        await handleFixtures(res, ageId);
+        const payload = await getFixturesPayload(ageId);
+        setCachedFixtures(cacheKey, payload);
+        sendJson(res, 200, payload);
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
-        await proxyApps(res, targetUrl);
+        const { status, body } = await fetchAppsJson(targetUrl);
+        if (status === 200 && !(body && body.ok === false)) {
+          setCachedFixtures(cacheKey, body);
+        }
+        sendJson(res, status, body);
       }
       return;
     }
     if (sheet === "Standings") {
+      const cacheKey = getStandingsCacheKey(sheet, ageId);
+      const cached = getCachedStandings(cacheKey);
+      if (cached) {
+        sendJson(res, 200, cached);
+        return;
+      }
       if (PROVIDER_MODE === "db") {
-        await handleStandings(res, ageId);
+        const payload = await getStandingsPayload(ageId);
+        setCachedStandings(cacheKey, payload);
+        sendJson(res, 200, payload);
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
-        await proxyApps(res, targetUrl);
+        const { status, body } = await fetchAppsJson(targetUrl);
+        if (status === 200 && !(body && body.ok === false)) {
+          setCachedStandings(cacheKey, body);
+        }
+        sendJson(res, status, body);
       }
       return;
     }

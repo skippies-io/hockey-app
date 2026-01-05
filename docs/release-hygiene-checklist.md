@@ -69,6 +69,22 @@ curl -sS "$PROD_API_BASE/api?groups=1"
 curl -sS "$PROD_API_BASE/api?sheet=Fixtures&age=U13B" | head -c 200
 ```
 
+- Post-release verification (parallel fixtures burst)
+
+```bash
+echo "$PROD_API_BASE"
+npm run fixtures:burst -- --provider db --base "$PROD_API_BASE/api"
+```
+
+- Post-release verification (parallel standings burst)
+
+```bash
+echo "$PROD_API_BASE"
+npm run standings:burst -- --provider db --base "$PROD_API_BASE/api"
+```
+
+- Note: curl `http_code=000` means no HTTP response (often empty `PROD_API_BASE` or network/TLS failure).
+
 - Monitor logs/errors and note rollout status
 - Record the release in `docs/release-audit-trail.md`
 
