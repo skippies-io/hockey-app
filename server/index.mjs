@@ -11,6 +11,7 @@ const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 const FIXTURES_CACHE_TTL_MS = 60_000;
+const STANDINGS_CACHE_TTL_MS = 60_000;
 const fixturesCache = new Map();
 const standingsCache = new Map();
 
@@ -32,10 +33,14 @@ const pool =
       })
     : null;
 
-function sendJson(res, status, payload) {
+function sendJson(res, status, payload, { head = false } = {}) {
   res.writeHead(status, {
     "Content-Type": "application/json",
   });
+  if (head) {
+    res.end();
+    return;
+  }
   res.end(JSON.stringify(payload));
 }
 
@@ -130,12 +135,12 @@ function getCachedStandings(cacheKey) {
 
 function setCachedStandings(cacheKey, payload) {
   standingsCache.set(cacheKey, {
-    expiresAt: Date.now() + FIXTURES_CACHE_TTL_MS,
+    expiresAt: Date.now() + STANDINGS_CACHE_TTL_MS,
     payload,
   });
 }
 
-async function handleGroups(res) {
+async function getGroupsPayload() {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -146,7 +151,7 @@ async function handleGroups(res) {
      ORDER BY id`,
     [TOURNAMENT_ID]
   );
-  sendJson(res, 200, { groups: result.rows });
+  return { groups: result.rows };
 }
 
 async function getFixturesPayload(ageId) {
@@ -210,32 +215,6 @@ async function getStandingsPayload(ageId) {
   return { rows: result.rows.map(mapStandingsRow) };
 }
 
-async function proxyApps(res, targetUrl) {
-  if (!APPS_SCRIPT_BASE_URL) {
-    sendJson(res, 500, {
-      ok: false,
-      error: "Missing APPS_SCRIPT_BASE_URL for apps mode",
-    });
-    return;
-  }
-  const upstream = await fetch(targetUrl, {
-    headers: { Accept: "application/json" },
-  });
-  try {
-    const body = await upstream.json();
-    sendJson(res, upstream.status, body);
-  } catch {
-    const text = await upstream.text().catch(() => "");
-    const bodySnippet = text.slice(0, 200);
-    sendJson(res, upstream.status, {
-      ok: false,
-      error: "Upstream non-JSON response",
-      status: upstream.status,
-      bodySnippet,
-    });
-  }
-}
-
 async function fetchAppsJson(targetUrl) {
   if (!APPS_SCRIPT_BASE_URL) {
     return {
@@ -267,14 +246,27 @@ async function fetchAppsJson(targetUrl) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname === "/health") {
+      if (req.method !== "GET" && !isHead) {
+        sendJson(res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      sendJson(res, 200, { ok: true, service: "hj-api" }, { head: isHead });
+      return;
+    }
+    if (url.pathname === "/version") {
+      applyCors(req, res);
       if (req.method !== "GET") {
         sendJson(res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ ok: true, service: "hj-api" }));
+      sendJson(res, 200, {
+        ok: true,
+        sha: process.env.BUILD_SHA || "unknown",
+        provider: PROVIDER_MODE,
+      });
       return;
     }
     if (url.pathname !== API_PATH) {
@@ -288,7 +280,7 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
-    if (req.method !== "GET") {
+    if (req.method !== "GET" && !isHead) {
       sendJson(res, 405, { ok: false, error: "Method not allowed" });
       return;
     }
@@ -296,22 +288,34 @@ const server = http.createServer(async (req, res) => {
     const params = url.searchParams;
     if (params.get("groups") === "1") {
       if (PROVIDER_MODE === "db") {
-        await handleGroups(res);
+        const payload = await getGroupsPayload();
+        sendJson(res, 200, payload, { head: isHead });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?groups=1`;
-        await proxyApps(res, targetUrl);
+        const { status, body } = await fetchAppsJson(targetUrl);
+        sendJson(res, status, body, { head: isHead });
       }
       return;
     }
 
     const sheet = params.get("sheet");
     if (!sheet) {
-      sendJson(res, 400, { ok: false, error: "Missing sheet parameter" });
+      sendJson(
+        res,
+        400,
+        { ok: false, error: "Missing sheet parameter" },
+        { head: isHead }
+      );
       return;
     }
     const ageId = params.get("age") || "";
     if (!ageId) {
-      sendJson(res, 400, { ok: false, error: "Missing age parameter" });
+      sendJson(
+        res,
+        400,
+        { ok: false, error: "Missing age parameter" },
+        { head: isHead }
+      );
       return;
     }
 
@@ -319,20 +323,20 @@ const server = http.createServer(async (req, res) => {
       const cacheKey = getFixturesCacheKey(sheet, ageId);
       const cached = getCachedFixtures(cacheKey);
       if (cached) {
-        sendJson(res, 200, cached);
+        sendJson(res, 200, cached, { head: isHead });
         return;
       }
       if (PROVIDER_MODE === "db") {
         const payload = await getFixturesPayload(ageId);
         setCachedFixtures(cacheKey, payload);
-        sendJson(res, 200, payload);
+        sendJson(res, 200, payload, { head: isHead });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
         const { status, body } = await fetchAppsJson(targetUrl);
         if (status === 200 && !(body && body.ok === false)) {
           setCachedFixtures(cacheKey, body);
         }
-        sendJson(res, status, body);
+        sendJson(res, status, body, { head: isHead });
       }
       return;
     }
@@ -340,25 +344,30 @@ const server = http.createServer(async (req, res) => {
       const cacheKey = getStandingsCacheKey(sheet, ageId);
       const cached = getCachedStandings(cacheKey);
       if (cached) {
-        sendJson(res, 200, cached);
+        sendJson(res, 200, cached, { head: isHead });
         return;
       }
       if (PROVIDER_MODE === "db") {
         const payload = await getStandingsPayload(ageId);
         setCachedStandings(cacheKey, payload);
-        sendJson(res, 200, payload);
+        sendJson(res, 200, payload, { head: isHead });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
         const { status, body } = await fetchAppsJson(targetUrl);
         if (status === 200 && !(body && body.ok === false)) {
           setCachedStandings(cacheKey, body);
         }
-        sendJson(res, status, body);
+        sendJson(res, status, body, { head: isHead });
       }
       return;
     }
 
-    sendJson(res, 400, { ok: false, error: `Unknown sheet: ${sheet}` });
+    sendJson(
+      res,
+      400,
+      { ok: false, error: `Unknown sheet: ${sheet}` },
+      { head: isHead }
+    );
   } catch (err) {
     console.error(err);
     sendJson(res, 500, { ok: false, error: "Server error" });
