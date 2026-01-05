@@ -1,20 +1,5 @@
 import { parseArgs } from "./_devtools.mjs";
-import { spawn } from "node:child_process";
-
-function runNodeScript(label, args, env) {
-  return new Promise((resolve) => {
-    const child = spawn(process.execPath, args, {
-      stdio: "inherit",
-      env,
-    });
-    child.on("close", (code) => resolve({ label, code }));
-  });
-}
-
-function fail(message) {
-  console.error(`FAIL: ${message}`);
-  process.exit(1);
-}
+import { deriveBases, fail, runNodeScript } from "./smoke-lib.mjs";
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -22,8 +7,7 @@ async function main() {
 
   if (!rawBase) fail("Missing base URL. Set PROD_API_BASE or pass --base.");
 
-  const rootBase = rawBase.replace(/\/$/, "");
-  const apiBase = `${rootBase}/api`;
+  const { rootBase, apiBase } = deriveBases(rawBase);
   const env = { ...process.env, PROD_API_BASE: rootBase };
 
   const versionResult = await runNodeScript(
