@@ -259,6 +259,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/version") {
       applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
       if (req.method !== "GET" && !isHead) {
         sendJson(res, 405, { ok: false, error: "Method not allowed" });
         return;
