@@ -258,15 +258,20 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/version") {
       applyCors(req, res);
-      if (req.method !== "GET") {
+      if (req.method !== "GET" && !isHead) {
         sendJson(res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
-      sendJson(res, 200, {
-        ok: true,
-        sha: process.env.BUILD_SHA || "unknown",
-        provider: PROVIDER_MODE,
-      });
+      sendJson(
+        res,
+        200,
+        {
+          ok: true,
+          sha: process.env.BUILD_SHA || "unknown",
+          provider: PROVIDER_MODE,
+        },
+        { head: isHead }
+      );
       return;
     }
     if (url.pathname !== API_PATH) {
