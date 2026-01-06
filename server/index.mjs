@@ -1,4 +1,5 @@
 import http from "node:http";
+import crypto from "node:crypto";
 import { Pool } from "pg";
 
 const PORT = Number(process.env.PORT) || 8787;
@@ -34,15 +35,79 @@ const pool =
       })
     : null;
 
-function sendJson(res, status, payload, { head = false } = {}) {
-  res.writeHead(status, {
-    "Content-Type": "application/json",
-  });
+function getClientIp(req) {
+  const raw = req.headers["x-forwarded-for"];
+  const forwarded = Array.isArray(raw) ? raw[0] : raw;
+  const first = forwarded ? String(forwarded).split(",")[0].trim() : "";
+  const addr = first || req.socket?.remoteAddress || "unknown";
+  return addr.startsWith("::ffff:") ? addr.slice("::ffff:".length) : addr;
+}
+
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000;
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 120;
+const rateLimitStore = new Map();
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    const windowStart = now;
+    rateLimitStore.set(ip, { windowStart, count: 1 });
+    const resetAtSeconds = Math.ceil((windowStart + RATE_LIMIT_WINDOW_MS) / 1000);
+    return {
+      allowed: true,
+      retryAfterSeconds: 0,
+      remaining: Math.max(0, RATE_LIMIT_MAX - 1),
+      resetAtSeconds,
+    };
+  }
+  entry.count += 1;
+  const remaining = Math.max(0, RATE_LIMIT_MAX - entry.count);
+  const resetAtSeconds = Math.ceil((entry.windowStart + RATE_LIMIT_WINDOW_MS) / 1000);
+  if (entry.count <= RATE_LIMIT_MAX) {
+    return { allowed: true, retryAfterSeconds: 0, remaining, resetAtSeconds };
+  }
+  const resetMs = entry.windowStart + RATE_LIMIT_WINDOW_MS - now;
+  return {
+    allowed: false,
+    retryAfterSeconds: Math.max(0, Math.ceil(resetMs / 1000)),
+    remaining: 0,
+    resetAtSeconds,
+  };
+}
+
+function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
+  if (noStore) {
+    res.setHeader("Cache-Control", "no-store");
+    return;
+  }
+  res.setHeader(
+    "Cache-Control",
+    `public, max-age=${maxAge}, stale-while-revalidate=${swr}`
+  );
+}
+
+function sendJson(req, res, status, payload, { cache, head = false } = {}) {
+  const body = JSON.stringify(payload);
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+  if (cache) {
+    setCacheHeaders(res, cache);
+    const etag = `"${crypto.createHash("sha1").update(body).digest("hex")}"`;
+    res.setHeader("ETag", etag);
+    if (req.headers["if-none-match"] === etag) {
+      res.writeHead(304);
+      res.end();
+      return;
+    }
+  }
+
+  res.writeHead(status);
   if (head) {
     res.end();
     return;
   }
-  res.end(JSON.stringify(payload));
+  res.end(body);
 }
 
 // Allow GitHub Pages + local dev to access the API in browsers.
@@ -249,12 +314,33 @@ const server = http.createServer(async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
-    if (url.pathname === "/health") {
-      if (req.method !== "GET" && !isHead) {
-        sendJson(res, 405, { ok: false, error: "Method not allowed" });
+    const isOptions = req.method === "OPTIONS";
+    const isHealth = url.pathname === "/health";
+
+    if (!isOptions && !isHealth) {
+      const ip = getClientIp(req);
+      const limit = checkRateLimit(ip);
+      res.setHeader("X-RateLimit-Limit", String(RATE_LIMIT_MAX));
+      res.setHeader("X-RateLimit-Remaining", String(limit.remaining));
+      res.setHeader("X-RateLimit-Reset", String(limit.resetAtSeconds));
+      if (!limit.allowed) {
+        res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+        sendJson(req, res, 429, { ok: false, error: "rate_limited" });
         return;
       }
-      sendJson(res, 200, { ok: true, service: "hj-api" }, { head: isHead });
+    }
+    if (url.pathname === "/health") {
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      sendJson(
+        req,
+        res,
+        200,
+        { ok: true, service: "hj-api" },
+        { head: isHead, cache: { noStore: true } }
+      );
       return;
     }
     if (url.pathname === "/version") {
@@ -265,10 +351,11 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (req.method !== "GET" && !isHead) {
-        sendJson(res, 405, { ok: false, error: "Method not allowed" });
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
       sendJson(
+        req,
         res,
         200,
         {
@@ -276,12 +363,12 @@ const server = http.createServer(async (req, res) => {
           sha: BUILD_SHA,
           provider: PROVIDER_MODE,
         },
-        { head: isHead }
+        { head: isHead, cache: { maxAge: 60, swr: 300 } }
       );
       return;
     }
     if (url.pathname !== API_PATH) {
-      sendJson(res, 404, { ok: false, error: "Not found" });
+      sendJson(req, res, 404, { ok: false, error: "Not found" });
       return;
     }
 
@@ -292,7 +379,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method !== "GET" && !isHead) {
-      sendJson(res, 405, { ok: false, error: "Method not allowed" });
+      sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
       return;
     }
 
@@ -300,11 +387,17 @@ const server = http.createServer(async (req, res) => {
     if (params.get("groups") === "1") {
       if (PROVIDER_MODE === "db") {
         const payload = await getGroupsPayload();
-        sendJson(res, 200, payload, { head: isHead });
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?groups=1`;
         const { status, body } = await fetchAppsJson(targetUrl);
-        sendJson(res, status, body, { head: isHead });
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       }
       return;
     }
@@ -312,6 +405,7 @@ const server = http.createServer(async (req, res) => {
     const sheet = params.get("sheet");
     if (!sheet) {
       sendJson(
+        req,
         res,
         400,
         { ok: false, error: "Missing sheet parameter" },
@@ -322,6 +416,7 @@ const server = http.createServer(async (req, res) => {
     const ageId = params.get("age") || "";
     if (!ageId) {
       sendJson(
+        req,
         res,
         400,
         { ok: false, error: "Missing age parameter" },
@@ -334,20 +429,29 @@ const server = http.createServer(async (req, res) => {
       const cacheKey = getFixturesCacheKey(sheet, ageId);
       const cached = getCachedFixtures(cacheKey);
       if (cached) {
-        sendJson(res, 200, cached, { head: isHead });
+        sendJson(req, res, 200, cached, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
         return;
       }
       if (PROVIDER_MODE === "db") {
         const payload = await getFixturesPayload(ageId);
         setCachedFixtures(cacheKey, payload);
-        sendJson(res, 200, payload, { head: isHead });
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
         const { status, body } = await fetchAppsJson(targetUrl);
         if (status === 200 && !(body && body.ok === false)) {
           setCachedFixtures(cacheKey, body);
         }
-        sendJson(res, status, body, { head: isHead });
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       }
       return;
     }
@@ -355,25 +459,35 @@ const server = http.createServer(async (req, res) => {
       const cacheKey = getStandingsCacheKey(sheet, ageId);
       const cached = getCachedStandings(cacheKey);
       if (cached) {
-        sendJson(res, 200, cached, { head: isHead });
+        sendJson(req, res, 200, cached, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
         return;
       }
       if (PROVIDER_MODE === "db") {
         const payload = await getStandingsPayload(ageId);
         setCachedStandings(cacheKey, payload);
-        sendJson(res, 200, payload, { head: isHead });
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
         const { status, body } = await fetchAppsJson(targetUrl);
         if (status === 200 && !(body && body.ok === false)) {
           setCachedStandings(cacheKey, body);
         }
-        sendJson(res, status, body, { head: isHead });
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
       }
       return;
     }
 
     sendJson(
+      req,
       res,
       400,
       { ok: false, error: `Unknown sheet: ${sheet}` },
@@ -381,7 +495,7 @@ const server = http.createServer(async (req, res) => {
     );
   } catch (err) {
     console.error(err);
-    sendJson(res, 500, { ok: false, error: "Server error" });
+    sendJson(req, res, 500, { ok: false, error: "Server error" });
   }
 });
 
