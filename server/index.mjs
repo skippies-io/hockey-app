@@ -93,7 +93,7 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 
   if (cache) {
     setCacheHeaders(res, cache);
-    const etag = `"${crypto.createHash("sha1").update(body).digest("hex")}"`;
+    const etag = `"${crypto.createHash("sha256").update(body).digest("hex")}"`;
     res.setHeader("ETag", etag);
     if (req.headers["if-none-match"] === etag) {
       res.writeHead(304);
