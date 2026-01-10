@@ -118,13 +118,24 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 
 // Allow GitHub Pages + local dev to access the API in browsers.
 function applyCors(req, res) {
-  const requestOrigin = req.headers.origin || "";
+  const requestOrigin = String(req.headers.origin || "");
   if (!requestOrigin) return;
-  if (!ALLOWED_ORIGINS.has(requestOrigin)) return;
-  res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+
+  // Set ACAO from a trusted allowlist value (not directly from the request header)
+  let allowedOrigin = "";
+  for (const o of ALLOWED_ORIGINS) {
+    if (o === requestOrigin) {
+      allowedOrigin = o;
+      break;
+    }
+  }
+  if (!allowedOrigin) return;
+
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Max-Age", "600");
 }
 
 function mapFixtureRow(row) {
