@@ -254,6 +254,39 @@ async function getFixturesPayload(ageId) {
   return { rows: result.rows.map(mapFixtureRow) };
 }
 
+async function getFixturesAllPayload() {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
+  const result = await pool.query(
+    `SELECT
+       to_char(f.date, 'YYYY-MM-DD') AS date,
+       f.time AS time,
+       t1.name AS team1,
+       t2.name AS team2,
+       r.score1 AS score1,
+       r.score2 AS score2,
+       f.pool AS pool,
+       f.venue AS venue,
+       f.round AS round,
+       f.group_id AS age
+     FROM fixture f
+     JOIN team t1
+       ON t1.tournament_id = f.tournament_id
+      AND t1.id = f.team1_id
+     JOIN team t2
+       ON t2.tournament_id = f.tournament_id
+      AND t2.id = f.team2_id
+     LEFT JOIN result r
+       ON r.tournament_id = f.tournament_id
+      AND r.fixture_id = f.id
+     WHERE f.tournament_id = $1
+     ORDER BY f.date, f.time, f.fixture_key`,
+    [TOURNAMENT_ID]
+  );
+  return { rows: result.rows.map(mapFixtureRow) };
+}
+
 async function getStandingsPayload(ageId) {
   if (!pool) {
     throw new Error("DB provider disabled");
@@ -277,6 +310,32 @@ async function getStandingsPayload(ageId) {
        AND "Age" = $2
      ORDER BY "Pool", "Rank", "Team"`,
     [TOURNAMENT_ID, ageId]
+  );
+  return { rows: result.rows.map(mapStandingsRow) };
+}
+
+async function getStandingsAllPayload() {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
+  const result = await pool.query(
+    `SELECT
+       "Team" AS team,
+       "Rank" AS rank,
+       "Points" AS points,
+       "GF" AS gf,
+       "GA" AS ga,
+       "GD" AS gd,
+       "GP" AS gp,
+       "W" AS w,
+       "D" AS d,
+       "L" AS l,
+       "Pool" AS pool,
+       "Age" AS age
+     FROM v1_standings
+     WHERE tournament_id = $1
+     ORDER BY "Pool", "Rank", "Team"`,
+    [TOURNAMENT_ID]
   );
   return { rows: result.rows.map(mapStandingsRow) };
 }
@@ -414,18 +473,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     const ageId = params.get("age") || "";
-    if (!ageId) {
-      sendJson(
-        req,
-        res,
-        400,
-        { ok: false, error: "Missing age parameter" },
-        { head: isHead }
-      );
-      return;
-    }
 
     if (sheet === "Fixtures") {
+      if (!ageId) {
+        sendJson(
+          req,
+          res,
+          400,
+          { ok: false, error: "Missing age parameter" },
+          { head: isHead }
+        );
+        return;
+      }
       const cacheKey = getFixturesCacheKey(sheet, ageId);
       const cached = getCachedFixtures(cacheKey);
       if (cached) {
@@ -456,6 +515,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (sheet === "Standings") {
+      if (!ageId) {
+        sendJson(
+          req,
+          res,
+          400,
+          { ok: false, error: "Missing age parameter" },
+          { head: isHead }
+        );
+        return;
+      }
       const cacheKey = getStandingsCacheKey(sheet, ageId);
       const cached = getCachedStandings(cacheKey);
       if (cached) {
@@ -474,6 +543,66 @@ const server = http.createServer(async (req, res) => {
         });
       } else {
         const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+        const { status, body } = await fetchAppsJson(targetUrl);
+        if (status === 200 && !(body && body.ok === false)) {
+          setCachedStandings(cacheKey, body);
+        }
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      }
+      return;
+    }
+    if (sheet === "Fixtures_All") {
+      const cacheKey = getFixturesCacheKey(sheet, "all");
+      const cached = getCachedFixtures(cacheKey);
+      if (cached) {
+        sendJson(req, res, 200, cached, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+        return;
+      }
+      if (PROVIDER_MODE === "db") {
+        const payload = await getFixturesAllPayload();
+        setCachedFixtures(cacheKey, payload);
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Fixtures_All`;
+        const { status, body } = await fetchAppsJson(targetUrl);
+        if (status === 200 && !(body && body.ok === false)) {
+          setCachedFixtures(cacheKey, body);
+        }
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      }
+      return;
+    }
+    if (sheet === "Standings_All") {
+      const cacheKey = getStandingsCacheKey(sheet, "all");
+      const cached = getCachedStandings(cacheKey);
+      if (cached) {
+        sendJson(req, res, 200, cached, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+        return;
+      }
+      if (PROVIDER_MODE === "db") {
+        const payload = await getStandingsAllPayload();
+        setCachedStandings(cacheKey, payload);
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Standings_All`;
         const { status, body } = await fetchAppsJson(targetUrl);
         if (status === 200 && !(body && body.ok === false)) {
           setCachedStandings(cacheKey, body);
