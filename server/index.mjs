@@ -112,15 +112,26 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 
 // Allow GitHub Pages + local dev to access the API in browsers.
 function applyCors(req, res) {
-  const origin = req.headers.origin;
-  const allowlist = new Set([
-    "https://skippies-io.github.io",
-    "http://localhost:5173",
-  ]);
-  if (!origin || !allowlist.has(origin)) return;
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  const requestOrigin = req.headers.origin || "";
+  if (!requestOrigin) return;
+
+  // Sonar taint analysis may treat Origin as user-controlled even after allowlisting.
+  // Map to explicit literals so we never reflect header content into the response.
+  let allowedOrigin = "";
+  switch (requestOrigin) {
+    case "https://skippies-io.github.io":
+      allowedOrigin = "https://skippies-io.github.io";
+      break;
+    case "http://localhost:5173":
+      allowedOrigin = "http://localhost:5173";
+      break;
+    default:
+      return;
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
