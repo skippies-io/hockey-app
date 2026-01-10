@@ -35,3 +35,6 @@ fs.txt
 # local ingest reports
 reports/
 secrets/
+
+# Local Python virtualenv
+.venv/
