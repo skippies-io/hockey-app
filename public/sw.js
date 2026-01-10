@@ -3,7 +3,12 @@ const VERSION = 'v1.0.5'
 const CACHE_NAME = `hj-cache-${VERSION}`
 
 // Derive base path from the SW scope so it works on GitHub Pages subpath
-const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/+$/, '') + '/'
+const scopePathname = new URL(self.registration.scope).pathname;
+
+let trimmed = scopePathname;
+while (trimmed.endsWith('/')) trimmed = trimmed.slice(0, -1);
+
+const BASE_PATH = trimmed + '/';
 
 // Precache ONLY files that truly exist in /public on prod
 const PRECACHE = [
