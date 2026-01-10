@@ -12,6 +12,12 @@ const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 const BUILD_SHA = process.env.GIT_SHA || process.env.BUILD_SHA || "unknown";
+const ALLOWED_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 const FIXTURES_CACHE_TTL_MS = 60_000;
 const STANDINGS_CACHE_TTL_MS = 60_000;
 const fixturesCache = new Map();
@@ -113,11 +119,7 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 // Allow GitHub Pages + local dev to access the API in browsers.
 function applyCors(req, res) {
   const origin = req.headers.origin;
-  const allowlist = new Set([
-    "https://skippies-io.github.io",
-    "http://localhost:5173",
-  ]);
-  if (!origin || !allowlist.has(origin)) return;
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return;
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
