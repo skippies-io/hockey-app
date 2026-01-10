@@ -11,6 +11,45 @@ Currently, two official plugins are available:
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Security Posture
+
+This project follows a **secure-by-default** approach, with deliberate isolation between public access, application logic, and the database layer.
+
+### Database (Supabase / Postgres)
+
+- **Row Level Security (RLS) is enabled on all tables**
+- **No public or anonymous RLS policies exist**
+  - This is intentional: direct database access is fully locked down
+  - All data access is mediated through the API
+- Application access uses a **trusted server role**, never client-side keys
+- Database verification scripts are included to assert RLS and privilege state
+
+> Supabase Security Advisor reports **zero errors**.  
+> Informational notices about “RLS enabled with no policies” are expected and intentional.
+
+### API Layer
+
+- Public access is provided **only via the API**
+- **Rate limiting** is enforced per client IP
+- **ETag-based caching** with `stale-while-revalidate` is enabled
+- Sensitive endpoints return appropriate cache and no-store headers
+- No personal or user-identifying data is exposed
+
+### Client
+
+- The client never connects directly to the database
+- No secrets, service keys, or privileged credentials are shipped to the browser
+
+### Operating Principle
+
+> **Public reads are allowed. Writes and database access are never public.**
+
+This posture is designed to be:
+
+- Safe for unauthenticated public traffic
+- Resistant to scraping and abuse
+- Simple to reason about and audit
+
 ## Dev: UI + DB API
 
 Run the DB API server and Vite together (no UI changes needed):

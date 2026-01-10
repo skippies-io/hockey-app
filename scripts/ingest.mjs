@@ -21,6 +21,7 @@ Options:
   --commit             Write to DB (default: false)
   --report-dir         Output reports directory (default: reports/ingestion)
   --limit-groups       Comma-separated group ids to include (optional)
+  --export-dir         Output directory for CSV exports (optional)
 `;
 
 const DEFAULTS = {
@@ -163,6 +164,21 @@ function csvToObjects(text) {
   return data;
 }
 
+function csvEscape(value) {
+  const raw = value == null ? "" : String(value);
+  if (!/[",\n\r]/.test(raw)) return raw;
+  return `"${raw.replace(/"/g, '""')}"`;
+}
+
+function writeCsvFile(filePath, headers, rows) {
+  const lines = [headers.map(csvEscape).join(",")];
+  for (const row of rows) {
+    lines.push(row.map(csvEscape).join(","));
+  }
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${lines.join("\n")}\n`);
+}
+
 function isPlaceholderTeam(name) {
   const n = String(name || "")
     .trim()
@@ -179,7 +195,10 @@ function normalizeDate(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  const parsed = new Date(raw);
+  const cleaned = raw
+    .replace(/\s+-\s+.*$/i, "")
+    .replace(/^(\d{1,2})(st|nd|rd|th)\b/i, "$1");
+  const parsed = new Date(cleaned);
   if (Number.isNaN(parsed.getTime())) return "";
   return parsed.toISOString().slice(0, 10);
 }
@@ -195,6 +214,18 @@ function normalizeScore(value) {
 function normalizeNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
+}
+
+function isPgTlsInsecure() {
+  const raw = String(process.env.PG_TLS_INSECURE || "")
+    .trim()
+    .toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
+function getSupabaseCaCertPath() {
+  const raw = String(process.env.SUPABASE_CA_CERT || "").trim();
+  return raw ? raw : "";
 }
 
 function reportPath(reportDir, commit) {
@@ -330,8 +361,8 @@ function buildTeams({ tournamentId, standingsByGroup, fixturesByGroup }) {
 
   for (const [groupId, rows] of fixturesByGroup.entries()) {
     for (const row of rows) {
-      const t1 = row.Team1 || row.team1 || "";
-      const t2 = row.Team2 || row.team2 || "";
+      const t1 = String(row.Team1 || row.team1 || "").trim();
+      const t2 = String(row.Team2 || row.team2 || "").trim();
       if (t1) {
         const id = slug(`${tournamentId}:${groupId}:${t1}`);
         const key = `${groupId}:${id}`;
@@ -360,19 +391,26 @@ function buildFixtures({ tournamentId, fixturesByGroup, errors }) {
   const seenKeys = new Set();
 
   for (const [groupId, rows] of fixturesByGroup.entries()) {
+    let lastValidDate = "";
     for (const row of rows) {
-      const date = normalizeDate(row.Date);
-      if (!date) {
-        errors.push(`Fixture missing/invalid Date in group ${groupId}`);
+      const dateRaw = String(row.Date ?? "").trim();
+      let date = "";
+      if (dateRaw) {
+        date = normalizeDate(dateRaw);
+        if (!date) {
+          continue;
+        }
+        lastValidDate = date;
+      } else if (lastValidDate) {
+        date = lastValidDate;
+      } else {
         continue;
       }
       const time = String(row.Time ?? "").trim() || "";
       const team1 = String(row.Team1 || "").trim();
       const team2 = String(row.Team2 || "").trim();
       if (!team1 || !team2) {
-        errors.push(
-          `Fixture missing Team1/Team2 in group ${groupId} (${date})`
-        );
+        // S25 layout can include non-fixture rows with dates but no teams.
         continue;
       }
 
@@ -440,7 +478,18 @@ async function upsertAll({
   fixtures,
   results,
 }) {
-  const client = new Client({ connectionString: databaseUrl });
+  const pgTlsInsecure = isPgTlsInsecure();
+  const supabaseCaCertPath = getSupabaseCaCertPath();
+  const ssl =
+    supabaseCaCertPath
+      ? {
+          ca: fs.readFileSync(supabaseCaCertPath, "utf8"),
+          rejectUnauthorized: true,
+        }
+      : pgTlsInsecure
+      ? { rejectUnauthorized: false }
+      : undefined;
+  const client = new Client({ connectionString: databaseUrl, ssl });
   await client.connect();
 
   const now = new Date().toISOString();
@@ -541,6 +590,146 @@ async function upsertAll({
   }
 }
 
+function exportToCsv({
+  exportDir,
+  tournamentId,
+  source,
+  groups,
+  teams,
+  fixtures,
+  results,
+}) {
+  const now = new Date().toISOString();
+  fs.mkdirSync(exportDir, { recursive: true });
+
+  writeCsvFile(
+    path.join(exportDir, "tournament.csv"),
+    ["id", "name", "created_at", "source", "source_row_hash", "ingested_at"],
+    [
+      [
+        tournamentId,
+        tournamentId,
+        now,
+        source,
+        hashString(tournamentId),
+        now,
+      ],
+    ]
+  );
+
+  writeCsvFile(
+    path.join(exportDir, "groups.csv"),
+    [
+      "tournament_id",
+      "id",
+      "label",
+      "created_at",
+      "source",
+      "source_row_hash",
+      "ingested_at",
+    ],
+    groups.map((g) => [
+      tournamentId,
+      g.id,
+      g.label,
+      now,
+      source,
+      hashString(stableStringify(g)),
+      now,
+    ])
+  );
+
+  writeCsvFile(
+    path.join(exportDir, "team.csv"),
+    [
+      "tournament_id",
+      "id",
+      "group_id",
+      "name",
+      "is_placeholder",
+      "created_at",
+      "source",
+      "source_row_hash",
+      "ingested_at",
+    ],
+    teams.map((t) => [
+      tournamentId,
+      t.id,
+      t.group_id,
+      t.name,
+      t.is_placeholder,
+      now,
+      source,
+      hashString(stableStringify(t)),
+      now,
+    ])
+  );
+
+  writeCsvFile(
+    path.join(exportDir, "fixture.csv"),
+    [
+      "tournament_id",
+      "id",
+      "group_id",
+      "date",
+      "time",
+      "venue",
+      "round",
+      "pool",
+      "team1_id",
+      "team2_id",
+      "fixture_key",
+      "created_at",
+      "source",
+      "source_row_hash",
+      "ingested_at",
+    ],
+    fixtures.map((f) => [
+      tournamentId,
+      f.id,
+      f.group_id,
+      f.date,
+      f.time,
+      f.venue,
+      f.round,
+      f.pool,
+      slug(`${tournamentId}:${f.group_id}:${f.team1}`),
+      slug(`${tournamentId}:${f.group_id}:${f.team2}`),
+      f.fixture_key,
+      now,
+      source,
+      hashString(stableStringify(f)),
+      now,
+    ])
+  );
+
+  writeCsvFile(
+    path.join(exportDir, "result.csv"),
+    [
+      "tournament_id",
+      "fixture_id",
+      "score1",
+      "score2",
+      "status",
+      "updated_at",
+      "source",
+      "source_row_hash",
+      "ingested_at",
+    ],
+    results.map((r) => [
+      tournamentId,
+      r.fixture_id,
+      r.score1 === null ? "" : r.score1,
+      r.score2 === null ? "" : r.score2,
+      r.status,
+      now,
+      source,
+      hashString(stableStringify(r)),
+      now,
+    ])
+  );
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -562,6 +751,7 @@ async function main() {
   const teamsSheetId =
     getArg("teamsSheetId", "teams-sheet-id") ?? DEFAULTS.teamsSheetId;
   const reportDir = getArg("reportDir", "report-dir") ?? DEFAULTS.reportDir;
+  const exportDir = getArg("exportDir", "export-dir");
   const apiBaseArg = getArg("apiBase", "api-base");
   const apiBase =
     apiBaseArg !== undefined ? apiBaseArg : process.env.VITE_API_BASE || "";
@@ -578,6 +768,8 @@ async function main() {
 
   if (debugArgs) {
     const providerChoice = apiBase ? "AppsScript" : "SheetsCSV";
+    const supabaseCaCertProvided = !!getSupabaseCaCertPath();
+    const pgTlsInsecure = isPgTlsInsecure();
     console.log(
       JSON.stringify(
         {
@@ -585,6 +777,10 @@ async function main() {
           resolved: {
             apiBase: apiBase || null,
             provider: providerChoice,
+            pgTlsRejectUnauthorizedDisabled:
+              pgTlsInsecure && !supabaseCaCertProvided,
+            supabaseCaCertProvided,
+            pgTlsInsecure,
           },
         },
         null,
@@ -677,7 +873,19 @@ async function main() {
     process.exit(1);
   }
 
-  if (args.commit) {
+  if (exportDir) {
+    exportToCsv({
+      exportDir,
+      tournamentId,
+      source,
+      groups: provider.groups,
+      teams,
+      fixtures,
+      results,
+    });
+  }
+
+  if (args.commit && !exportDir) {
     if (!databaseUrl) {
       report.validationErrors.push("DATABASE_URL is required for --commit");
       const outPath = await writeReport(reportDir, report);

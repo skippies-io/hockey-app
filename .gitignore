@@ -34,3 +34,4 @@ fs.txt
 
 # local ingest reports
 reports/
+secrets/
