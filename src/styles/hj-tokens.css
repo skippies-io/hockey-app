@@ -230,9 +230,9 @@ a {
   gap: var(--hj-space-3);
   flex-wrap: nowrap;
   min-height: 48px;
-  padding-top: var(--hj-space-2);
+  margin-top: var(--hj-space-2);
+  padding-top: var(--hj-space-1);
   padding-bottom: var(--hj-space-1);
-  border-top: 1px solid var(--hj-color-border-subtle);
   overflow-x: auto;
 }
 
@@ -351,8 +351,6 @@ select {
 /* Filter slot: single source of truth for the 72px contract */
 .app-filter-slot {
   width: 100%;
-  min-height: 72px;
-  height: 72px;
   display: flex;
   align-items: stretch;
   background: transparent;
@@ -364,8 +362,6 @@ select {
   flex: 1;
   display: flex;
   align-items: center; /* toolbar feel */
-  min-height: 72px;
-  height: 72px;
 }
 
 /* Page layout helpers */
@@ -960,7 +956,7 @@ select {
   display: flex;
   align-items: center;
   gap: var(--hj-space-3);
-  padding: var(--hj-space-2) var(--hj-space-3);
+  padding: var(--hj-space-2);
   border-radius: var(--hj-radius-md);
   background: var(--hj-color-surface-muted);
   border: 1px solid var(--hj-color-border-subtle);
@@ -1744,5 +1740,9 @@ select {
 
   .filter-label--compact select {
     min-width: 0;
+  }
+
+  .filter-help {
+    display: none;
   }
 }

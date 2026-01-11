@@ -10,6 +10,7 @@ import {
   useParams,
 } from "react-router-dom";
 import Card from "./components/Card";
+import FilterBar from "./components/FilterBar";
 import Fixtures from "./views/Fixtures";
 import InstallPrompt from "./components/InstallPrompt";
 import Standings from "./views/Standings";
@@ -166,31 +167,11 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     onlyFollowing ? list.filter((t) => isFav(t.name, teamAgeId)) : list;
 
   const filterBar = (
-    <Card className="filters-card filter-slot-card">
-      <div className="filter-slot-row">
-        <label
-          className="hj-checkbox-label filter-toggle"
-          style={
-            followCount === 0
-              ? { color: "var(--hj-color-ink-muted)" }
-              : undefined
-          }
-        >
-          <input
-            type="checkbox"
-            checked={onlyFollowing}
-            onChange={(e) => setOnlyFollowing(e.target.checked)}
-          />
-          Show only followed teams ({followCount || 0})
-          {followCount === 0 && (
-            <div className="filter-help">
-              You haven’t followed any teams yet. Tap the ☆ next to a team to
-              follow it.
-            </div>
-          )}
-        </label>
-      </div>
-    </Card>
+    <FilterBar
+      showFavourites={onlyFollowing}
+      onToggleFavourites={setOnlyFollowing}
+      favouritesCount={followCount}
+    />
   );
   useFilterSlot(filterBar);
 
