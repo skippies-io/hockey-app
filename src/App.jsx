@@ -1,7 +1,8 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   Navigate,
+  Outlet,
   Route,
   Routes,
   useLocation,
@@ -17,8 +18,8 @@ import { getGroups, getStandingsRows } from "./lib/api";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
-import AppLayout from "./components/AppLayout";
 import Feedback from "./views/Feedback";
+import AppLayout from "./components/AppLayout";
 import TeamProfile from "./views/TeamProfile";
 import Welcome from "./views/Welcome";
 import { useFilterSlot } from "./components/filterSlotContext";
@@ -325,12 +326,67 @@ function TeamsPage({ ageId, ageGroups = [] }) {
   );
 }
 
-function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
+function AppShell({ groups }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = useParams();
+
+  const rawAgeId = params.ageId;
+  const ageId =
+    rawAgeId && rawAgeId !== "undefined" && rawAgeId !== "null" ? rawAgeId : "";
+
+  const segments = useMemo(
+    () => location.pathname.split("/").filter(Boolean),
+    [location.pathname]
+  );
+  const firstSegment = segments[0] || "";
+  const secondSegment = segments[1] || "";
+  const isWelcome = segments.length === 0;
+  const isFeedback = firstSegment === "feedback";
+  const isTeamProfile = secondSegment === "team";
+
+  const currentTab = useMemo(() => {
+    if (isFeedback) return "feedback";
+    if (isTeamProfile) return "teams";
+    if (
+      secondSegment === "standings" ||
+      secondSegment === "teams" ||
+      secondSegment === "fixtures"
+    ) {
+      return secondSegment;
+    }
+    return "fixtures";
+  }, [isFeedback, isTeamProfile, secondSegment]);
+
+  const selectedAge = ageId || groups[0]?.id || "";
+  const showNav = !isWelcome;
+  const showAgeSelector = Boolean(ageId) && !isFeedback && !isTeamProfile;
+  const enableFilterSlot = Boolean(ageId) && !isFeedback && !isTeamProfile;
+
+  const onAgeChange = (nextId) => {
+    const tab = currentTab || "fixtures";
+    navigate(`/${nextId}/${tab}`);
+  };
+
+  return (
+    <AppLayout
+      ageOptions={groups}
+      selectedAge={selectedAge}
+      onAgeChange={onAgeChange}
+      currentTab={currentTab}
+      showNav={showNav}
+      showAgeSelector={showAgeSelector}
+      enableFilterSlot={enableFilterSlot}
+    >
+      <Outlet />
+    </AppLayout>
+  );
+}
+
+function AgeLayout({ groups, loading }) {
   const params = useParams();
   const rawAgeId = params.ageId;
   const navigate = useNavigate();
-  const location = useLocation();
-  const Layout = LayoutComponent;
 
   // Normalise weird values like "undefined" / "null" to empty string
   const ageId =
@@ -345,34 +401,13 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
   const age = groups.find((g) => g.id === ageId);
   const ageLabel = age?.label || ageId || "";
 
-  const currentTab = useMemo(() => {
-    // Expect paths like: /U13/fixtures, /U13/standings, /U13/teams
-    const segments = location.pathname.split("/").filter(Boolean);
-    // segments[0] = ageId, segments[1] = tab (fixtures|standings|teams)
-    const maybeTab = segments[1];
-
-    if (
-      maybeTab === "standings" ||
-      maybeTab === "teams" ||
-      maybeTab === "fixtures"
-    ) {
-      return maybeTab;
-    }
-    return "fixtures";
-  }, [location.pathname]);
-
-  const onAgeChange = (nextId) => {
-    const tab = currentTab || "fixtures";
-    navigate(`/${nextId}/${tab}`);
-  };
-
   if (!ageId) {
     const body = loading ? (
       <div className="p-4">Loading age…</div>
     ) : (
       <Navigate to="/" replace />
     );
-    return <Layout showNav={false}>{body}</Layout>;
+    return body;
   }
 
   if (!age && !loading) {
@@ -381,64 +416,33 @@ function AgeLayout({ groups, loading, LayoutComponent = Fragment }) {
       return <Navigate to={`/${fallbackId}/fixtures`} replace />;
     }
     return (
-      <Layout showNav={false}>
-        <div className="p-4 text-red-600">Unknown age id: {ageId}</div>
-      </Layout>
+      <div className="p-4 text-red-600">Unknown age id: {ageId}</div>
     );
   }
 
   return (
-    <Layout
-      ageOptions={groups}
-      selectedAge={ageId}
-      onAgeChange={onAgeChange}
-      currentTab={currentTab}
-    >
-      <Routes>
-        <Route
-          path="fixtures"
-          element={
-            <Fixtures ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
-          }
-        />
-        <Route
-          path="standings"
-          element={
-            <Standings ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
-          }
-        />
-        <Route
-          path="teams"
-          element={
-            <TeamsPage ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
-          }
-        />
-        <Route index element={<Navigate to="fixtures" replace />} />
-        <Route path="*" element={<Navigate to="fixtures" replace />} />
-      </Routes>
-    </Layout>
-  );
-}
-
-function FeedbackPage({ groups }) {
-  const navigate = useNavigate();
-  const selectedAge = groups[0]?.id || "";
-
-  const handleAgeChange = (nextId) => {
-    if (nextId) navigate(`/${nextId}/fixtures`);
-  };
-
-  return (
-    <AppLayout
-      ageOptions={groups}
-      selectedAge={selectedAge}
-      onAgeChange={handleAgeChange}
-      currentTab="feedback"
-      showAgeSelector={false}
-      enableFilterSlot={false}
-    >
-      <Feedback />
-    </AppLayout>
+    <Routes>
+      <Route
+        path="fixtures"
+        element={
+          <Fixtures ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
+        }
+      />
+      <Route
+        path="standings"
+        element={
+          <Standings ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
+        }
+      />
+      <Route
+        path="teams"
+        element={
+          <TeamsPage ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
+        }
+      />
+      <Route index element={<Navigate to="fixtures" replace />} />
+      <Route path="*" element={<Navigate to="fixtures" replace />} />
+    </Routes>
   );
 }
 
@@ -474,10 +478,10 @@ export default function App() {
   }, []);
 
   return (
-    <>
-      <Routes>
+    <Routes>
+      <Route element={<AppShell groups={groupsWithAll} />}>
         <Route
-          path="/"
+          index
           element={
             <>
               <InstallPrompt />
@@ -485,23 +489,16 @@ export default function App() {
             </>
           }
         />
+        <Route path="feedback" element={<Feedback />} />
+        <Route path=":ageId/team/:teamId" element={<TeamProfile />} />
         <Route
-          path="/feedback"
-          element={<FeedbackPage groups={groupsWithAll} />}
-        />
-        <Route path="/:ageId/team/:teamId" element={<TeamProfile />} />
-        <Route
-          path="/:ageId/*"
+          path=":ageId/*"
           element={
-            <AgeLayout
-              groups={groupsWithAll}
-              loading={loadingGroups}
-              LayoutComponent={AppLayout}
-            />
+            <AgeLayout groups={groupsWithAll} loading={loadingGroups} />
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+      </Route>
+    </Routes>
   );
 }
