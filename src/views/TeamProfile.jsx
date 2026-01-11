@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import AppLayout from "../components/AppLayout";
 import Card from "../components/Card";
 import FixtureCard from "../components/FixtureCard";
 import { getFixturesRows } from "../lib/api";
@@ -261,229 +260,221 @@ export default function TeamProfile() {
   const visibleSections = sections.filter((section) => section.items.length > 0);
 
   return (
-    <AppLayout
-      ageOptions={[]}
-      selectedAge={ageId}
-      currentTab="teams"
-      showAgeSelector={false}
-      enableFilterSlot={false}
-    >
-      <div className="page-stack team-profile">
-        <div className="page-section">
-          <Card className="team-hero">
-            {!ageId || !teamId ? (
-              <div className="text-red-600">
-                {ageId ? "Team not specified." : "Age group not specified."}
-              </div>
-            ) : err ? (
-              <div className="text-red-600">Error: {err}</div>
-            ) : loadingData ? (
-              <div>Loading team…</div>
-            ) : (
-              <>
-                <div className="hj-team-hero-top hj-team-hero__stack">
-                  <div className="hj-team-hero-main hj-team-hero__header">
-                    <div className="hj-team-hero__title">
-                      <div className="hj-team-hero__title-row">
-                        <div
-                          className="badge"
-                          aria-hidden
-                          style={{ backgroundColor: colorFromName(displayName) }}
-                        >
-                          {teamInitials(displayName)}
-                        </div>
-                        <h1 className="team-hero-name hj-team-hero__name">
-                          {displayName}
-                        </h1>
+    <div className="page-stack team-profile">
+      <div className="page-section">
+        <Card className="team-hero">
+          {!ageId || !teamId ? (
+            <div className="text-red-600">
+              {ageId ? "Team not specified." : "Age group not specified."}
+            </div>
+          ) : err ? (
+            <div className="text-red-600">Error: {err}</div>
+          ) : loadingData ? (
+            <div>Loading team…</div>
+          ) : (
+            <>
+              <div className="hj-team-hero-top hj-team-hero__stack">
+                <div className="hj-team-hero-main hj-team-hero__header">
+                  <div className="hj-team-hero__title">
+                    <div className="hj-team-hero__title-row">
+                      <div
+                        className="badge"
+                        aria-hidden
+                        style={{ backgroundColor: colorFromName(displayName) }}
+                      >
+                        {teamInitials(displayName)}
                       </div>
-                      <div className="team-hero-meta-row hj-team-hero__meta">
-                        {ageId ? (
-                          <span className="team-hero-age hj-team-hero__age">
-                            {ageId}
-                          </span>
-                        ) : null}
-                        {poolLabel ? (
-                          <span className="team-hero-meta hj-team-hero__pool">
-                            {poolLabel}
-                          </span>
-                        ) : null}
-                      </div>
+                      <h1 className="team-hero-name hj-team-hero__name">
+                        {displayName}
+                      </h1>
                     </div>
-                    <button
-                      type="button"
-                      className="star-btn team-hero-star hj-team-hero__star"
-                      aria-pressed={isFollowed}
-                      aria-label={isFollowed ? "Unfollow team" : "Follow team"}
-                      onClick={() => toggleFollow(followKey)}
-                    >
-                      <span className={`star ${isFollowed ? "is-on" : "is-off"}`}>
-                        {isFollowed ? "★" : "☆"}
-                      </span>
-                    </button>
-                  </div>
-                  <div className="hj-team-hero-summary hj-team-hero__summary">
-                    <div className="hj-team-hero-summary-strip hj-team-hero__stats">
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">GP</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.gp}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">W</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.w}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">D</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.d}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">L</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.l}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">GF</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.gf}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">GA</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.ga}
-                        </div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">GD</div>
-                        <div className="hj-team-hero-summary-value">{gdLabel}</div>
-                      </div>
-                      <div className="hj-team-hero-summary-cell">
-                        <div className="hj-team-hero-summary-label">PTS</div>
-                        <div className="hj-team-hero-summary-value">
-                          {statValues.pts}
-                        </div>
-                      </div>
+                    <div className="team-hero-meta-row hj-team-hero__meta">
+                      {ageId ? (
+                        <span className="team-hero-age hj-team-hero__age">
+                          {ageId}
+                        </span>
+                      ) : null}
+                      {poolLabel ? (
+                        <span className="team-hero-meta hj-team-hero__pool">
+                          {poolLabel}
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="hj-team-meta">{`Win ${stats.winPct}`}</div>
                   </div>
+                  <button
+                    type="button"
+                    className="star-btn team-hero-star hj-team-hero__star"
+                    aria-pressed={isFollowed}
+                    aria-label={isFollowed ? "Unfollow team" : "Follow team"}
+                    onClick={() => toggleFollow(followKey)}
+                  >
+                    <span className={`star ${isFollowed ? "is-on" : "is-off"}`}>
+                      {isFollowed ? "★" : "☆"}
+                    </span>
+                  </button>
                 </div>
-              </>
+                <div className="hj-team-hero-summary hj-team-hero__summary">
+                  <div className="hj-team-hero-summary-strip hj-team-hero__stats">
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">GP</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.gp}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">W</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.w}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">D</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.d}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">L</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.l}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">GF</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.gf}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">GA</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.ga}
+                      </div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">GD</div>
+                      <div className="hj-team-hero-summary-value">{gdLabel}</div>
+                    </div>
+                    <div className="hj-team-hero-summary-cell">
+                      <div className="hj-team-hero-summary-label">PTS</div>
+                      <div className="hj-team-hero-summary-value">
+                        {statValues.pts}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="hj-team-meta">{`Win ${stats.winPct}`}</div>
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+
+      {!loadingData && !err && ageId && teamId && (
+        <section className="page-section">
+          <Card>
+            <header className="hj-section-header fixtures-header">
+              <h2 className="hj-section-header-title">Fixtures</h2>
+              <div className="fixtures-filter">
+                <label className="fixtures-filter-label" htmlFor="fixtures-filter">
+                  <span className="sr-only">Filter fixtures</span>
+                </label>
+                <select
+                  id="fixtures-filter"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="past">Past</option>
+                  <option value="live">Live</option>
+                  <option value="upcoming">Upcoming</option>
+                </select>
+              </div>
+            </header>
+
+            {teamFixtures.length === 0 || visibleSections.length === 0 ? (
+              <div className="tp-empty">No fixtures for this team yet.</div>
+            ) : (
+              <div className="cards fixtures-list">
+                {visibleSections.map((section, sectionIdx) => (
+                  <div
+                    key={`${section.title || "section"}-${sectionIdx}`}
+                    className="fixtures-date-group"
+                  >
+                    {section.title ? (
+                      <div className="fixtures-date-head">
+                        <div className="fixtures-date-title">{section.title}</div>
+                      </div>
+                    ) : null}
+                    <ul className="cards fixtures-list">
+                      {section.items.map((fx, idx) => {
+                        const homeScore = hasScore(fx.score1)
+                          ? Number(fx.score1)
+                          : null;
+                        const awayScore = hasScore(fx.score2)
+                          ? Number(fx.score2)
+                          : null;
+                        const profilePath1 = teamProfilePath(fx.ageId, fx.teamA);
+                        const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
+                        const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
+                        const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
+                        const resultPill = computeResultPill({
+                          fixture: {
+                            homeTeam: fx.teamA,
+                            awayTeam: fx.teamB,
+                            homeScore: fx.score1,
+                            awayScore: fx.score2,
+                          },
+                          teamKey: displayName,
+                        });
+
+                        return (
+                          <li key={fx.id || `${fx.date}-${idx}`}>
+                            <FixtureCard
+                              date={fx.date}
+                              time={fx.time || "TBD"}
+                              venueName={fx.venueName}
+                              pool={fx.poolLabel}
+                              round={fx.round}
+                              showDate={true}
+                              showResultPill
+                              resultPill={resultPill}
+                              expandable
+                              homeTeam={
+                                <Link
+                                  to={profilePath1}
+                                  className="team-link fixture-team-link"
+                                >
+                                  {fx.teamA}
+                                </Link>
+                              }
+                              awayTeam={
+                                <Link
+                                  to={profilePath2}
+                                  className="team-link fixture-team-link"
+                                >
+                                  {fx.teamB}
+                                </Link>
+                              }
+                              homeScore={homeScore}
+                              awayScore={awayScore}
+                              status={fx.status}
+                              homeIsFollowed={isFollowing(followKey1)}
+                              awayIsFollowed={isFollowing(followKey2)}
+                              onToggleHomeFollow={() => toggleFollow(followKey1)}
+                              onToggleAwayFollow={() => toggleFollow(followKey2)}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
             )}
           </Card>
-        </div>
-
-        {!loadingData && !err && ageId && teamId && (
-          <section className="page-section">
-            <Card>
-              <header className="hj-section-header fixtures-header">
-                <h2 className="hj-section-header-title">Fixtures</h2>
-                <div className="fixtures-filter">
-                  <label className="fixtures-filter-label" htmlFor="fixtures-filter">
-                    <span className="sr-only">Filter fixtures</span>
-                  </label>
-                  <select
-                    id="fixtures-filter"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  >
-                    <option value="all">All</option>
-                    <option value="past">Past</option>
-                    <option value="live">Live</option>
-                    <option value="upcoming">Upcoming</option>
-                  </select>
-                </div>
-              </header>
-
-              {teamFixtures.length === 0 || visibleSections.length === 0 ? (
-                <div className="tp-empty">No fixtures for this team yet.</div>
-              ) : (
-                <div className="cards fixtures-list">
-                  {visibleSections.map((section, sectionIdx) => (
-                    <div
-                      key={`${section.title || "section"}-${sectionIdx}`}
-                      className="fixtures-date-group"
-                    >
-                      {section.title ? (
-                        <div className="fixtures-date-head">
-                          <div className="fixtures-date-title">{section.title}</div>
-                        </div>
-                      ) : null}
-                      <ul className="cards fixtures-list">
-                        {section.items.map((fx, idx) => {
-                          const homeScore = hasScore(fx.score1)
-                            ? Number(fx.score1)
-                            : null;
-                          const awayScore = hasScore(fx.score2)
-                            ? Number(fx.score2)
-                            : null;
-                          const profilePath1 = teamProfilePath(fx.ageId, fx.teamA);
-                          const profilePath2 = teamProfilePath(fx.ageId, fx.teamB);
-                          const followKey1 = makeTeamFollowKey(fx.ageId, fx.teamA);
-                          const followKey2 = makeTeamFollowKey(fx.ageId, fx.teamB);
-                          const resultPill = computeResultPill({
-                            fixture: {
-                              homeTeam: fx.teamA,
-                              awayTeam: fx.teamB,
-                              homeScore: fx.score1,
-                              awayScore: fx.score2,
-                            },
-                            teamKey: displayName,
-                          });
-
-                          return (
-                            <li key={fx.id || `${fx.date}-${idx}`}>
-                              <FixtureCard
-                                date={fx.date}
-                                time={fx.time || "TBD"}
-                                venueName={fx.venueName}
-                                pool={fx.poolLabel}
-                                round={fx.round}
-                                showDate={true}
-                                showResultPill
-                                resultPill={resultPill}
-                                expandable
-                                homeTeam={
-                                  <Link
-                                    to={profilePath1}
-                                    className="team-link fixture-team-link"
-                                  >
-                                    {fx.teamA}
-                                  </Link>
-                                }
-                                awayTeam={
-                                  <Link
-                                    to={profilePath2}
-                                    className="team-link fixture-team-link"
-                                  >
-                                    {fx.teamB}
-                                  </Link>
-                                }
-                                homeScore={homeScore}
-                                awayScore={awayScore}
-                                status={fx.status}
-                                homeIsFollowed={isFollowing(followKey1)}
-                                awayIsFollowed={isFollowing(followKey2)}
-                                onToggleHomeFollow={() => toggleFollow(followKey1)}
-                                onToggleAwayFollow={() => toggleFollow(followKey2)}
-                              />
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </section>
-        )}
-      </div>
-    </AppLayout>
+        </section>
+      )}
+    </div>
   );
 }

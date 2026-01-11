@@ -158,10 +158,12 @@ a {
 .app-shell {
   padding: var(--hj-space-6) var(--hj-space-4) var(--hj-space-8);
   min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-4);
   background: var(--hj-color-page);
+  overflow: hidden;
 }
 
 .app-shell-inner {
@@ -171,6 +173,9 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-4);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-header {
@@ -337,6 +342,10 @@ select {
   display: flex;
   flex-direction: column;
   gap: var(--hj-space-4);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Filter slot: single source of truth for the 72px contract */
