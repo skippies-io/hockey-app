@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Card from "../components/Card";
 import { sendFeedback } from "../lib/api";
 
@@ -11,7 +11,6 @@ export default function Feedback() {
   const [done, setDone]       = useState(false);
   const [err, setErr]         = useState("");
 
-  const location = useLocation();
   const navigate = useNavigate();
   const params   = useParams();
   const ageId    = params.ageId || "";
@@ -102,9 +101,6 @@ export default function Feedback() {
           </button>
         </div>
 
-        <div className="hj-form-footnote">
-          Route: {location.pathname}{ageId ? ` • Age: ${ageId}` : ""}
-        </div>
       </form>
     </Card>
   );

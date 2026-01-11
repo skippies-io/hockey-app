@@ -1280,12 +1280,24 @@ select {
   margin: 0;
 }
 
+.standings-page {
+  overflow-x: hidden;
+}
+
+.stand-card-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .stand-card {
   background: var(--hj-color-surface);
   border-radius: var(--hj-radius-md);
   border: 1px solid var(--hj-color-border-subtle);
   box-shadow: var(--hj-shadow-sm);
   padding: 10px 16px;
+  min-width: 100%;
+  width: max-content;
 }
 
 .stand-pool-block + .stand-pool-block {

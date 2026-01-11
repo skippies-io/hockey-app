@@ -208,29 +208,31 @@ function StandingsSection({
     <Card className="standings-age-card">
       {heading ? <h3 className="section-title pool-head">{heading}</h3> : null}
       <section style={{ marginBottom: "var(--hj-space-6)" }}>
-        <div className="stand-card">
-          {pools.map((pool) => (
-            <div key={pool.poolKey || pool.poolLabel} className="stand-pool-block">
-              {pool.poolLabel ? (
-                <div className="stand-card-header">
-                  <span className="stand-pool-label">{pool.poolLabel}</span>
-                  <div className="stand-header-stats" aria-hidden="true">
-                    <span className="lbl">P</span>
-                    <span className="lbl">W</span>
-                    <span className="lbl">D</span>
-                    <span className="lbl">L</span>
-                    <span className="lbl">GF</span>
-                    <span className="lbl">GA</span>
-                    <span className="lbl">GD</span>
-                    <span className="lbl lbl--points">Pts</span>
+        <div className="stand-card-scroll">
+          <div className="stand-card">
+            {pools.map((pool) => (
+              <div key={pool.poolKey || pool.poolLabel} className="stand-pool-block">
+                {pool.poolLabel ? (
+                  <div className="stand-card-header">
+                    <span className="stand-pool-label">{pool.poolLabel}</span>
+                    <div className="stand-header-stats" aria-hidden="true">
+                      <span className="lbl">P</span>
+                      <span className="lbl">W</span>
+                      <span className="lbl">D</span>
+                      <span className="lbl">L</span>
+                      <span className="lbl">GF</span>
+                      <span className="lbl">GA</span>
+                      <span className="lbl">GD</span>
+                      <span className="lbl lbl--points">Pts</span>
+                    </div>
                   </div>
+                ) : null}
+                <div className="stand-card-body">
+                  {pool.rows.map((r, idx) => renderRow(r, idx, pool.poolKey))}
                 </div>
-              ) : null}
-              <div className="stand-card-body">
-                {pool.rows.map((r, idx) => renderRow(r, idx, pool.poolKey))}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
     </Card>
