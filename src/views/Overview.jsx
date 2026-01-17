@@ -101,15 +101,36 @@ export default function Overview({ groups = [] }) {
       <div className="page-section">
           <h2 className="hj-section-header-title">Explore</h2>
           <div className="cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-              <div className="hj-card" role="button" onClick={() => navigate('/franchises')} style={{ cursor: 'pointer' }}>
+              <div 
+                className="hj-card" 
+                role="button" 
+                tabIndex="0"
+                onClick={() => navigate('/franchises')} 
+                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/franchises'); }}
+                style={{ cursor: 'pointer' }}
+              >
                   <h3 className="font-bold mb-2">Clubs</h3>
                   <p className="text-sm text-gray-500">Directory of all participating clubs.</p>
               </div>
-              <div className="hj-card" role="button" onClick={goTeams} style={{ cursor: 'pointer' }}>
+              <div 
+                className="hj-card" 
+                role="button" 
+                tabIndex="0"
+                onClick={goTeams} 
+                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') goTeams(); }}
+                style={{ cursor: 'pointer' }}
+              >
                   <h3 className="font-bold mb-2">Teams</h3>
                   <p className="text-sm text-gray-500">Browse all teams by age group.</p>
               </div>
-               <div className="hj-card" role="button" onClick={() => navigate('/feedback')} style={{ cursor: 'pointer' }}>
+               <div 
+                className="hj-card" 
+                role="button" 
+                tabIndex="0"
+                onClick={() => navigate('/feedback')} 
+                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/feedback'); }}
+                style={{ cursor: 'pointer' }}
+               >
                   <h3 className="font-bold mb-2">Feedback</h3>
                   <p className="text-sm text-gray-500">Have a suggestion? Let us know.</p>
               </div>
