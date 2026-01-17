@@ -156,7 +156,7 @@ a {
 
 /* Page shell */
 .app-shell {
-  padding: var(--hj-space-6) var(--hj-space-4) var(--hj-space-8);
+  padding: var(--hj-space-4) var(--hj-space-4) var(--hj-space-8);
   min-height: 100vh;
   height: 100dvh;
   display: flex;

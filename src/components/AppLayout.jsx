@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { FilterSlotContext } from "./filterSlotContext";
+import TournamentSwitcher from "./TournamentSwitcher";
 
 export default function AppLayout({
   children,
@@ -47,6 +48,7 @@ export default function AppLayout({
                   <div className="brand-title">Hockey For Juniors</div>
                 </div>
               </Link>
+              <TournamentSwitcher />
             </div>
 
             {showNav && (
