@@ -2,12 +2,18 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { Pool } from "pg";
 
+import { handleAdminRequest } from "./admin.mjs";
+
 const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || "hj-indoor-allstars-2025";
-const DATABASE_URL = process.env.DATABASE_URL || "";
-// node-postgres does not accept libpq query params like ?sslmode=require.
-const DATABASE_URL_PG = DATABASE_URL.split("?")[0];
+let DATABASE_URL = process.env.DATABASE_URL || "";
+
+// Fix: Strip ?sslmode=require if present to force local SSL settings
+if (DATABASE_URL.includes("?")) {
+  DATABASE_URL = DATABASE_URL.split("?")[0];
+}
+
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
 const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
@@ -22,15 +28,17 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   process.exit(1);
 }
 
+// SSL Fix: For local dev with Supabase/Postgres, often we need rejectUnauthorized: false
+// The user explicitly requested this fix.
 const ssl =
   PROVIDER_MODE === "db"
-    ? { rejectUnauthorized: !["1", "true", "yes"].includes(tlsInsecureFlag) }
+    ? { rejectUnauthorized: false }
     : false;
 
 const pool =
   PROVIDER_MODE === "db"
     ? new Pool({
-        connectionString: DATABASE_URL_PG,
+        connectionString: DATABASE_URL,
         ssl,
       })
     : null;
@@ -175,8 +183,8 @@ function mapStandingsRow(row) {
   };
 }
 
-function getFixturesCacheKey(sheet, ageId) {
-  return `${sheet}:${ageId}:${PROVIDER_MODE}`;
+function getFixturesCacheKey(sheet, ageId, tournamentId) {
+  return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
 function getCachedFixtures(cacheKey) {
@@ -196,8 +204,8 @@ function setCachedFixtures(cacheKey, payload) {
   });
 }
 
-function getStandingsCacheKey(sheet, ageId) {
-  return `${sheet}:${ageId}:${PROVIDER_MODE}`;
+function getStandingsCacheKey(sheet, ageId, tournamentId) {
+  return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
 function getCachedStandings(cacheKey) {
@@ -217,7 +225,7 @@ function setCachedStandings(cacheKey, payload) {
   });
 }
 
-async function getGroupsPayload() {
+async function getGroupsPayload(tournamentId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -226,12 +234,12 @@ async function getGroupsPayload() {
      FROM groups
      WHERE tournament_id = $1
      ORDER BY id`,
-    [TOURNAMENT_ID]
+    [tournamentId]
   );
   return { groups: result.rows };
 }
 
-async function getFixturesPayload(ageId) {
+async function getFixturesPayload(ageId, tournamentId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -260,12 +268,12 @@ async function getFixturesPayload(ageId) {
      WHERE f.tournament_id = $1
        AND f.group_id = $2
      ORDER BY f.date, f.time, f.fixture_key`,
-    [TOURNAMENT_ID, ageId]
+    [tournamentId, ageId]
   );
   return { rows: result.rows.map(mapFixtureRow) };
 }
 
-async function getFixturesAllPayload() {
+async function getFixturesAllPayload(tournamentId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -293,12 +301,12 @@ async function getFixturesAllPayload() {
       AND r.fixture_id = f.id
      WHERE f.tournament_id = $1
      ORDER BY f.date, f.time, f.fixture_key`,
-    [TOURNAMENT_ID]
+    [tournamentId]
   );
   return { rows: result.rows.map(mapFixtureRow) };
 }
 
-async function getStandingsPayload(ageId) {
+async function getStandingsPayload(ageId, tournamentId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -320,12 +328,12 @@ async function getStandingsPayload(ageId) {
      WHERE tournament_id = $1
        AND "Age" = $2
      ORDER BY "Pool", "Rank", "Team"`,
-    [TOURNAMENT_ID, ageId]
+    [tournamentId, ageId]
   );
   return { rows: result.rows.map(mapStandingsRow) };
 }
 
-async function getStandingsAllPayload() {
+async function getStandingsAllPayload(tournamentId) {
   if (!pool) {
     throw new Error("DB provider disabled");
   }
@@ -346,7 +354,7 @@ async function getStandingsAllPayload() {
      FROM v1_standings
      WHERE tournament_id = $1
      ORDER BY "Pool", "Rank", "Team"`,
-    [TOURNAMENT_ID]
+    [tournamentId]
   );
   return { rows: result.rows.map(mapStandingsRow) };
 }
@@ -437,6 +445,43 @@ const server = http.createServer(async (req, res) => {
       );
       return;
     }
+    // Admin Routes
+    if (url.pathname.startsWith("/api/admin")) {
+      await handleAdminRequest(req, res, { url, pool, sendJson });
+      return;
+    }
+
+    // Tournaments List (New)
+    if (url.pathname === "/api/tournaments") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      
+      if (PROVIDER_MODE === "db") {
+        try {
+          // Fetch from the actual tournament table now that we know it exists
+          const result = await pool.query(
+            `SELECT id, name FROM tournament ORDER BY created_at DESC`
+          );
+          sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
+        } catch(e) {
+          console.error(e);
+          sendJson(req, res, 500, { ok: false, error: "DB Error" });
+        }
+      } else {
+        // Apps Script mode fallback (not implemented for multi-tournament yet)
+        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
+      }
+      return;
+    }
+
     if (url.pathname !== API_PATH) {
       sendJson(req, res, 404, { ok: false, error: "Not found" });
       return;
@@ -454,15 +499,17 @@ const server = http.createServer(async (req, res) => {
     }
 
     const params = url.searchParams;
+    const reqTournamentId = params.get("tournamentId") || TOURNAMENT_ID;
+
     if (params.get("groups") === "1") {
       if (PROVIDER_MODE === "db") {
-        const payload = await getGroupsPayload();
+        const payload = await getGroupsPayload(reqTournamentId);
         sendJson(req, res, 200, payload, {
           head: isHead,
           cache: { maxAge: 30, swr: 300 },
         });
       } else {
-        const targetUrl = `${APPS_SCRIPT_BASE_URL}?groups=1`;
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?groups=1`; // Legacy fallback ignores tournamentId
         const { status, body } = await fetchAppsJson(targetUrl);
         sendJson(req, res, status, body, {
           head: isHead,
@@ -496,7 +543,8 @@ const server = http.createServer(async (req, res) => {
         );
         return;
       }
-      const cacheKey = getFixturesCacheKey(sheet, ageId);
+      // Include tournamentID in cache key
+      const cacheKey = getFixturesCacheKey(sheet, ageId, reqTournamentId);
       const cached = getCachedFixtures(cacheKey);
       if (cached) {
         sendJson(req, res, 200, cached, {
@@ -506,7 +554,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (PROVIDER_MODE === "db") {
-        const payload = await getFixturesPayload(ageId);
+        const payload = await getFixturesPayload(ageId, reqTournamentId);
         setCachedFixtures(cacheKey, payload);
         sendJson(req, res, 200, payload, {
           head: isHead,
@@ -536,7 +584,7 @@ const server = http.createServer(async (req, res) => {
         );
         return;
       }
-      const cacheKey = getStandingsCacheKey(sheet, ageId);
+      const cacheKey = getStandingsCacheKey(sheet, ageId, reqTournamentId);
       const cached = getCachedStandings(cacheKey);
       if (cached) {
         sendJson(req, res, 200, cached, {
@@ -546,7 +594,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (PROVIDER_MODE === "db") {
-        const payload = await getStandingsPayload(ageId);
+        const payload = await getStandingsPayload(ageId, reqTournamentId);
         setCachedStandings(cacheKey, payload);
         sendJson(req, res, 200, payload, {
           head: isHead,
@@ -566,7 +614,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (sheet === "Fixtures_All") {
-      const cacheKey = getFixturesCacheKey(sheet, "all");
+      const cacheKey = getFixturesCacheKey(sheet, "all", reqTournamentId);
       const cached = getCachedFixtures(cacheKey);
       if (cached) {
         sendJson(req, res, 200, cached, {
@@ -576,7 +624,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (PROVIDER_MODE === "db") {
-        const payload = await getFixturesAllPayload();
+        const payload = await getFixturesAllPayload(reqTournamentId);
         setCachedFixtures(cacheKey, payload);
         sendJson(req, res, 200, payload, {
           head: isHead,
@@ -596,7 +644,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (sheet === "Standings_All") {
-      const cacheKey = getStandingsCacheKey(sheet, "all");
+      const cacheKey = getStandingsCacheKey(sheet, "all", reqTournamentId);
       const cached = getCachedStandings(cacheKey);
       if (cached) {
         sendJson(req, res, 200, cached, {
@@ -606,7 +654,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (PROVIDER_MODE === "db") {
-        const payload = await getStandingsAllPayload();
+        const payload = await getStandingsAllPayload(reqTournamentId);
         setCachedStandings(cacheKey, payload);
         sendJson(req, res, 200, payload, {
           head: isHead,
@@ -625,7 +673,7 @@ const server = http.createServer(async (req, res) => {
       }
       return;
     }
-
+    
     sendJson(
       req,
       res,
