@@ -17,3 +17,10 @@ body {
 * {
   box-sizing: border-box;
 }
+
+.app-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 800;
+}

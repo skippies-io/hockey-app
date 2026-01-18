@@ -2,6 +2,7 @@
 const PROVIDER = import.meta.env.VITE_PROVIDER || "apps";
 export const API_BASE =
   PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
+export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
 const APP_VER  = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
@@ -11,6 +12,20 @@ function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function tournamentsEndpoint() {
+  if (DB_API_BASE) {
+    const base = DB_API_BASE.endsWith("/")
+      ? DB_API_BASE.slice(0, -1)
+      : DB_API_BASE;
+    return `${base}/tournaments`;
+  }
+  if (import.meta.env.DEV) {
+    const { protocol, hostname } = window.location;
+    return `${protocol}//${hostname}:8787/api/tournaments`;
+  }
+  return null;
 }
 
 async function fetchWithRetry(url, retryOptions = {}) {
