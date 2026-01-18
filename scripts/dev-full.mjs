@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,13 +65,27 @@ function loadEnv(filePath) {
   return env;
 }
 
-const localEnv = loadEnv(path.join(root, '.env.db.local'));
-const combinedEnv = { 
-  ...process.env, 
-  ...localEnv, 
-  PROVIDER_MODE: 'db', // Force DB mode
-  FORCE_COLOR: '1' 
+function resolveEnvFile() {
+  const candidates = ['.env.db.local', '.env.supabase.local', '.env'];
+  for (const filename of candidates) {
+    const fullPath = path.join(root, filename);
+    if (fs.existsSync(fullPath)) {
+      return { filename, fullPath };
+    }
+  }
+  return null;
+}
+
+const resolvedEnv = resolveEnvFile();
+const localEnv = resolvedEnv ? loadEnv(resolvedEnv.fullPath) : {};
+const combinedEnv = {
+  ...process.env,
+  ...localEnv,
+  FORCE_COLOR: '1',
 };
+
+const envLabel = resolvedEnv ? resolvedEnv.filename : 'none';
+console.log(`\x1b[36mEnv file:\x1b[0m ${envLabel}`);
 
 // Start Backend
 const backend = spawn('node', ['server/index.mjs'], {
@@ -84,8 +99,80 @@ const backend = spawn('node', ['server/index.mjs'], {
 backend.stdout.on('data', d => console.log(`\x1b[35m[BACKEND] \x1b[0m${d.toString().trim()}`));
 backend.stderr.on('data', d => console.error(`\x1b[35m[BACKEND] \x1b[0m${d.toString().trim()}`));
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function checkBackendHealth() {
+  return new Promise((resolve) => {
+    const endpoints = ['/version', '/api/version'];
+    let index = 0;
+
+    const tryNext = () => {
+      if (index >= endpoints.length) {
+        resolve(false);
+        return;
+      }
+      const req = http.request(
+        {
+          method: 'GET',
+          hostname: 'localhost',
+          port: 8787,
+          path: endpoints[index],
+          timeout: 1000,
+        },
+        (res) => {
+          res.resume();
+          if (res.statusCode === 200) {
+            resolve(true);
+            return;
+          }
+          index += 1;
+          tryNext();
+        }
+      );
+      req.on('error', () => {
+        index += 1;
+        tryNext();
+      });
+      req.on('timeout', () => {
+        req.destroy();
+        index += 1;
+        tryNext();
+      });
+      req.end();
+    };
+
+    tryNext();
+  });
+}
+
+async function waitForBackend() {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if (await checkBackendHealth()) {
+      return true;
+    }
+    await sleep(500);
+  }
+  return false;
+}
+
+const healthy = await waitForBackend();
+if (!healthy) {
+  console.error('\x1b[31m[DEV] Backend did not become healthy at /version or /api/version within 10s.\x1b[0m');
+  backend.kill();
+  process.exit(1);
+}
+
 // Start Frontend
-const frontend = run('npm', ['run', 'dev'], 'FRONTEND', '\x1b[32m');
+const frontend = run('npm', ['run', 'dev:fe'], 'FRONTEND', '\x1b[32m');
+
+backend.on('close', (code) => {
+  frontend.kill();
+  const exitCode = code && code !== 0 ? code : 1;
+  process.exit(exitCode);
+});
 
 // Handle exit
 process.on('SIGINT', () => {
