@@ -2,6 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
+import { tournamentsEndpoint } from '../lib/api';
 
 const TournamentContext = createContext(null);
 
@@ -14,22 +15,27 @@ export function TournamentProvider({ children }) {
 
   useEffect(() => {
     async function fetchTournaments() {
+      const url = tournamentsEndpoint();
       try {
-        const res = await fetch('/api/tournaments');
-        if (res.ok) {
-          const json = await res.json();
-          if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-            setAvailableTournaments(json.data);
-            
-            // If no active tournament is set (or the valid one isn't in list anymore), default to the first one (most recent usually)
-            if (!activeTournamentId) {
-               // Default to the first one in the list (assuming backend sorts DESC/recent first)
-               setActiveTournamentId(json.data[0].id);
-            }
+        if (!url) {
+          throw new Error('Missing VITE_DB_API_BASE for tournaments.');
+        }
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+          setAvailableTournaments(json.data);
+
+          // If no active tournament is set (or the valid one isn't in list anymore), default to the first one (most recent usually)
+          if (!activeTournamentId) {
+             // Default to the first one in the list (assuming backend sorts DESC/recent first)
+             setActiveTournamentId(json.data[0].id);
           }
         }
-      } catch (e) {
-        console.error("Failed to fetch tournaments:", e);
+      } catch (error) {
+        console.error('Failed to fetch tournaments:', { url, error });
       } finally {
         setLoading(false);
       }
