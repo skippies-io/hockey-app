@@ -16,7 +16,9 @@ function sleep(ms) {
 
 export function tournamentsEndpoint() {
   if (DB_API_BASE) {
-    const base = DB_API_BASE.replace(/\/+$/, "");
+    const base = DB_API_BASE.endsWith("/")
+      ? DB_API_BASE.slice(0, -1)
+      : DB_API_BASE;
     return `${base}/tournaments`;
   }
   if (import.meta.env.DEV) {
