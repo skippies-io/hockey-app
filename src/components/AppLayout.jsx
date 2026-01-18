@@ -38,18 +38,26 @@ export default function AppLayout({
       <div className="app-shell min-h-screen bg-gray-50 flex flex-col">
         <div className="app-shell-inner">
           <header className="app-header">
+            {/* Top Row: Logo, Title, and Tournament Selector */}
             <div className="app-header-top">
-              <Link to="/" className="brand-link">
-                <div className="brand-row">
-                  <img
-                    src={`${import.meta.env.BASE_URL}HJ_icon_192.png`}
-                    alt="HJ Hockey For Juniors"
-                    className="brand-logo"
-                  />
-                  <div className="brand-title">Hockey For Juniors</div>
+              <div className="header-main">
+                <div className="header-brand">
+                  <Link to="/" className="brand-link">
+                    <img
+                      src={`${import.meta.env.BASE_URL}HJ_icon_192.png`}
+                      alt="HJ Hockey For Juniors"
+                      className="app-logo"
+                      style={{ height: '2.5rem', width: 'auto' }}
+                    />
+                    <h1 className="app-title">Hockey For Juniors</h1>
+                  </Link>
                 </div>
-              </Link>
-              <TournamentSwitcher />
+              </div>
+              
+              {/* Bottom Row: The Selector (Restored) */}
+              <div className="header-actions">
+                <TournamentSwitcher />
+              </div>
             </div>
 
             {showNav && (
