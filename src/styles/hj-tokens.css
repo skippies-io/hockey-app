@@ -172,7 +172,7 @@ a {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--hj-space-4);
+  gap: var(--hj-space-2);
   flex: 1;
   min-height: 0;
   overflow: hidden;
