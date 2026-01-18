@@ -5,16 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { TournamentProvider } from './context/TournamentContext';
 
 // Mock fetch
-globalThis.fetch = vi.fn((url) => {
-  if (url && url.includes('sheet=Announcements')) {
-      return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ 
-              ok: true, 
-              rows: [{ Title: "Test News", Message: "Hello World" }] // No ID = Global
-          }),
-      });
-  }
+globalThis.fetch = vi.fn(() => {
   return Promise.resolve({
     ok: true,
     json: () => Promise.resolve({ data: [] }),
@@ -84,24 +75,6 @@ describe('App Smoke Test', () => {
     expect(heading).toBeTruthy();
   });
 
-  it('renders announcements on overview', async () => {
-    // Reset path
-    window.history.pushState({}, 'Home', '/');
-    
-    // We need to ensure we have a tournament context that matches the announcement
-     render(
-      <BrowserRouter>
-        <TournamentProvider>
-           <App />
-        </TournamentProvider>
-      </BrowserRouter>
-    );
 
-    // Should find "Latest & Breaking" or "Test News"
-    // Note: Tournament ID matching might fail if activeTournamentId is null/default. 
-    // But our logic says if no ID in row, show global. Let's make the mock row have no ID for safety in this test.
-    const news = await screen.findByText(/Test News/i);
-    expect(news).toBeTruthy();
-  });
 });
 

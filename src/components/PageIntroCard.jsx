@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Card from "./Card";
 
 export default function PageIntroCard({
@@ -17,3 +18,10 @@ export default function PageIntroCard({
     </Card>
   );
 }
+
+PageIntroCard.propTypes = {
+  eyebrow: PropTypes.node,
+  title: PropTypes.string.isRequired,
+  description: PropTypes.string,
+  rightSlot: PropTypes.node,
+};

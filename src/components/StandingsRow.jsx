@@ -1,5 +1,6 @@
 // src/components/StandingsRow.jsx
 import React from "react";
+import PropTypes from 'prop-types';
 
 /**
  * StandingsRow
@@ -82,3 +83,20 @@ export default function StandingsRow({
     </div>
   );
 }
+
+StandingsRow.propTypes = {
+  rank: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  teamName: PropTypes.node.isRequired,
+  badgeColor: PropTypes.string,
+  initials: PropTypes.string,
+  played: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  won: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  drawn: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  lost: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  gf: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ga: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  gd: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  points: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  isFollowed: PropTypes.bool,
+  onToggleFollow: PropTypes.func,
+};

@@ -1,4 +1,5 @@
 // src/views/Team.jsx
+import PropTypes from 'prop-types';
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "../components/Card";
@@ -173,3 +174,8 @@ export default function Team({ ageId, ageLabel }) {
     </div>
   );
 }
+
+Team.propTypes = {
+  ageId: PropTypes.string.isRequired,
+  ageLabel: PropTypes.string.isRequired,
+};

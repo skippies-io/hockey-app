@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { FilterSlotContext } from "./filterSlotContext";
@@ -115,3 +116,15 @@ export default function AppLayout({
     </FilterSlotContext.Provider>
   );
 }
+
+AppLayout.propTypes = {
+  children: PropTypes.node,
+  ageOptions: PropTypes.array,
+  selectedAge: PropTypes.string,
+  onAgeChange: PropTypes.func,
+  currentTab: PropTypes.string,
+  showNav: PropTypes.bool,
+  showAgeSelector: PropTypes.bool,
+  enableFilterSlot: PropTypes.bool,
+  filters: PropTypes.node,
+};

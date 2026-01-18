@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import Card from "../components/Card";
@@ -114,6 +115,24 @@ function StandingsTeamCardRow({
     </Card>
   );
 }
+
+StandingsTeamCardRow.propTypes = {
+  teamName: PropTypes.string.isRequired,
+  teamLabel: PropTypes.string,
+  rank: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  points: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  played: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  won: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  drawn: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  lost: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  gf: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  ga: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  gd: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  badgeBg: PropTypes.string,
+  profilePath: PropTypes.string.isRequired,
+  isFollowed: PropTypes.bool,
+  onToggleFollow: PropTypes.func,
+};
 
 function StandingsSection({
   ageId,
@@ -238,6 +257,16 @@ function StandingsSection({
     </Card>
   );
 }
+
+StandingsSection.propTypes = {
+  ageId: PropTypes.string.isRequired,
+  ageLabel: PropTypes.string.isRequired,
+  heading: PropTypes.string,
+  pools: PropTypes.array,
+  isFollowing: PropTypes.func.isRequired,
+  toggleFollow: PropTypes.func.isRequired,
+  isMobile: PropTypes.bool,
+};
 
 /**
  * Props:
@@ -563,3 +592,11 @@ export default function Standings({
     </div>
   );
 }
+
+Standings.propTypes = {
+  ageId: PropTypes.string.isRequired,
+  ageLabel: PropTypes.string.isRequired,
+  format: PropTypes.string,
+  poolsMeta: PropTypes.array,
+  ageGroups: PropTypes.array,
+};

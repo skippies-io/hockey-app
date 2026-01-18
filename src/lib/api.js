@@ -124,11 +124,6 @@ export async function getFranchises() {
   return j.rows || [];
 }
 
-export async function getAnnouncements() {
-  const url = `${API_BASE}?sheet=Announcements`;
-  const j = await fetchJSON(url, { retry: true });
-  return j.rows || [];
-}
 
 // Legacy helper (kept for any old imports)
 export async function getSheet(sheetName) {

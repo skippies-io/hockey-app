@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Card from "./Card";
 
 export default function FilterBar({
@@ -35,3 +36,12 @@ export default function FilterBar({
     </Card>
   );
 }
+
+FilterBar.propTypes = {
+  rightSlot: PropTypes.node,
+  showFavourites: PropTypes.bool,
+  onToggleFavourites: PropTypes.func,
+  favouritesCount: PropTypes.number,
+  favouritesLabel: PropTypes.string,
+  showHelp: PropTypes.bool,
+};

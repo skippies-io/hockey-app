@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 export default function StatPill({ label, value, emphasis = "normal" }) {
   const valueStyle =
     emphasis === "strong" ? { fontWeight: "var(--hj-font-weight-bold)" } : undefined;
@@ -11,3 +13,9 @@ export default function StatPill({ label, value, emphasis = "normal" }) {
     </div>
   );
 }
+
+StatPill.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  emphasis: PropTypes.oneOf(['normal', 'strong']),
+};

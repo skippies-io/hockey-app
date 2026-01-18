@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PropTypes from 'prop-types';
 import Card from "./Card";
 import { formatFixtureDate } from "../lib/date";
 
@@ -195,3 +196,27 @@ export default function FixtureCard({
     </Card>
   );
 }
+
+FixtureCard.propTypes = {
+  date: PropTypes.string,
+  time: PropTypes.string,
+  venueName: PropTypes.string,
+  pool: PropTypes.string,
+  round: PropTypes.string,
+  homeTeam: PropTypes.node.isRequired,
+  awayTeam: PropTypes.node.isRequired,
+  homeScore: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  awayScore: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  status: PropTypes.string,
+  homeIsFollowed: PropTypes.bool,
+  awayIsFollowed: PropTypes.bool,
+  onToggleHomeFollow: PropTypes.func,
+  onToggleAwayFollow: PropTypes.func,
+  showDate: PropTypes.bool,
+  showPool: PropTypes.bool,
+  showRound: PropTypes.bool,
+  showResultPill: PropTypes.bool,
+  resultPill: PropTypes.oneOf(['W', 'D', 'L']),
+  expandable: PropTypes.bool,
+  notes: PropTypes.string,
+};

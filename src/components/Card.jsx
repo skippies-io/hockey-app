@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 export default function Card({
   children,
   className = "",
@@ -21,3 +23,10 @@ export default function Card({
     </div>
   );
 }
+
+Card.propTypes = {
+  children: PropTypes.node,
+  className: PropTypes.string,
+  followed: PropTypes.bool,
+  noPad: PropTypes.bool,
+};

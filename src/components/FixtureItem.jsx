@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Card from "./Card";
 
 export default function FixtureItem({
@@ -67,3 +68,19 @@ export default function FixtureItem({
     </Card>
   );
 }
+
+FixtureItem.propTypes = {
+  mode: PropTypes.string,
+  date: PropTypes.string,
+  time: PropTypes.string,
+  venue: PropTypes.string,
+  meta: PropTypes.string,
+  homeTeam: PropTypes.node.isRequired,
+  awayTeam: PropTypes.node.isRequired,
+  homePrefix: PropTypes.node,
+  awayPrefix: PropTypes.node,
+  score1: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  score2: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  followed: PropTypes.bool,
+  className: PropTypes.string,
+};

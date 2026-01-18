@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
@@ -311,6 +312,11 @@ function TeamsPage({ ageId, ageGroups = [] }) {
   );
 }
 
+TeamsPage.propTypes = {
+  ageId: PropTypes.string.isRequired,
+  ageGroups: PropTypes.array,
+};
+
 function AppShell({ groups }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -367,6 +373,10 @@ function AppShell({ groups }) {
     </AppLayout>
   );
 }
+
+AppShell.propTypes = {
+  groups: PropTypes.array.isRequired,
+};
 
 function AgeLayout({ groups, loading }) {
   const params = useParams();
@@ -430,6 +440,11 @@ function AgeLayout({ groups, loading }) {
     </Routes>
   );
 }
+
+AgeLayout.propTypes = {
+  groups: PropTypes.array.isRequired,
+  loading: PropTypes.bool,
+};
 
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS);

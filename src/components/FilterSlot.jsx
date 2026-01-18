@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Card from "./Card";
 
 export function FilterSlotCard({ children }) {
@@ -7,6 +8,10 @@ export function FilterSlotCard({ children }) {
     </Card>
   );
 }
+
+FilterSlotCard.propTypes = {
+  children: PropTypes.node,
+};
 
 export function FollowToggle({
   count = 0,
@@ -35,3 +40,11 @@ export function FollowToggle({
     </label>
   );
 }
+
+FollowToggle.propTypes = {
+  count: PropTypes.number,
+  checked: PropTypes.bool,
+  onChange: PropTypes.func,
+  label: PropTypes.string,
+  showHelp: PropTypes.bool,
+};
