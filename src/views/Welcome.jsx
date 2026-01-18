@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useNavigate } from "react-router-dom";
 
 export default function Welcome({ groups = [] }) {
@@ -47,3 +48,7 @@ export default function Welcome({ groups = [] }) {
     </div>
   );
 }
+
+Welcome.propTypes = {
+  groups: PropTypes.array,
+};

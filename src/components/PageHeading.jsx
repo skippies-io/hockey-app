@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 export default function PageHeading({ title, subtitle }) {
   return (
     <div className="page-heading">
@@ -6,3 +8,8 @@ export default function PageHeading({ title, subtitle }) {
     </div>
   );
 }
+
+PageHeading.propTypes = {
+  title: PropTypes.string.isRequired,
+  subtitle: PropTypes.string,
+};

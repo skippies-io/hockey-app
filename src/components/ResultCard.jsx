@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 // teamA/teamB accept strings or React nodes so callers can pass links
 export default function ResultCard({ dateTime, teamA, teamB, meta, score, resultBadge }) {
   return (
@@ -29,3 +31,12 @@ export default function ResultCard({ dateTime, teamA, teamB, meta, score, result
     </article>
   );
 }
+
+ResultCard.propTypes = {
+  dateTime: PropTypes.string,
+  teamA: PropTypes.node.isRequired,
+  teamB: PropTypes.node.isRequired,
+  meta: PropTypes.string,
+  score: PropTypes.string,
+  resultBadge: PropTypes.oneOf(['W', 'D', 'L']),
+};

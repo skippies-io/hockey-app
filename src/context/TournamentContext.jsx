@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 
 const TournamentContext = createContext(null);
 
@@ -46,11 +47,8 @@ export function TournamentProvider({ children }) {
   const activeTournament = availableTournaments.find(t => t.id === activeTournamentId) || null;
 
   // Console log for verification
-  useEffect(() => {
-    if (activeTournament) {
-      console.log("Active Tournament:", activeTournament.name, `(${activeTournament.id})`);
-    }
-  }, [activeTournament]);
+  // Console log for verification - REMOVED
+
 
   return (
     <TournamentContext.Provider value={{ activeTournamentId, setActiveTournamentId, availableTournaments, loading, activeTournament }}>
@@ -62,3 +60,7 @@ export function TournamentProvider({ children }) {
 export function useTournament() {
   return useContext(TournamentContext);
 }
+
+TournamentProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
