@@ -15,7 +15,7 @@ if (DATABASE_URL.includes("?")) {
 }
 
 const APPS_SCRIPT_BASE_URL = process.env.APPS_SCRIPT_BASE_URL || "";
-const PROVIDER_MODE = process.env.PROVIDER_MODE === "db" ? "db" : "apps";
+const PROVIDER_MODE = process.env.PROVIDER_MODE === "apps" ? "apps" : "db";
 const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 const BUILD_SHA = process.env.GIT_SHA || process.env.BUILD_SHA || "unknown";
 const FIXTURES_CACHE_TTL_MS = 60_000;
@@ -27,6 +27,25 @@ if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
+
+const databaseHost = (() => {
+  if (!DATABASE_URL) return "missing";
+  try {
+    const url = new URL(DATABASE_URL);
+    return url.host || "unknown";
+  } catch {
+    return "invalid";
+  }
+})();
+
+console.log(
+  [
+    "Hockey API server starting",
+    `provider: ${PROVIDER_MODE}`,
+    `database host: ${databaseHost}`,
+    `tournament: ${TOURNAMENT_ID}`,
+  ].join("\n")
+);
 
 // SSL Fix: For local dev with Supabase/Postgres, often we need rejectUnauthorized: false
 // The user explicitly requested this fix.

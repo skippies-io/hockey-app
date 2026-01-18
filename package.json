@@ -4,7 +4,9 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev-full.mjs",
+    "dev:fe": "vite",
+    "dev:server": "node server/index.mjs",
     "server": "node server/index.mjs",
     "dev:full": "node scripts/dev-full.mjs",
     "build": "vite build",
