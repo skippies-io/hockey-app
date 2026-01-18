@@ -7,7 +7,7 @@ import './index.css'
 
 import { TournamentProvider } from './context/TournamentContext'
 
-console.info("HJ build", import.meta.env.VITE_BUILD_ID);
+console.warn("HJ build", import.meta.env.VITE_BUILD_ID);
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
