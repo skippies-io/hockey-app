@@ -38,17 +38,21 @@ export default function AppLayout({
       <div className="app-shell min-h-screen bg-gray-50 flex flex-col">
         <div className="app-shell-inner">
           <header className="app-header">
-            <div className="app-header-top">
-              <Link to="/" className="brand-link">
-                <div className="brand-row">
+            <div className="header-main">
+              <div className="header-brand">
+                <Link to="/" className="brand-link">
                   <img
                     src={`${import.meta.env.BASE_URL}HJ_icon_192.png`}
                     alt="HJ Hockey For Juniors"
-                    className="brand-logo"
+                    className="app-logo"
                   />
-                  <div className="brand-title">Hockey For Juniors</div>
-                </div>
-              </Link>
+                  <h1 className="app-title">Hockey For Juniors</h1>
+                </Link>
+              </div>
+            </div>
+            
+            {/* The Missing Selector MUST go here */}
+            <div className="header-actions">
               <TournamentSwitcher />
             </div>
 
@@ -92,11 +96,14 @@ export default function AppLayout({
           </header>
 
 
-          {enableFilterSlot && filterContent ? (
-            <div className="app-filter-slot" aria-label="Filters">
-              <div className="app-filter-slot-inner">{filterContent}</div>
+
+          {/* Only render if filterContent exists. strict check. */}
+          {filterContent ? (
+            <div className="app-filter-slot">
+              {filterContent}
             </div>
           ) : null}
+
 
 
           <main className="app-main flex-1">{children}</main>
