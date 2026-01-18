@@ -91,13 +91,13 @@ export default function AppLayout({
             )}
           </header>
 
-          <div className="app-filter-slot" aria-label="Filters">
-            {enableFilterSlot && filterContent ? (
+
+          {enableFilterSlot && filterContent ? (
+            <div className="app-filter-slot" aria-label="Filters">
               <div className="app-filter-slot-inner">{filterContent}</div>
-            ) : (
-              <div className="filter-slot-placeholder" aria-hidden="true" />
-            )}
-          </div>
+            </div>
+          ) : null}
+
 
           <main className="app-main flex-1">{children}</main>
 
