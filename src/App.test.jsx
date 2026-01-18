@@ -1,24 +1,27 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import App from './App';
-import { BrowserRouter } from 'react-router-dom';
-import { TournamentProvider } from './context/TournamentContext';
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { BrowserRouter } from "react-router-dom";
 
-// Mock fetch
-globalThis.fetch = vi.fn(() => {
-  return Promise.resolve({
+import App from "./App";
+import { TournamentProvider } from "./context/TournamentContext";
+
+/* -----------------------------
+   Global mocks
+------------------------------ */
+
+globalThis.fetch = vi.fn(() =>
+  Promise.resolve({
     ok: true,
     json: () => Promise.resolve({ data: [] }),
-  })
-});
+  }),
+);
 
-// Mock localStorage
-const localStorageMock = (function () {
+const localStorageMock = (() => {
   let store = {};
   return {
     getItem: (key) => store[key] || null,
     setItem: (key, value) => {
-      store[key] = value.toString();
+      store[key] = String(value);
     },
     removeItem: (key) => {
       delete store[key];
@@ -28,53 +31,55 @@ const localStorageMock = (function () {
     },
   };
 })();
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-// Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation(() => ({
     matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
 });
 
+/* -----------------------------
+   Helper
+------------------------------ */
 
+function renderApp() {
+  return render(
+    <BrowserRouter>
+      <TournamentProvider>
+        <App />
+      </TournamentProvider>
+    </BrowserRouter>,
+  );
+}
 
-describe('App Smoke Test', () => {
-  it('renders without crashing', () => {
-    render(
-      <BrowserRouter>
-        <TournamentProvider>
-          <App />
-        </TournamentProvider>
-      </BrowserRouter>
-    );
-    expect(document.body).toBeTruthy();
+/* -----------------------------
+   Tests
+------------------------------ */
+
+describe("App Smoke Test", () => {
+  it("renders without crashing", async () => {
+    renderApp();
+
+    const brand = await screen.findByRole("heading", {
+      level: 1,
+      name: /Hockey For Juniors/i,
+    });
+    expect(brand).toBeTruthy();
   });
 
-  it('renders franchises route', async () => {
-    // We need to render at /franchises
-    window.history.pushState({}, 'Franchises', '/franchises');
-    
-    render(
-      <BrowserRouter>
-        <TournamentProvider>
-          <App />
-        </TournamentProvider>
-      </BrowserRouter>
-    );
-     // Use screen.findByText because api fetch is async
+  it("renders franchises route", async () => {
+    window.history.pushState({}, "Franchises", "/franchises");
+
+    renderApp();
+
     const heading = await screen.findByText(/Franchise Directory/i);
     expect(heading).toBeTruthy();
   });
-
-
 });
-
