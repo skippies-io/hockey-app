@@ -15,14 +15,19 @@ function sleep(ms) {
 }
 
 export function tournamentsEndpoint() {
-  const base = import.meta.env.VITE_DB_API_BASE;
-  if (base) {
-    return `${base}/tournaments`;
+  const base =
+    API_BASE ||
+    import.meta.env.VITE_API_BASE ||
+    import.meta.env.VITE_DB_API_BASE;
+
+  if (!base) {
+    console.warn("Missing API base; tournaments endpoint disabled.");
+    return null;
   }
-  if (import.meta.env.DEV) {
-    console.warn("Missing VITE_DB_API_BASE; tournaments endpoint disabled.");
-  }
-  return null;
+
+  // Normalize to origin (strip trailing /api if present)
+  const origin = base.replace(/\/api\/?$/, "");
+  return `${origin}/api/tournaments`;
 }
 
 async function fetchWithRetry(url, retryOptions = {}) {
