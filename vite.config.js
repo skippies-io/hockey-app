@@ -17,7 +17,7 @@ function resolveBuildId(env) {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, fileURLToPath(new URL(\x27.\x27, import.meta.url)), '');
+  const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
   const buildId = resolveBuildId(env);
 
   return {
