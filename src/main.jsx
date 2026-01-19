@@ -7,6 +7,8 @@ import './index.css'
 
 import { TournamentProvider } from './context/TournamentContext'
 
+console.warn("HJ build", import.meta.env.VITE_BUILD_ID);
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>

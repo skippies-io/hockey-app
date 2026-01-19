@@ -15,15 +15,12 @@ function sleep(ms) {
 }
 
 export function tournamentsEndpoint() {
-  if (DB_API_BASE) {
-    const base = DB_API_BASE.endsWith("/")
-      ? DB_API_BASE.slice(0, -1)
-      : DB_API_BASE;
+  const base = import.meta.env.VITE_DB_API_BASE;
+  if (base) {
     return `${base}/tournaments`;
   }
   if (import.meta.env.DEV) {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8787/api/tournaments`;
+    console.warn("Missing VITE_DB_API_BASE; tournaments endpoint disabled.");
   }
   return null;
 }

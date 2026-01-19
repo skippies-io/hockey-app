@@ -16,10 +16,13 @@ export function TournamentProvider({ children }) {
   useEffect(() => {
     async function fetchTournaments() {
       const url = tournamentsEndpoint();
+      console.warn('TournamentContext init', { url });
+      if (!url) {
+        console.error('TournamentContext build misconfigured: missing VITE_DB_API_BASE for tournaments.');
+        setLoading(false);
+        return;
+      }
       try {
-        if (!url) {
-          throw new Error('Missing VITE_DB_API_BASE for tournaments.');
-        }
         const res = await fetch(url);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
