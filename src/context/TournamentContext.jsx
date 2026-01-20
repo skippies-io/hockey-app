@@ -18,7 +18,7 @@ export function TournamentProvider({ children }) {
       const url = tournamentsEndpoint();
       console.warn('TournamentContext init', { url });
       if (!url) {
-        console.error('TournamentContext build misconfigured: missing VITE_DB_API_BASE for tournaments.');
+        console.error('TournamentContext disabled: tournaments endpoint unavailable.');
         setLoading(false);
         return;
       }
