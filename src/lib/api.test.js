@@ -66,4 +66,18 @@ describe("api helpers", () => {
       "http://localhost:8787/api?groups=1"
     );
   });
+
+  it("throws when fetch returns non-ok", async () => {
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      })
+    );
+
+    const { getStandingsRows } = await import("./api.js");
+
+    await expect(getStandingsRows("t1", "U9")).rejects.toThrow("HTTP 500");
+  });
 });

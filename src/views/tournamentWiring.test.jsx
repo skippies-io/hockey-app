@@ -141,4 +141,14 @@ describe("tournament wiring", () => {
       expect(apiMocks.getFranchises).not.toHaveBeenCalled();
     });
   });
+
+  it("Fixtures shows error state when API fails", async () => {
+    apiMocks.getFixturesRows.mockRejectedValueOnce(new Error("Boom"));
+
+    const { findByText } = renderWithRouter(
+      <Fixtures ageId="U9" ageGroups={[{ id: "U9", label: "U9" }]} />
+    );
+
+    expect(await findByText(/Error:/i)).toBeTruthy();
+  });
 });
