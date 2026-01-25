@@ -7,6 +7,7 @@ import { colorFromName, teamInitials } from "../lib/badges";
 import { makeTeamFollowKey, useFollows } from "../lib/follows";
 import { teamProfilePath } from "../lib/routes";
 import { parseDateToUTCms } from "../lib/date";
+import { useTournament } from "../context/TournamentContext";
 import {
   classifyFixtureState,
   computeResultPill,
@@ -47,6 +48,8 @@ export default function TeamProfile() {
   const [err, setErr] = useState("");
   const [fixtures, setFixtures] = useState([]);
   const [filter, setFilter] = useState("all");
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
 
   // Load fixtures for this age group
   useEffect(() => {
@@ -57,7 +60,12 @@ export default function TeamProfile() {
         setLoadingData(true);
         setFixtures([]);
         if (!ageId) return;
-        const list = await getFixturesRows(ageId);
+        if (!tournamentId) {
+          setFixtures([]);
+          setLoadingData(false);
+          return;
+        }
+        const list = await getFixturesRows(tournamentId, ageId);
         if (alive) setFixtures(list || []);
       } catch (e) {
         if (alive) setErr(e.message || String(e));
@@ -68,7 +76,7 @@ export default function TeamProfile() {
     return () => {
       alive = false;
     };
-  }, [ageId]);
+  }, [ageId, tournamentId]);
 
   // Derive matches and stats
   const { teamFixtures, stats, displayName, poolLabel } = useMemo(() => {

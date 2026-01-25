@@ -6,6 +6,7 @@ import Card from "../components/Card";
 import PageIntroCard from "../components/PageIntroCard";
 import { getStandingsRows } from "../lib/api";
 import { teamProfilePath } from "../lib/routes";
+import { useTournament } from "../context/TournamentContext";
 
 // --- Favorites helpers (shared behaviour with Fixtures/Standings) ---
 const FAV_KEY = "hj_favorites_v1";
@@ -50,6 +51,8 @@ export default function Team({ ageId, ageLabel }) {
   const [err, setErr] = useState(null);
   const [onlyFollowing, setOnlyFollowing] = useState(false);
   const { favs, toggle } = useFavorites();
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
 
   useEffect(() => {
     let alive = true;
@@ -58,9 +61,14 @@ export default function Team({ ageId, ageLabel }) {
       try {
         setLoading(true);
         setErr(null);
+        if (!tournamentId) {
+          setTeams([]);
+          setLoading(false);
+          return;
+        }
 
         // Pull teams from standings; store unique, sorted names
-        const rows = await getStandingsRows(ageId);
+        const rows = await getStandingsRows(tournamentId, ageId);
         if (!alive) return;
 
         const names = Array.from(
@@ -83,7 +91,7 @@ export default function Team({ ageId, ageLabel }) {
     return () => {
       alive = false;
     };
-  }, [ageId]);
+  }, [ageId, tournamentId]);
 
 
   const displayedTeams = useMemo(

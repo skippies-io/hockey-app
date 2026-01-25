@@ -1,5 +1,5 @@
 // src/lib/api.js
-const PROVIDER = import.meta.env.VITE_PROVIDER || "apps";
+const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
 export const API_BASE =
   PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
@@ -15,18 +15,14 @@ function sleep(ms) {
 }
 
 export function tournamentsEndpoint() {
-  const base =
-    API_BASE ||
-    import.meta.env.VITE_API_BASE ||
-    import.meta.env.VITE_DB_API_BASE;
+  // Prefer an explicit API base (db or apps), otherwise fall back to same-origin.
+  const base = API_BASE || import.meta.env.VITE_API_BASE || import.meta.env.VITE_DB_API_BASE;
 
-  if (!base) {
-    console.warn("Missing API base; tournaments endpoint disabled.");
-    return null;
-  }
+  // If no env base is configured (common in tests), use same-origin.
+  if (!base) return "/api/tournaments";
 
   // Normalize to origin (strip trailing /api if present)
-  const origin = base.replace(/\/api\/?$/, "");
+  const origin = String(base).replace(/\/api\/?$/, "");
   return `${origin}/api/tournaments`;
 }
 
@@ -114,8 +110,9 @@ function sortGroups(a, b) {
 
 /* ---------- Public API ---------- */
 
-export async function getGroups() {
-  const url = `${API_BASE}?groups=1`;
+export async function getGroups(tournamentId) {
+  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const url = `${API_BASE}?groups=1${t}`;
   const j = await fetchJSON(url);
   // normalise to {id, label} and sort
   return (j.groups || [])
@@ -123,20 +120,23 @@ export async function getGroups() {
     .sort(sortGroups);
 }
 
-export async function getStandingsRows(ageId) {
-  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}`;
+export async function getStandingsRows(tournamentId, ageId) {
+  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 
-export async function getFixturesRows(ageId) {
-  const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}`;
+export async function getFixturesRows(tournamentId, ageId) {
+  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 
-export async function getFranchises() {
-  const url = `${API_BASE}?sheet=Franchises`;
+export async function getFranchises(tournamentId) {
+  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const url = `${API_BASE}?sheet=Franchises${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }

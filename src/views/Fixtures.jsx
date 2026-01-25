@@ -6,6 +6,7 @@ import FixtureCard from "../components/FixtureCard";
 import { useFilterSlot } from "../components/filterSlotContext";
 import FilterBar from "../components/FilterBar";
 import { getFixturesRows } from "../lib/api";
+import { useTournament } from "../context/TournamentContext";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { useShowFollowedPreference } from "../lib/preferences";
 import { teamProfilePath } from "../lib/routes";
@@ -85,11 +86,13 @@ function sortByDateTime(a, b) {
   return toMinutes(a?.Time) - toMinutes(b?.Time);
 }
 
-async function fetchAllAgesFixtures({ ageGroups, deriveAgeId }) {
+async function fetchAllAgesFixtures({ ageGroups, deriveAgeId, tournamentId }) {
   const ageList = (ageGroups || []).filter((g) => g?.id && g?.id !== "all");
 
   const results = await Promise.all(
-    ageList.map((g) => getFixturesRows(g.id).catch((e) => ({ __error: e })))
+    ageList.map((g) =>
+      getFixturesRows(tournamentId, g.id).catch((e) => ({ __error: e }))
+    )
   );
 
   const merged = [];
@@ -123,6 +126,9 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
   const [date, setDate] = useState("All");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
 
   const [onlyFollowing, setOnlyFollowing] =
     useShowFollowedPreference("fixtures");
@@ -161,14 +167,24 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
         setLoading(true);
         setErr(null);
 
+        if (!tournamentId) {
+          setRows([]);
+          setLoading(false);
+          return;
+        }
+
         if (isAllAges) {
-          const merged = await fetchAllAgesFixtures({ ageGroups, deriveAgeId });
+          const merged = await fetchAllAgesFixtures({
+            ageGroups,
+            deriveAgeId,
+            tournamentId,
+          });
           if (!alive) return;
           setRows(merged);
           return;
         }
 
-        const data = await getFixturesRows(scopedAgeId);
+        const data = await getFixturesRows(tournamentId, scopedAgeId);
         if (!alive) return;
         setRows(data);
       } catch (e) {
@@ -182,7 +198,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId]);
+  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId, tournamentId]);
 
   const dates = useMemo(() => buildDatesDropdown(rows), [rows]);
 
