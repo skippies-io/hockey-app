@@ -41,3 +41,4 @@ secrets/
 .postgres
 docs/debugging/
 coverage/
+.env
