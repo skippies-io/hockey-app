@@ -40,3 +40,4 @@ secrets/
 .venv/
 .postgres
 docs/debugging/
+coverage/
