@@ -39,3 +39,4 @@ secrets/
 # Local Python virtualenv
 .venv/
 .postgres
+docs/debugging/
