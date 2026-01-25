@@ -29,6 +29,11 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'jsdom',
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov'],
+        reportsDirectory: 'coverage',
+      },
     },
     server: {
       hmr: { path: '/hockey-app/' },

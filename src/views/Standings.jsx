@@ -6,6 +6,7 @@ import StandingsRow from "../components/StandingsRow";
 import { useFilterSlot } from "../components/filterSlotContext";
 import FilterBar from "../components/FilterBar";
 import { getStandingsRows } from "../lib/api";
+import { useTournament } from "../context/TournamentContext";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { teamInitials, colorFromName } from "../lib/badges";
 import { teamProfilePath } from "../lib/routes";
@@ -287,6 +288,9 @@ export default function Standings({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
+
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("standings");
 
@@ -325,10 +329,17 @@ export default function Standings({
       try {
         setLoading(true);
         setErr(null);
+        if (!tournamentId) {
+          setRows([]);
+          setLoading(false);
+          return;
+        }
         if (isAllAges) {
           const ageList = (ageGroups || []).filter((g) => g.id && g.id !== "all");
           const results = await Promise.all(
-            ageList.map((g) => getStandingsRows(g.id).catch((e) => ({ __error: e })))
+            ageList.map((g) =>
+              getStandingsRows(tournamentId, g.id).catch((e) => ({ __error: e }))
+            )
           );
           if (!alive) return;
 
@@ -346,7 +357,7 @@ export default function Standings({
           }
           setRows(merged);
         } else {
-          const data = await getStandingsRows(scopedAgeId);
+          const data = await getStandingsRows(tournamentId, scopedAgeId);
           if (alive) setRows(data || []);
         }
       } catch (e) {
@@ -358,7 +369,7 @@ export default function Standings({
     return () => {
       alive = false;
     };
-  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId]);
+  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId, tournamentId]);
 
   // Derive pools from the actual rows (fallback when BE meta is missing)
   const derivedPoolsFromRows = useMemo(() => {

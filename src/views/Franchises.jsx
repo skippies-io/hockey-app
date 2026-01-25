@@ -2,15 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { getFranchises } from '../lib/api';
 import Card from '../components/Card';
 import PageHeading from '../components/PageHeading';
+import { useTournament } from "../context/TournamentContext";
 
 export default function Franchises() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
+
   useEffect(() => {
     let alive = true;
-    getFranchises()
+    if (!tournamentId) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    getFranchises(tournamentId)
       .then((rows) => {
         if (alive) setItems(rows);
       })
@@ -23,7 +32,7 @@ export default function Franchises() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [tournamentId]);
 
   if (loading) {
     return (
