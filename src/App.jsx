@@ -26,6 +26,7 @@ import TeamProfile from "./views/TeamProfile";
 import Overview from "./views/Overview";
 import Franchises from "./views/Franchises";
 import { useFilterSlot } from "./components/filterSlotContext";
+import DebugInfo from "./components/DebugInfo";
 
 import AdminLayout from "./views/admin/AdminLayout";
 import AnnouncementsPage from "./views/admin/AnnouncementsPage";
@@ -478,36 +479,39 @@ export default function App() {
   }, []);
 
   return (
-    <Routes>
-      {/* Admin Section */}
-      <Route path="admin" element={<AdminLayout />}>
-        <Route index element={<div style={{ padding: '2rem' }}><h1>Admin Dashboard</h1><p>Welcome to the Hockey Admin Console.</p></div>} />
-        <Route path="announcements" element={<AnnouncementsPage />} />
-        <Route path="*" element={<div style={{ padding: '2rem' }}>Page under construction</div>} />
-      </Route>
+    <>
+      <DebugInfo />
+      <Routes>
+        {/* Admin Section */}
+        <Route path="admin" element={<AdminLayout />}>
+          <Route index element={<div style={{ padding: '2rem' }}><h1>Admin Dashboard</h1><p>Welcome to the Hockey Admin Console.</p></div>} />
+          <Route path="announcements" element={<AnnouncementsPage />} />
+          <Route path="*" element={<div style={{ padding: '2rem' }}>Page under construction</div>} />
+        </Route>
 
-      {/* Public App Section */}
-      <Route element={<AppShell groups={groupsWithAll} />}>
-        <Route
-          index
-          element={
-            <>
-              <InstallPrompt />
-              <Overview groups={groupsWithAll} />
-            </>
-          }
-        />
-        <Route path="feedback" element={<Feedback />} />
-        <Route path="franchises" element={<Franchises />} />
-        <Route path=":ageId/team/:teamId" element={<TeamProfile />} />
-        <Route
-          path=":ageId/*"
-          element={
-            <AgeLayout groups={groupsWithAll} loading={loadingGroups} />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+        {/* Public App Section */}
+        <Route element={<AppShell groups={groupsWithAll} />}>
+          <Route
+            index
+            element={
+              <>
+                <InstallPrompt />
+                <Overview groups={groupsWithAll} />
+              </>
+            }
+          />
+          <Route path="feedback" element={<Feedback />} />
+          <Route path="franchises" element={<Franchises />} />
+          <Route path=":ageId/team/:teamId" element={<TeamProfile />} />
+          <Route
+            path=":ageId/*"
+            element={
+              <AgeLayout groups={groupsWithAll} loading={loadingGroups} />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </>
   );
 }

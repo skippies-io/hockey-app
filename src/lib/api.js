@@ -15,17 +15,19 @@ function sleep(ms) {
 }
 
 export function tournamentsEndpoint() {
-  if (DB_API_BASE) {
-    const base = DB_API_BASE.endsWith("/")
-      ? DB_API_BASE.slice(0, -1)
-      : DB_API_BASE;
-    return `${base}/tournaments`;
+  const base =
+    API_BASE ||
+    import.meta.env.VITE_API_BASE ||
+    import.meta.env.VITE_DB_API_BASE;
+
+  if (!base) {
+    console.warn("Missing API base; tournaments endpoint disabled.");
+    return null;
   }
-  if (import.meta.env.DEV) {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:8787/api/tournaments`;
-  }
-  return null;
+
+  // Normalize to origin (strip trailing /api if present)
+  const origin = base.replace(/\/api\/?$/, "");
+  return `${origin}/api/tournaments`;
 }
 
 async function fetchWithRetry(url, retryOptions = {}) {
