@@ -23,7 +23,7 @@ jobs:
 
       - name: Guardrail - no plain npm ci
         run: |
-          if grep -rnE "run:\s*npm ci$" .github/workflows; then
+          if grep -RInE '^\s*run:\s*"?npm ci"?\s*$' .github/workflows; then
             echo "ERROR: Detected plain 'npm ci' without --ignore-scripts. Use 'npm ci --ignore-scripts' instead."
             exit 1
           else
