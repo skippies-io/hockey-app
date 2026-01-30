@@ -141,6 +141,32 @@ export async function getFranchises(tournamentId) {
   return j.rows || [];
 }
 
+export async function getAnnouncements(tournamentId) {
+  const t = tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  // Ensure we hit the API base correctly. If API_BASE has query params (like in legacy), this might fail.
+  // Assuming API_BASE is just the origin for DB mode.
+  // Ideally, use '/api/announcements' relative if on same domain or construct properly.
+  
+  // Reuse fetchJSON logic but we need to construct the URL carefully if API_BASE is strange.
+  // For DB mode, API_BASE is usually just the host url.
+  
+  // Robust construction:
+  let baseUrl = API_BASE || "/api";
+  if (baseUrl.includes("?")) baseUrl = baseUrl.split("?")[0];
+  // Remove trailing specific path if strictly endpoint based, but API_BASE usually = endpoint for apps script.
+  // For DB mode, let's assume relative path /api/announcements is safer if we are proxied.
+  // But let's stick to the pattern:
+  
+  const url = `${baseUrl.replace(/\/api\/?$/, "")}/api/announcements${t}`;
+  try {
+     const j = await fetchJSON(url, { revalidate: true });
+     return j.data || [];
+  } catch (e) {
+     console.error("Failed to fetch announcements", e);
+     return [];
+  }
+}
+
 
 // Legacy helper (kept for any old imports)
 export async function getSheet(sheetName) {

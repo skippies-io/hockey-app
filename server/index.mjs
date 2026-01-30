@@ -411,6 +411,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
+    console.log("Incoming Request:", req.method, url.pathname); // DEBUG
     const isOptions = req.method === "OPTIONS";
     const isHealth = url.pathname === "/health";
 
@@ -469,6 +470,42 @@ const server = http.createServer(async (req, res) => {
       await handleAdminRequest(req, res, { url, pool, sendJson });
       return;
     }
+
+    // Public Announcements (New)
+    if (url.pathname === "/api/announcements") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+
+      const tournamentId = url.searchParams.get("tournamentId"); // Optional
+      
+      if (PROVIDER_MODE === "db") {
+        try {
+          const result = await pool.query(
+            `SELECT * FROM announcements 
+             WHERE is_published = true 
+               AND (tournament_id IS NULL OR tournament_id = $1)
+             ORDER BY created_at DESC`,
+            [tournamentId]
+          );
+          sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 60, swr: 300 } });
+        } catch(e) {
+          console.error(e);
+          sendJson(req, res, 500, { ok: false, error: "DB Error" });
+        }
+      } else {
+        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
+      }
+      return;
+    }
+
 
     // Tournaments List (New)
     if (url.pathname === "/api/tournaments") {
