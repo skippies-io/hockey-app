@@ -20,8 +20,8 @@ const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 const BUILD_SHA = process.env.GIT_SHA || process.env.BUILD_SHA || "unknown";
 const FIXTURES_CACHE_TTL_MS = 60_000;
 const STANDINGS_CACHE_TTL_MS = 60_000;
-const fixturesCache = new Map();
-const standingsCache = new Map();
+export const fixturesCache = new Map();
+export const standingsCache = new Map();
 
 if (PROVIDER_MODE === "db" && !DATABASE_URL) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
@@ -57,12 +57,12 @@ const ssl =
 const pool =
   PROVIDER_MODE === "db"
     ? new Pool({
-        connectionString: DATABASE_URL,
-        ssl,
-      })
+      connectionString: DATABASE_URL,
+      ssl,
+    })
     : null;
 
-function getClientIp(req) {
+export function getClientIp(req) {
   const raw = req.headers["x-forwarded-for"];
   const forwarded = Array.isArray(raw) ? raw[0] : raw;
   const first = forwarded ? String(forwarded).split(",")[0].trim() : "";
@@ -71,10 +71,10 @@ function getClientIp(req) {
 }
 
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000;
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 120;
-const rateLimitStore = new Map();
+export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 120;
+export const rateLimitStore = new Map();
 
-function checkRateLimit(ip) {
+export function checkRateLimit(ip) {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
   if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
@@ -103,7 +103,7 @@ function checkRateLimit(ip) {
   };
 }
 
-function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
+export function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
   if (noStore) {
     res.setHeader("Cache-Control", "no-store");
     return;
@@ -202,11 +202,11 @@ function mapStandingsRow(row) {
   };
 }
 
-function getFixturesCacheKey(sheet, ageId, tournamentId) {
+export function getFixturesCacheKey(sheet, ageId, tournamentId) {
   return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
-function getCachedFixtures(cacheKey) {
+export function getCachedFixtures(cacheKey) {
   const cached = fixturesCache.get(cacheKey);
   if (!cached) return null;
   if (Date.now() > cached.expiresAt) {
@@ -223,7 +223,7 @@ function setCachedFixtures(cacheKey, payload) {
   });
 }
 
-function getStandingsCacheKey(sheet, ageId, tournamentId) {
+export function getStandingsCacheKey(sheet, ageId, tournamentId) {
   return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
@@ -485,7 +485,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const tournamentId = url.searchParams.get("tournamentId"); // Optional
-      
+
       if (PROVIDER_MODE === "db") {
         try {
           const result = await pool.query(
@@ -496,7 +496,7 @@ const server = http.createServer(async (req, res) => {
             [tournamentId]
           );
           sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 60, swr: 300 } });
-        } catch(e) {
+        } catch (e) {
           console.error(e);
           sendJson(req, res, 500, { ok: false, error: "DB Error" });
         }
@@ -519,7 +519,7 @@ const server = http.createServer(async (req, res) => {
         sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
-      
+
       if (PROVIDER_MODE === "db") {
         try {
           // Fetch from the actual tournament table now that we know it exists
@@ -527,7 +527,7 @@ const server = http.createServer(async (req, res) => {
             `SELECT id, name FROM tournament ORDER BY created_at DESC`
           );
           sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
-        } catch(e) {
+        } catch (e) {
           console.error(e);
           sendJson(req, res, 500, { ok: false, error: "DB Error" });
         }
@@ -729,7 +729,7 @@ const server = http.createServer(async (req, res) => {
       }
       return;
     }
-    
+
     sendJson(
       req,
       res,

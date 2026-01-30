@@ -18,11 +18,16 @@ if (!process.env.DATABASE_URL && existsSync(resolve(__dirname, '../.env.db.local
   });
 }
 
-const DATABASE_URL = process.env.DATABASE_URL;
+let DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
   console.error("Missing DATABASE_URL");
   process.exit(1);
+}
+
+// Fix: Strip ?sslmode=require if present to force local SSL settings
+if (DATABASE_URL.includes("?")) {
+  DATABASE_URL = DATABASE_URL.split("?")[0];
 }
 
 const migrationFile = process.argv[2];
