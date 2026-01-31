@@ -1,9 +1,19 @@
 // src/lib/api.js
 const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
-export const API_BASE = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_BASE || "http://localhost:8787/api")
-  : import.meta.env.VITE_API_BASE;
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
+const RAW_API_BASE = import.meta.env.VITE_API_BASE;
+const DEFAULT_DEV_API_BASE = "http://localhost:8787/api";
+const resolveApiBase = () => {
+  if (PROVIDER === "db") {
+    return import.meta.env.DEV
+      ? (DB_API_BASE || RAW_API_BASE || DEFAULT_DEV_API_BASE)
+      : (DB_API_BASE || RAW_API_BASE);
+  }
+  return import.meta.env.DEV
+    ? (RAW_API_BASE || DEFAULT_DEV_API_BASE)
+    : RAW_API_BASE;
+};
+export const API_BASE = resolveApiBase();
 const APP_VER = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
