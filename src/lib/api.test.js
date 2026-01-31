@@ -15,6 +15,7 @@ describe("api helpers", () => {
     vi.stubEnv("VITE_PROVIDER", "db");
     vi.stubEnv("VITE_DB_API_BASE", "http://localhost:8787/api");
     vi.stubEnv("VITE_API_BASE", "http://localhost:8787");
+    vi.stubEnv("VITE_APP_VERSION", "v1");
     globalThis.fetch = mockFetch;
     sessionStorage.clear();
     mockFetch.mockReset();
@@ -79,5 +80,43 @@ describe("api helpers", () => {
     const { getStandingsRows } = await import("./api.js");
 
     await expect(getStandingsRows("t1", "U9")).rejects.toThrow("HTTP 500");
+  });
+
+  it("getAnnouncements handles success and error", async () => {
+    const { getAnnouncements } = await import("./api.js");
+
+    // Success
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true, data: [{ id: '1' }] }));
+    const data = await getAnnouncements("t1");
+    expect(data).toHaveLength(1);
+
+    // Clear cache to force refetch for error test
+    sessionStorage.clear();
+
+    // Error
+    mockFetch.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+    const empty = await getAnnouncements("t1");
+    expect(empty).toHaveLength(0);
+  });
+
+  it("sendFeedback sends POST correctly", async () => {
+    const { sendFeedback } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true }));
+
+    await sendFeedback({ name: 'N', email: 'E', message: 'M' });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:8787/api",
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it("refreshAll clears session storage keys", async () => {
+    const { refreshAll } = await import("./api.js");
+    sessionStorage.setItem('hj:cache:v1:test', 'val');
+    sessionStorage.setItem('non-hj', 'val');
+
+    refreshAll();
+    expect(sessionStorage.getItem('hj:cache:v1:test')).toBeNull();
+    expect(sessionStorage.getItem('non-hj')).toBe('val');
   });
 });
