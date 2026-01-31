@@ -3,7 +3,7 @@ const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
 export const API_BASE =
   PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
-const APP_VER  = import.meta.env.VITE_APP_VERSION || "v1";
+const APP_VER = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
 const DEFAULT_RETRY = { retries: 2, baseDelayMs: 300 };
@@ -67,9 +67,11 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
 
       // stale-while-revalidate (background refresh)
       if (revalidate) {
-        fetch(url)
-          .then(r => r.json())
-          .then(nd => sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data: nd })))
+        void fetch(url)
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(nd => {
+            if (nd) sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data: nd }));
+          })
           .catch(() => { /* background refresh failed; keep stale */ });
       }
       return data; // stale but immediate
@@ -146,24 +148,24 @@ export async function getAnnouncements(tournamentId) {
   // Ensure we hit the API base correctly. If API_BASE has query params (like in legacy), this might fail.
   // Assuming API_BASE is just the origin for DB mode.
   // Ideally, use '/api/announcements' relative if on same domain or construct properly.
-  
+
   // Reuse fetchJSON logic but we need to construct the URL carefully if API_BASE is strange.
   // For DB mode, API_BASE is usually just the host url.
-  
+
   // Robust construction:
   let baseUrl = API_BASE || "/api";
   if (baseUrl.includes("?")) baseUrl = baseUrl.split("?")[0];
   // Remove trailing specific path if strictly endpoint based, but API_BASE usually = endpoint for apps script.
   // For DB mode, let's assume relative path /api/announcements is safer if we are proxied.
   // But let's stick to the pattern:
-  
+
   const url = `${baseUrl.replace(/\/api\/?$/, "")}/api/announcements${t}`;
   try {
-     const j = await fetchJSON(url, { revalidate: true });
-     return j.data || [];
+    const j = await fetchJSON(url, { revalidate: true });
+    return j.data || [];
   } catch (e) {
-     console.error("Failed to fetch announcements", e);
-     return [];
+    console.error("Failed to fetch announcements", e);
+    return [];
   }
 }
 

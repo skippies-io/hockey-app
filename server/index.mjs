@@ -255,7 +255,7 @@ async function getGroupsPayload(tournamentId) {
      ORDER BY id`,
     [tournamentId]
   );
-  return { groups: result.rows };
+  return { groups: (result && result.rows) ? result.rows : [] };
 }
 
 async function getFixturesPayload(ageId, tournamentId) {
@@ -289,7 +289,7 @@ async function getFixturesPayload(ageId, tournamentId) {
      ORDER BY f.date, f.time, f.fixture_key`,
     [tournamentId, ageId]
   );
-  return { rows: result.rows.map(mapFixtureRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapFixtureRow) : [] };
 }
 
 async function getFixturesAllPayload(tournamentId) {
@@ -322,7 +322,7 @@ async function getFixturesAllPayload(tournamentId) {
      ORDER BY f.date, f.time, f.fixture_key`,
     [tournamentId]
   );
-  return { rows: result.rows.map(mapFixtureRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapFixtureRow) : [] };
 }
 
 async function getStandingsPayload(ageId, tournamentId) {
@@ -349,7 +349,7 @@ async function getStandingsPayload(ageId, tournamentId) {
      ORDER BY "Pool", "Rank", "Team"`,
     [tournamentId, ageId]
   );
-  return { rows: result.rows.map(mapStandingsRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
 async function getStandingsAllPayload(tournamentId) {
@@ -375,7 +375,7 @@ async function getStandingsAllPayload(tournamentId) {
      ORDER BY "Pool", "Rank", "Team"`,
     [tournamentId]
   );
-  return { rows: result.rows.map(mapStandingsRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
 async function fetchAppsJson(targetUrl) {
