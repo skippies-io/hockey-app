@@ -20,10 +20,10 @@ const tlsInsecureFlag = (process.env.PG_TLS_INSECURE || "").toLowerCase();
 const BUILD_SHA = process.env.GIT_SHA || process.env.BUILD_SHA || "unknown";
 const FIXTURES_CACHE_TTL_MS = 60_000;
 const STANDINGS_CACHE_TTL_MS = 60_000;
-const fixturesCache = new Map();
-const standingsCache = new Map();
+export const fixturesCache = new Map();
+export const standingsCache = new Map();
 
-if (PROVIDER_MODE === "db" && !DATABASE_URL) {
+if (PROVIDER_MODE === "db" && !DATABASE_URL && !process.env.VITEST) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
@@ -51,18 +51,18 @@ console.log(
 // The user explicitly requested this fix.
 const ssl =
   PROVIDER_MODE === "db"
-    ? { rejectUnauthorized: false }
+    ? { rejectUnauthorized: tlsInsecureFlag !== "true" }
     : false;
 
-const pool =
+export const pool =
   PROVIDER_MODE === "db"
     ? new Pool({
-        connectionString: DATABASE_URL,
-        ssl,
-      })
+      connectionString: DATABASE_URL,
+      ssl,
+    })
     : null;
 
-function getClientIp(req) {
+export function getClientIp(req) {
   const raw = req.headers["x-forwarded-for"];
   const forwarded = Array.isArray(raw) ? raw[0] : raw;
   const first = forwarded ? String(forwarded).split(",")[0].trim() : "";
@@ -71,10 +71,10 @@ function getClientIp(req) {
 }
 
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000;
-const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 120;
-const rateLimitStore = new Map();
+export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 120;
+export const rateLimitStore = new Map();
 
-function checkRateLimit(ip) {
+export function checkRateLimit(ip) {
   const now = Date.now();
   const entry = rateLimitStore.get(ip);
   if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
@@ -103,7 +103,7 @@ function checkRateLimit(ip) {
   };
 }
 
-function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
+export function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
   if (noStore) {
     res.setHeader("Cache-Control", "no-store");
     return;
@@ -114,7 +114,7 @@ function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
   );
 }
 
-function sendJson(req, res, status, payload, { cache, head = false } = {}) {
+export function sendJson(req, res, status, payload, { cache, head = false } = {}) {
   const body = JSON.stringify(payload);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -138,7 +138,7 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 }
 
 // Allow GitHub Pages + local dev to access the API in browsers.
-function applyCors(req, res) {
+export function applyCors(req, res) {
   const requestOrigin = req.headers.origin || "";
   if (!requestOrigin) return;
 
@@ -202,11 +202,11 @@ function mapStandingsRow(row) {
   };
 }
 
-function getFixturesCacheKey(sheet, ageId, tournamentId) {
+export function getFixturesCacheKey(sheet, ageId, tournamentId) {
   return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
-function getCachedFixtures(cacheKey) {
+export function getCachedFixtures(cacheKey) {
   const cached = fixturesCache.get(cacheKey);
   if (!cached) return null;
   if (Date.now() > cached.expiresAt) {
@@ -223,7 +223,7 @@ function setCachedFixtures(cacheKey, payload) {
   });
 }
 
-function getStandingsCacheKey(sheet, ageId, tournamentId) {
+export function getStandingsCacheKey(sheet, ageId, tournamentId) {
   return `${sheet}:${ageId}:${PROVIDER_MODE}:${tournamentId}`;
 }
 
@@ -255,7 +255,7 @@ async function getGroupsPayload(tournamentId) {
      ORDER BY id`,
     [tournamentId]
   );
-  return { groups: result.rows };
+  return { groups: (result && result.rows) ? result.rows : [] };
 }
 
 async function getFixturesPayload(ageId, tournamentId) {
@@ -289,7 +289,7 @@ async function getFixturesPayload(ageId, tournamentId) {
      ORDER BY f.date, f.time, f.fixture_key`,
     [tournamentId, ageId]
   );
-  return { rows: result.rows.map(mapFixtureRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapFixtureRow) : [] };
 }
 
 async function getFixturesAllPayload(tournamentId) {
@@ -322,7 +322,7 @@ async function getFixturesAllPayload(tournamentId) {
      ORDER BY f.date, f.time, f.fixture_key`,
     [tournamentId]
   );
-  return { rows: result.rows.map(mapFixtureRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapFixtureRow) : [] };
 }
 
 async function getStandingsPayload(ageId, tournamentId) {
@@ -349,7 +349,7 @@ async function getStandingsPayload(ageId, tournamentId) {
      ORDER BY "Pool", "Rank", "Team"`,
     [tournamentId, ageId]
   );
-  return { rows: result.rows.map(mapStandingsRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
 async function getStandingsAllPayload(tournamentId) {
@@ -375,7 +375,7 @@ async function getStandingsAllPayload(tournamentId) {
      ORDER BY "Pool", "Rank", "Team"`,
     [tournamentId]
   );
-  return { rows: result.rows.map(mapStandingsRow) };
+  return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
 async function fetchAppsJson(targetUrl) {
@@ -407,10 +407,28 @@ async function fetchAppsJson(targetUrl) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+async function handleDbGet(req, res, query, params = [], cache = {}) {
+  const isHead = req.method === "HEAD";
+  if (PROVIDER_MODE === "db") {
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const result = await pool.query(query, params);
+      const data = (result && result.rows) ? result.rows : [];
+      sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache });
+    } catch (e) {
+      console.error(e);
+      sendJson(req, res, 500, { ok: false, error: "DB Error" });
+    }
+  } else {
+    sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
+  }
+}
+
+export const requestHandler = async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
+    console.log("Incoming Request:", req.method, url.pathname); // DEBUG
     const isOptions = req.method === "OPTIONS";
     const isHealth = url.pathname === "/health";
 
@@ -470,6 +488,30 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Public Announcements (New)
+    if (url.pathname === "/api/announcements") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+
+      const tournamentId = url.searchParams.get("tournamentId"); // Optional
+      const query = `SELECT * FROM announcements 
+                     WHERE is_published = true 
+                       AND (tournament_id IS NULL OR tournament_id = $1)
+                     ORDER BY created_at DESC`;
+      const params = tournamentId ? [tournamentId] : [];
+      await handleDbGet(req, res, query, params, { maxAge: 60, swr: 300 });
+      return;
+    }
+
+
     // Tournaments List (New)
     if (url.pathname === "/api/tournaments") {
       applyCors(req, res);
@@ -482,22 +524,9 @@ const server = http.createServer(async (req, res) => {
         sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
         return;
       }
-      
-      if (PROVIDER_MODE === "db") {
-        try {
-          // Fetch from the actual tournament table now that we know it exists
-          const result = await pool.query(
-            `SELECT id, name FROM tournament ORDER BY created_at DESC`
-          );
-          sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
-        } catch(e) {
-          console.error(e);
-          sendJson(req, res, 500, { ok: false, error: "DB Error" });
-        }
-      } else {
-        // Apps Script mode fallback (not implemented for multi-tournament yet)
-        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
-      }
+
+      const query = `SELECT id, name FROM tournament ORDER BY created_at DESC`;
+      await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
       return;
     }
 
@@ -692,7 +721,7 @@ const server = http.createServer(async (req, res) => {
       }
       return;
     }
-    
+
     sendJson(
       req,
       res,
@@ -704,8 +733,12 @@ const server = http.createServer(async (req, res) => {
     console.error(err);
     sendJson(req, res, 500, { ok: false, error: "Server error" });
   }
-});
+};
 
-server.listen(PORT, () => {
-  console.log(`DB API server listening on http://localhost:${PORT}${API_PATH}`);
-});
+export const server = http.createServer(requestHandler);
+
+if (!process.env.VITEST) {
+  server.listen(PORT, () => {
+    console.log(`DB API server listening on http://localhost:${PORT}${API_PATH}`);
+  });
+}

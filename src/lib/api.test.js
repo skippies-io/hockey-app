@@ -15,6 +15,7 @@ describe("api helpers", () => {
     vi.stubEnv("VITE_PROVIDER", "db");
     vi.stubEnv("VITE_DB_API_BASE", "http://localhost:8787/api");
     vi.stubEnv("VITE_API_BASE", "http://localhost:8787");
+    vi.stubEnv("VITE_APP_VERSION", "v1");
     globalThis.fetch = mockFetch;
     sessionStorage.clear();
     mockFetch.mockReset();
@@ -79,5 +80,110 @@ describe("api helpers", () => {
     const { getStandingsRows } = await import("./api.js");
 
     await expect(getStandingsRows("t1", "U9")).rejects.toThrow("HTTP 500");
+  });
+
+  it("getAnnouncements handles success and error", async () => {
+    const { getAnnouncements } = await import("./api.js");
+
+    // Success
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true, data: [{ id: '1' }] }));
+    const data = await getAnnouncements("t1");
+    expect(data).toHaveLength(1);
+
+    // Clear cache to force refetch for error test
+    sessionStorage.clear();
+
+    // Error
+    mockFetch.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+    const empty = await getAnnouncements("t1");
+    expect(empty).toHaveLength(0);
+  });
+
+  it("sendFeedback sends POST correctly", async () => {
+    const { sendFeedback } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true }));
+
+    await sendFeedback({ name: 'N', email: 'E', message: 'M' });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:8787/api",
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it("sendFeedback throws on network or api failure", async () => {
+    const { sendFeedback } = await import("./api.js");
+
+    // Network error
+    mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await expect(sendFeedback({})).rejects.toThrow('Network error');
+
+    // API error
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: false, error: 'Server says no' }));
+    await expect(sendFeedback({})).rejects.toThrow('Server says no');
+  });
+
+  it("refreshAll clears session storage keys", async () => {
+    const { refreshAll } = await import("./api.js");
+    sessionStorage.setItem('hj:cache:v1:test', 'val');
+    sessionStorage.setItem('non-hj', 'val');
+
+    refreshAll();
+    expect(sessionStorage.getItem('hj:cache:v1:test')).toBeNull();
+    expect(sessionStorage.getItem('non-hj')).toBe('val');
+  });
+
+  it("tournamentsEndpoint returns correct url", async () => {
+    const { tournamentsEndpoint } = await import("./api.js");
+    expect(tournamentsEndpoint()).toContain("/api/tournaments");
+  });
+
+  it("getGroups sorts groups correctly", async () => {
+    const { getGroups } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({
+      ok: true,
+      groups: [{ id: 'U11G', label: 'U11G' }, { id: 'U9B', label: 'U9B' }]
+    }));
+    const groups = await getGroups();
+    expect(groups[0].id).toBe('U9B');
+  });
+
+  it("getSheet handles legacy call", async () => {
+    const { getSheet } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true, rows: [1, 2] }));
+    const rows = await getSheet('Tests');
+    expect(rows).toHaveLength(2);
+  });
+
+  it("fetchJSON handles stale-while-revalidate", async () => {
+    const { getGroups } = await import("./api.js");
+    const now = Date.now();
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+
+    // Store stale data (90s old, MAX_AGE is 60s)
+    sessionStorage.setItem(key, JSON.stringify({
+      t: now - 90_000,
+      data: { groups: [{ id: 'STALE' }] }
+    }));
+
+    mockFetch.mockImplementationOnce(() => mockOkJson({ groups: [{ id: 'FRESH' }] }));
+
+    const data = await getGroups();
+    expect(data[0].id).toBe('STALE'); // returns stale immediately
+
+    // Wait for background fetch (it's un-awaited in the code)
+    await new Promise(r => setTimeout(r, 20));
+    expect(mockFetch).toHaveBeenCalled();
+  });
+
+  it("fetchJSON background refresh handles failure gracefully", async () => {
+    const { getGroups } = await import("./api.js");
+    const now = Date.now();
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+    sessionStorage.setItem(key, JSON.stringify({ t: now - 90_000, data: { groups: [] } }));
+
+    mockFetch.mockRejectedValueOnce(new Error("BG FAIL"));
+    await getGroups();
+    await new Promise(r => setTimeout(r, 20));
+    // Should not throw, just log/ignore
   });
 });

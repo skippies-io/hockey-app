@@ -21,6 +21,16 @@ jobs:
       - name: Guardrail - block Apps Script references
         run: scripts/ci/no-apps-script.sh
 
+      - name: Guardrail - no plain npm ci
+        run: |
+          set -euo pipefail
+          if grep -RInE '^\s*run:\s*"?npm ci"?\s*$' .github/workflows; then
+            echo "ERROR: Detected plain 'npm ci' without --ignore-scripts. Use 'npm ci --ignore-scripts' instead."
+            exit 1
+          else
+            echo "OK: No plain npm ci found."
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238
         with:
@@ -28,8 +38,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install
-        run: npm ci
+      - name: Install (no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild required native deps
+        run: npm rebuild esbuild
 
       - name: Lint
         run: npm run lint

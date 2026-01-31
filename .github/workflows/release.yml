@@ -28,8 +28,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install
-        run: npm ci
+      - name: Install (no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild required native deps
+        run: npm rebuild esbuild
 
       - name: Build
         run: npm run build

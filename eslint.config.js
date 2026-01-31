@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import reactPlugin from 'eslint-plugin-react'
 
 export default defineConfig([
-  globalIgnores(['dist', 'public']),
+  globalIgnores(['dist', 'public', 'coverage']),
   {
     files: ['**/*.{js,jsx}'],
     plugins: {
@@ -36,6 +36,21 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
       'react/prop-types': 'error',
+    },
+  },
+  {
+    files: ['test/**/*.{js,mjs}', 'server/**/*.{js,mjs}', 'scripts/**/*.{js,mjs}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.node,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-console': 'off', // Allow console statements in server and scripts
     },
   },
 ])

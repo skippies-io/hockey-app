@@ -4,6 +4,10 @@ This document records what shipped to users and what is planned next.
 It is meant to be a lightweight, release-friendly summary for quick reference.
 
 ## Shipped (most recent first)
+- 2026-01-30 — tag v2.1.0 — Announcements 2.0: filtering, draft support, and enhanced banner.
+  - User-visible change: Contextual announcement filtering via `tournament_id`.
+  - User-visible change: "Draft" vs "Published" toggle for admin management.
+  - User-visible change: Enhanced `AnnouncementBanner` with character limits and better responsive layout.
 - 2025-12-29 — tag v1.6.0 — DB-backed read models + API provider switch.
   - User-visible change: v1.6 DB schema/migrations and ingestion for read models.
   - User-visible change: Minimal DB-backed `/api` server compatible with Apps Script endpoints.

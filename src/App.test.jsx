@@ -82,4 +82,31 @@ describe("App Smoke Test", () => {
     const heading = await screen.findByText(/Franchise Directory/i);
     expect(heading).toBeTruthy();
   });
-});
+
+  it("renders fixtures route", async () => {
+    window.history.pushState({}, "Fixtures", "/U12/fixtures");
+
+    renderApp();
+
+    // Should render the Fixtures component, check for some text it contains
+    const heading = await screen.findByText(/Fixtures/i);
+    expect(heading).toBeTruthy();
+  });
+
+  it("renders standings route", async () => {
+    window.history.pushState({}, "Standings", "/U12/standings");
+
+    renderApp();
+
+    const heading = await screen.findByText(/Standings/i);
+    expect(heading).toBeTruthy();
+  });
+
+  it("renders teams route", async () => {
+    window.history.pushState({}, "Teams", "/U12/teams");
+
+    renderApp();
+
+    const heading = await screen.findByText(/Teams/i);
+    expect(heading).toBeTruthy();
+  });});

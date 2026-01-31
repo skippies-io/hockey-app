@@ -5,9 +5,17 @@ Purpose: give an AI coding agent immediate, actionable context so it can be prod
 ## Big picture (what the app is)
 - React single-page app built with Vite (React + HMR). Entry: `src/main.jsx` → `src/App.jsx`.
 - Router: **BrowserRouter** (React Router v7) with routes like `/:ageId/{fixtures|standings|teams}` and `/:ageId/team/:teamName`.
-- **Backend**: Supabase / PostgreSQL database accessed via Node.js API server (`server/index.mjs`).
+- **Backend**: Node.js API with a PostgreSQL (Supabase) database (`server/index.mjs`).
 - **Multi-Tournament Architecture**: `TournamentContext` provides `activeTournamentId` and `availableTournaments`.
 - Static site deployed to **GitHub Pages** via `.github/workflows/deploy.yml` that runs `npm run build` and publishes `dist/`.
+
+## Data Model (PostgreSQL)
+Core tables in the schema:
+- **tournament**: The top-level entity (id, name, theme).
+- **groups**: Acts as age divisions/categories (linked to tournament).
+- **team**: Participating teams (linked to tournament and group).
+- **fixture**: Matches/Games (date, time, venue, linked to teams).
+- **result**: Scores for a fixture (score1, score2).
 
 ## Key workflows / commands
 - Development (HMR): `npm run dev:full` (runs both Vite + Node server); Node >= 20.
@@ -20,6 +28,8 @@ Purpose: give an AI coding agent immediate, actionable context so it can be prod
 - Vite exposes env vars as `import.meta.env.VITE_*`.
   - `VITE_PROVIDER` — `"db"` for database mode (default in V2).
   - `VITE_DB_API_BASE` — API base URL for database provider (e.g., `http://localhost:8787/api`).
+  - `VITE_SUPABASE_URL` — Supabase Project URL.
+  - `VITE_SUPABASE_ANON_KEY` — Supabase Anon Public Key.
   - `VITE_APP_VERSION` (used in cache keys; default `v1`). In CI, `.env.production` sets it to `${GITHUB_SHA}`.
 - **Server** (Node.js):
   - `DATABASE_URL` — PostgreSQL connection string (loaded from `.env.db.local` for local dev).
@@ -34,6 +44,10 @@ Purpose: give an AI coding agent immediate, actionable context so it can be prod
 - Error and retry conventions:
   - `fetchJSON` throws `Error('HTTP <status>')` or API-supplied `data.error`.
   - Keep UI-level catch blocks simple (message string).
+- **Caching**: The Node.js API server implements in-memory caching for fixtures and standings to reduce DB load.
+- **Announcements 2.0**:
+  - Uses `is_published` boolean filter.
+  - Contextual filtering via `tournament_id` (null = General, value = Specific Tournament).
 
 ## Files & code patterns to inspect when changing behavior
 - `src/lib/api.js` — API client, caching, SWR behavior.
