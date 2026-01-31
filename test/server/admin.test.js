@@ -114,7 +114,7 @@ describe('handleAdminRequest', () => {
         const url = new URL('http://localhost/api/admin/announcements/999');
         mockReq.method = 'PUT';
         mockReq.on = vi.fn((event, cb) => {
-            if (event === 'data') cb(JSON.stringify({ title: 't' }));
+            if (event === 'data') cb(JSON.stringify({ title: 't', body: 'b' }));
             if (event === 'end') cb();
         });
         mockPool.query.mockResolvedValueOnce({ rows: [] });
@@ -141,11 +141,33 @@ describe('handleAdminRequest', () => {
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
     });
 
+    it('POST returns 400 if title or body missing', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(JSON.stringify({ title: '' }));
+            if (event === 'end') cb();
+        });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.any(Object));
+    });
+
+    it('PUT returns 400 if title or body missing', async () => {
+        const url = new URL('http://localhost/api/admin/announcements/1');
+        mockReq.method = 'PUT';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(JSON.stringify({ title: 'T', body: '' }));
+            if (event === 'end') cb();
+        });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.any(Object));
+    });
+
     it('POST handles db error during insert', async () => {
         const url = new URL('http://localhost/api/admin/announcements');
         mockReq.method = 'POST';
         mockReq.on = vi.fn((event, cb) => {
-            if (event === 'data') cb(JSON.stringify({ title: 't' }));
+            if (event === 'data') cb(JSON.stringify({ title: 't', body: 'b' }));
             if (event === 'end') cb();
         });
         mockPool.query.mockRejectedValueOnce(new Error('INSERT FAIL'));
@@ -157,7 +179,7 @@ describe('handleAdminRequest', () => {
         const url = new URL('http://localhost/api/admin/announcements/1');
         mockReq.method = 'PUT';
         mockReq.on = vi.fn((event, cb) => {
-            if (event === 'data') cb(JSON.stringify({ title: 't' }));
+            if (event === 'data') cb(JSON.stringify({ title: 't', body: 'b' }));
             if (event === 'end') cb();
         });
         mockPool.query.mockRejectedValueOnce(new Error('UPDATE FAIL'));

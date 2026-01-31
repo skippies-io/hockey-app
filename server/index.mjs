@@ -496,7 +496,8 @@ export const requestHandler = async (req, res) => {
              ORDER BY created_at DESC`,
             [tournamentId]
           );
-          sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 60, swr: 300 } });
+          const data = (result && result.rows) ? result.rows : [];
+          sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 60, swr: 300 } });
         } catch (e) {
           console.error(e);
           sendJson(req, res, 500, { ok: false, error: "DB Error" });
@@ -528,7 +529,8 @@ export const requestHandler = async (req, res) => {
           const result = await pool.query(
             `SELECT id, name FROM tournament ORDER BY created_at DESC`
           );
-          sendJson(req, res, 200, { ok: true, data: result.rows }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
+          const data = (result && result.rows) ? result.rows : [];
+          sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
         } catch (e) {
           console.error(e);
           sendJson(req, res, 500, { ok: false, error: "DB Error" });

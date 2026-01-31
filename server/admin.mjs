@@ -25,7 +25,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
       try {
         if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
         const { title, body: content, severity, tournament_id, is_published } = body;
+
+        if (!title || !content) {
+          return sendJson(req, res, 400, { ok: false, error: "Title and Message are required" });
+        }
 
         // Use null for tournament_id if it's "general" or empty
         const safeTournamentId = tournament_id === 'general' || !tournament_id ? null : tournament_id;
@@ -58,7 +63,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
       try {
         if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
         const { title, body: content, severity, tournament_id, is_published } = body;
+
+        if (!title || !content) {
+          return sendJson(req, res, 400, { ok: false, error: "Title and Message are required" });
+        }
+
         const safeTournamentId = tournament_id === 'general' || !tournament_id ? null : tournament_id;
 
         // Logic: Update fields. If is_published is explicitly true, we effectively "republish".
@@ -82,7 +93,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
         const result = await pool.query(query, params);
 
-        if (result.rows.length === 0) {
+        if (!result || !result.rows || result.rows.length === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Announcement not found" });
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });

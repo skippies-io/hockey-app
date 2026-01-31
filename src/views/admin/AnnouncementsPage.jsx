@@ -268,7 +268,7 @@ export default function AnnouncementsPage() {
       
       if (json.ok) {
         resetForm();
-        fetchData();
+        await fetchData();
       } else {
         setError(json.error || "Failed to save.");
       }
