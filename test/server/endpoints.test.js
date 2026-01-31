@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import process from 'node:process';
 
 // Use vi.hoisted to ensure the mock function is available before the mock factory runs
 const mocks = vi.hoisted(() => ({
@@ -21,7 +22,7 @@ process.env.PROVIDER_MODE = 'db';
 process.env.DATABASE_URL = 'postgres://fake';
 
 // Import the module under test
-import { requestHandler, fixturesCache, standingsCache, getFixturesCacheKey, getStandingsCacheKey } from '../../server/index.mjs';
+import { requestHandler, fixturesCache, standingsCache, getFixturesCacheKey } from '../../server/index.mjs';
 
 describe('API Endpoints (Mocked DB)', () => {
     beforeEach(() => {

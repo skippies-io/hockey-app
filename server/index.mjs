@@ -51,7 +51,7 @@ console.log(
 // The user explicitly requested this fix.
 const ssl =
   PROVIDER_MODE === "db"
-    ? { rejectUnauthorized: false }
+    ? { rejectUnauthorized: tlsInsecureFlag !== "true" }
     : false;
 
 export const pool =

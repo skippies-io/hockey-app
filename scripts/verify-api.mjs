@@ -1,5 +1,3 @@
-import http from 'node:http';
-
 const PORT = 8787;
 const API_URL = `http://localhost:${PORT}/api/admin/announcements`;
 

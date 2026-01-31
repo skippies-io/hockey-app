@@ -59,7 +59,7 @@ function loadEnv(filePath) {
         env[key] = value;
       }
     });
-  } catch (e) {
+  } catch (_e) { // eslint-disable-line no-unused-vars
     // ignore missing file
   }
   return env;

@@ -211,7 +211,7 @@ function normalizeScore(value) {
   return num;
 }
 
-function normalizeNumber(value) {
+function _normalizeNumber(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
 }
@@ -385,7 +385,7 @@ function buildTeams({ tournamentId, standingsByGroup, fixturesByGroup }) {
   return { teams: Array.from(teams.values()), missingTeams };
 }
 
-function buildFixtures({ tournamentId, fixturesByGroup, errors }) {
+function buildFixtures({ tournamentId, fixturesByGroup, _errors }) { // eslint-disable-line no-unused-vars
   const fixtures = [];
   const duplicates = [];
   const seenKeys = new Set();

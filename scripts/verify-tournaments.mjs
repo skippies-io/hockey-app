@@ -1,5 +1,3 @@
-import http from 'node:http';
-
 const API_URL = `http://localhost:8787/api/tournaments`;
 
 const RED = '\x1b[31m';
