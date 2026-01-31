@@ -407,7 +407,7 @@ async function fetchAppsJson(targetUrl) {
   }
 }
 
-export const server = http.createServer(async (req, res) => {
+export const requestHandler = async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -743,7 +743,9 @@ export const server = http.createServer(async (req, res) => {
     console.error(err);
     sendJson(req, res, 500, { ok: false, error: "Server error" });
   }
-});
+};
+
+export const server = http.createServer(requestHandler);
 
 if (!process.env.VITEST) {
   server.listen(PORT, () => {

@@ -1,62 +1,113 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as server from '../../server/index.mjs';
+import {
+  getClientIp,
+  rateLimitStore,
+  RATE_LIMIT_MAX,
+  checkRateLimit,
+  setCacheHeaders,
+  getFixturesCacheKey,
+  getStandingsCacheKey,
+  fixturesCache,
+  getCachedFixtures,
+  sendJson,
+  applyCors,
+  requestHandler
+} from '../../server/index.mjs';
 
 describe('server utility functions', () => {
   it('getClientIp returns correct IP from x-forwarded-for', () => {
     const req = { headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }, socket: { remoteAddress: '9.9.9.9' } };
-    expect(server.getClientIp(req)).toBe('1.2.3.4');
+    expect(getClientIp(req)).toBe('1.2.3.4');
   });
   it('getClientIp falls back to socket.remoteAddress', () => {
     const req = { headers: {}, socket: { remoteAddress: '::ffff:127.0.0.1' } };
-    expect(server.getClientIp(req)).toBe('127.0.0.1');
+    expect(getClientIp(req)).toBe('127.0.0.1');
   });
   it('getClientIp returns unknown if no info', () => {
     const req = { headers: {}, socket: {} };
-    expect(server.getClientIp(req)).toBe('unknown');
+    expect(getClientIp(req)).toBe('unknown');
   });
 
   it('checkRateLimit allows first request', () => {
     const ip = '1.2.3.4';
-    server.rateLimitStore.clear();
-    const result = server.checkRateLimit(ip);
+    rateLimitStore.clear();
+    const result = checkRateLimit(ip);
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(server.RATE_LIMIT_MAX - 1);
+    expect(result.remaining).toBe(RATE_LIMIT_MAX - 1);
   });
 
   it('checkRateLimit blocks after max', () => {
     const ip = '2.2.2.2';
-    server.rateLimitStore.clear();
-    for (let i = 0; i < server.RATE_LIMIT_MAX; i++) server.checkRateLimit(ip);
-    const result = server.checkRateLimit(ip);
+    rateLimitStore.clear();
+    for (let i = 0; i < RATE_LIMIT_MAX; i++) checkRateLimit(ip);
+    const result = checkRateLimit(ip);
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
 
   it('setCacheHeaders sets no-store if requested', () => {
     const res = { setHeader: vi.fn() };
-    server.setCacheHeaders(res, { noStore: true });
+    setCacheHeaders(res, { noStore: true });
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
   });
 
   it('setCacheHeaders sets cache-control for maxAge/swr', () => {
     const res = { setHeader: vi.fn() };
-    server.setCacheHeaders(res, { maxAge: 10, swr: 20 });
+    setCacheHeaders(res, { maxAge: 10, swr: 20 });
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'public, max-age=10, stale-while-revalidate=20');
   });
 
   it('getFixturesCacheKey and getStandingsCacheKey are deterministic', () => {
-    expect(server.getFixturesCacheKey('Fixtures', 'u12', 'tid')).toBe('Fixtures:u12:db:tid');
-    expect(server.getStandingsCacheKey('Standings', 'u12', 'tid')).toBe('Standings:u12:db:tid');
+    expect(getFixturesCacheKey('Fixtures', 'u12', 'tid')).toBe('Fixtures:u12:db:tid');
+    expect(getStandingsCacheKey('Standings', 'u12', 'tid')).toBe('Standings:u12:db:tid');
   });
 
   it('getCachedFixtures returns null if expired', () => {
     const key = 'k';
-    server.fixturesCache.set(key, { expiresAt: Date.now() - 1000, payload: { foo: 1 } });
-    expect(server.getCachedFixtures(key)).toBeNull();
+    fixturesCache.set(key, { expiresAt: Date.now() - 1000, payload: { foo: 1 } });
+    expect(getCachedFixtures(key)).toBeNull();
   });
   it('getCachedFixtures returns payload if valid', () => {
     const key = 'k2';
-    server.fixturesCache.set(key, { expiresAt: Date.now() + 10000, payload: { foo: 2 } });
-    expect(server.getCachedFixtures(key)).toEqual({ foo: 2 });
+    fixturesCache.set(key, { expiresAt: Date.now() + 10000, payload: { foo: 2 } });
+    expect(getCachedFixtures(key)).toEqual({ foo: 2 });
+  });
+
+  it('sendJson correctly sends payload and headers', () => {
+    const res = {
+      setHeader: vi.fn(),
+      writeHead: vi.fn(),
+      end: vi.fn()
+    };
+    sendJson({}, res, 200, { ok: true });
+    expect(res.setHeader).toHaveBeenCalledWith('Content-Type', expect.stringContaining('application/json'));
+    expect(res.writeHead).toHaveBeenCalledWith(200);
+    expect(res.end).toHaveBeenCalledWith(JSON.stringify({ ok: true }));
+  });
+
+  it('applyCors sets headers for allowed origins', () => {
+    const req = { headers: { origin: 'http://localhost:5173' } };
+    const res = { setHeader: vi.fn() };
+    applyCors(req, res);
+    expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://localhost:5173');
+  });
+
+  it('requestHandler handles public paths', async () => {
+    const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+    // Announcements
+    const reqAnn = { method: 'GET', url: '/api/announcements', headers: { host: 'localhost' }, on: vi.fn() };
+    await requestHandler(reqAnn, res);
+    expect(res.writeHead).toHaveBeenCalled();
+
+    // Version
+    const reqVer = { method: 'GET', url: '/version', headers: { host: 'localhost' }, on: vi.fn() };
+    await requestHandler(reqVer, res);
+    expect(res.writeHead).toHaveBeenCalledWith(200);
+
+    // Health
+    const reqH = { method: 'GET', url: '/health', headers: { host: 'localhost' }, on: vi.fn() };
+    await requestHandler(reqH, res);
+    expect(res.writeHead).toHaveBeenCalledWith(200);
   });
 });

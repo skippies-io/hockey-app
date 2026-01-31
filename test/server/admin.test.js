@@ -109,4 +109,35 @@ describe('handleAdminRequest', () => {
             error: 'DB Fail'
         }));
     });
+
+    it('PUT returns 404 if not found', async () => {
+        const url = new URL('http://localhost/api/admin/announcements/999');
+        mockReq.method = 'PUT';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(JSON.stringify({ title: 't' }));
+            if (event === 'end') cb();
+        });
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 404, expect.any(Object));
+    });
+
+    it('DELETE returns 404 if not found', async () => {
+        const url = new URL('http://localhost/api/admin/announcements/999');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 404, expect.any(Object));
+    });
+
+    it('handles invalid JSON body', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb('invalid-json');
+            if (event === 'end') cb();
+        });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
+    });
 });
