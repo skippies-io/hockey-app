@@ -456,7 +456,10 @@ export default function AnnouncementsPage() {
                     position: 'relative',
                     border: editingId === a.id ? '2px solid #3b82f6' : styles.listItem(!a.is_published).border
                   }}
-                  onClick={() => handleEdit(a)} // Click card to EDIT
+                  onClick={() => handleEdit(a)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleEdit(a); } }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
@@ -472,7 +475,13 @@ export default function AnnouncementsPage() {
                        <span style={{ fontSize: '0.8rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>
                          {new Date(a.created_at).toLocaleDateString()}
                        </span>
-                       <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                       <div 
+                         style={{ display: 'flex', gap: '4px' }} 
+                         onClick={e => e.stopPropagation()}
+                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+                         role="group"
+                         tabIndex={-1}
+                       >
                          <button 
                            onClick={(e) => { e.stopPropagation(); handleClone(a); }}
                            title="Clone / Reuse"

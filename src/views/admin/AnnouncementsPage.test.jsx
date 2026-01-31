@@ -140,7 +140,7 @@ describe('AnnouncementsPage', () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue('Pub 1')).toBeDefined();
     });
-    expect(screen.getByText('Create New')).toBeDefined();
+    expect(screen.getByText('Cancel Edit')).toBeDefined();
   });
 
   it('shows error message if submission fails', async () => {
