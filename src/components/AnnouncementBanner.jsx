@@ -5,7 +5,13 @@ export default function AnnouncementBanner({ announcements }) {
   const [visible, setVisible] = useState([]);
 
   useEffect(() => {
-    const dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
+    let dismissed = [];
+    try {
+      dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
+      if (!Array.isArray(dismissed)) dismissed = [];
+    } catch {
+      dismissed = [];
+    }
     const active = announcements.filter(a => !dismissed.includes(a.id));
     setVisible(active);
   }, [announcements]);
@@ -13,7 +19,14 @@ export default function AnnouncementBanner({ announcements }) {
   if (visible.length === 0) return null;
 
   function dismiss(id) {
-    const dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
+    let dismissed = [];
+    try {
+      dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
+      if (!Array.isArray(dismissed)) dismissed = [];
+    } catch {
+      dismissed = [];
+    }
+
     if (!dismissed.includes(id)) {
       dismissed.push(id);
       localStorage.setItem('hj_dismissed_announcements', JSON.stringify(dismissed));
