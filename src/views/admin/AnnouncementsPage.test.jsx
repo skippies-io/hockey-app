@@ -170,4 +170,46 @@ describe('AnnouncementsPage', () => {
       expect(screen.getByText('Server exploded')).toBeDefined();
     }, { timeout: 2000 });
   });
+
+  it('prevents saving if character limits are exceeded', async () => {
+    render(<AnnouncementsPage />);
+    await waitFor(() => screen.getByPlaceholderText(/headline/i));
+
+    const titleInput = screen.getByPlaceholderText(/headline/i);
+    fireEvent.change(titleInput, { target: { value: 'a'.repeat(51) } });
+    
+    fireEvent.click(screen.getByRole('button', { name: /publish now/i }));
+    expect(screen.getByText(/fix character limit errors/i)).toBeDefined();
+  });
+
+  it('handles delete failure', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'DELETE') return Promise.resolve({ ok: false });
+      if (url.includes('/api/admin/announcements')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+    
+    render(<AnnouncementsPage />);
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    const deleteBtn = screen.getAllByTitle(/delete/i)[0];
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith("Failed to delete.");
+    });
+  });
+
+  it('allows canceling an edit', async () => {
+    render(<AnnouncementsPage />);
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    fireEvent.click(screen.getByText('Pub 1'));
+    await waitFor(() => screen.getByText('Cancel Edit'));
+
+    fireEvent.click(screen.getByText('Cancel Edit'));
+    expect(screen.queryByText('Cancel Edit')).toBeNull();
+    expect(screen.getByPlaceholderText(/headline/i).value).toBe('');
+  });
 });

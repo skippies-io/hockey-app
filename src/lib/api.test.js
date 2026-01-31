@@ -153,4 +153,25 @@ describe("api helpers", () => {
     const rows = await getSheet('Tests');
     expect(rows).toHaveLength(2);
   });
+
+  it("fetchJSON handles stale-while-revalidate", async () => {
+    const { getGroups } = await import("./api.js");
+    const now = Date.now();
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+
+    // Store stale data (90s old, MAX_AGE is 60s)
+    sessionStorage.setItem(key, JSON.stringify({
+      t: now - 90_000,
+      data: { groups: [{ id: 'STALE' }] }
+    }));
+
+    mockFetch.mockImplementationOnce(() => mockOkJson({ groups: [{ id: 'FRESH' }] }));
+
+    const data = await getGroups();
+    expect(data[0].id).toBe('STALE'); // returns stale immediately
+
+    // Wait for background fetch (it's un-awaited in the code)
+    await new Promise(r => setTimeout(r, 20));
+    expect(mockFetch).toHaveBeenCalled();
+  });
 });

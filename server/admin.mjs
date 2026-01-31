@@ -62,8 +62,9 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   }
 
   // Handle /announcements/:id
-  if (path.startsWith("/announcements/")) {
-    const id = path.split("/")[2];
+  const match = path.match(/^\/announcements\/([^/]+)/);
+  if (match) {
+    const id = match[1];
 
     if (method === "PUT") {
       try {

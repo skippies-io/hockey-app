@@ -107,7 +107,9 @@ const styles = {
     boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
   }),
   listItem: (isDraft) => ({
-    border: '1px solid #e5e7eb',
+    borderTop: '1px solid #e5e7eb',
+    borderBottom: '1px solid #e5e7eb',
+    borderRight: '1px solid #e5e7eb',
     borderRadius: '8px',
     padding: '16px',
     marginBottom: '12px',
