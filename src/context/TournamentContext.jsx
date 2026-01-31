@@ -43,7 +43,7 @@ export function TournamentProvider({ children }) {
         setLoading(false);
       }
     }
-    fetchTournaments();
+    void fetchTournaments();
   }, []); // Run once on mount
 
   useEffect(() => {

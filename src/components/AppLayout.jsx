@@ -31,7 +31,7 @@ export default function AppLayout({
       const data = await getAnnouncements(targetId);
       setAnnouncements(data || []);
     }
-    load();
+    void load();
   }, [location.pathname, activeTournamentId]);
 
   const navLinks = ageId
