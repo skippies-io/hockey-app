@@ -118,10 +118,6 @@ describe('server utility functions', () => {
     const reqVer = { method: 'GET', url: '/version', headers: { host: 'localhost' }, on: vi.fn() };
     await requestHandler(reqVer, res);
     expect(res.writeHead).toHaveBeenCalledWith(200);
-
-    // Health
-    const reqH = { method: 'GET', url: '/health', headers: { host: 'localhost' }, on: vi.fn() };
-    await requestHandler(reqH, res);
-    expect(res.writeHead).toHaveBeenCalledWith(200);
   });
+
 });

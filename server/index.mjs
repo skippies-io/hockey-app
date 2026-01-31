@@ -407,6 +407,23 @@ async function fetchAppsJson(targetUrl) {
   }
 }
 
+async function handleDbGet(req, res, query, params = [], cache = {}) {
+  const isHead = req.method === "HEAD";
+  if (PROVIDER_MODE === "db") {
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const result = await pool.query(query, params);
+      const data = (result && result.rows) ? result.rows : [];
+      sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache });
+    } catch (e) {
+      console.error(e);
+      sendJson(req, res, 500, { ok: false, error: "DB Error" });
+    }
+  } else {
+    sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
+  }
+}
+
 export const requestHandler = async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
@@ -485,26 +502,12 @@ export const requestHandler = async (req, res) => {
       }
 
       const tournamentId = url.searchParams.get("tournamentId"); // Optional
-
-      if (PROVIDER_MODE === "db") {
-        try {
-          if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-          const result = await pool.query(
-            `SELECT * FROM announcements 
-             WHERE is_published = true 
-               AND (tournament_id IS NULL OR tournament_id = $1)
-             ORDER BY created_at DESC`,
-            [tournamentId]
-          );
-          const data = (result && result.rows) ? result.rows : [];
-          sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 60, swr: 300 } });
-        } catch (e) {
-          console.error(e);
-          sendJson(req, res, 500, { ok: false, error: "DB Error" });
-        }
-      } else {
-        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
-      }
+      const query = `SELECT * FROM announcements 
+                     WHERE is_published = true 
+                       AND (tournament_id IS NULL OR tournament_id = $1)
+                     ORDER BY created_at DESC`;
+      const params = tournamentId ? [tournamentId] : [];
+      await handleDbGet(req, res, query, params, { maxAge: 60, swr: 300 });
       return;
     }
 
@@ -522,23 +525,8 @@ export const requestHandler = async (req, res) => {
         return;
       }
 
-      if (PROVIDER_MODE === "db") {
-        try {
-          if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-          // Fetch from the actual tournament table now that we know it exists
-          const result = await pool.query(
-            `SELECT id, name FROM tournament ORDER BY created_at DESC`
-          );
-          const data = (result && result.rows) ? result.rows : [];
-          sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
-        } catch (e) {
-          console.error(e);
-          sendJson(req, res, 500, { ok: false, error: "DB Error" });
-        }
-      } else {
-        // Apps Script mode fallback (not implemented for multi-tournament yet)
-        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
-      }
+      const query = `SELECT id, name FROM tournament ORDER BY created_at DESC`;
+      await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
       return;
     }
 

@@ -7,6 +7,12 @@ import './index.css'
 
 import { TournamentProvider } from './context/TournamentContext'
 
+// Handle client-side routing for GitHub Pages
+if (window.location.search.startsWith('?/')) {
+  const path = window.location.search.slice(2);
+  window.history.replaceState(null, '', path);
+}
+
 console.warn("HJ build", import.meta.env.VITE_BUILD_ID);
 
 createRoot(document.getElementById('root')).render(
