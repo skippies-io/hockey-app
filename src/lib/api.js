@@ -3,15 +3,24 @@ const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
 const RAW_API_BASE = import.meta.env.VITE_API_BASE;
 const DEFAULT_DEV_API_BASE = "http://localhost:8787/api";
+const normalizeApiBase = (base) => {
+  if (!base) return base;
+  const trimmed = base.endsWith("/") ? base.slice(0, -1) : base;
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
 const resolveApiBase = () => {
   if (PROVIDER === "db") {
-    return import.meta.env.DEV
-      ? (DB_API_BASE || RAW_API_BASE || DEFAULT_DEV_API_BASE)
-      : (DB_API_BASE || RAW_API_BASE);
+    return normalizeApiBase(
+      import.meta.env.DEV
+        ? (DB_API_BASE || RAW_API_BASE || DEFAULT_DEV_API_BASE)
+        : (DB_API_BASE || RAW_API_BASE)
+    );
   }
-  return import.meta.env.DEV
-    ? (RAW_API_BASE || DEFAULT_DEV_API_BASE)
-    : RAW_API_BASE;
+  return normalizeApiBase(
+    import.meta.env.DEV
+      ? (RAW_API_BASE || DEFAULT_DEV_API_BASE)
+      : RAW_API_BASE
+  );
 };
 export const API_BASE = resolveApiBase();
 const APP_VER = import.meta.env.VITE_APP_VERSION || "v1";
