@@ -1,18 +1,5 @@
-import { readFileSync, existsSync } from 'node:fs';
-
-// Helper to load env file if process.env.DATABASE_URL is missing
-if (!process.env.DATABASE_URL && existsSync('.env.db.local')) {
-  const envConfig = readFileSync('.env.db.local', 'utf-8');
-  envConfig.split(/\r?\n/).forEach(line => {
-    const [key, ...valueParts] = line.split('=');
-    if (key && valueParts.length > 0) {
-      const val = valueParts.join('=').trim();
-      process.env[key.trim()] = val;
-    }
-  });
-}
-
 export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
+
   // Simple router for Admin API
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
@@ -49,6 +36,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
            RETURNING *`,
           [safeTournamentId, title, content, severity || 'info', !!is_published]
         );
+        if (result.rows.length === 0) throw new Error("Insert failed to return data");
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
         console.error("Admin API Error:", err);
