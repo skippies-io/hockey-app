@@ -119,4 +119,26 @@ describe("api helpers", () => {
     expect(sessionStorage.getItem('hj:cache:v1:test')).toBeNull();
     expect(sessionStorage.getItem('non-hj')).toBe('val');
   });
+
+  it("tournamentsEndpoint returns correct url", async () => {
+    const { tournamentsEndpoint } = await import("./api.js");
+    expect(tournamentsEndpoint()).toContain("/api/tournaments");
+  });
+
+  it("getGroups sorts groups correctly", async () => {
+    const { getGroups } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({
+      ok: true,
+      groups: [{ id: 'U11G', label: 'U11G' }, { id: 'U9B', label: 'U9B' }]
+    }));
+    const groups = await getGroups();
+    expect(groups[0].id).toBe('U9B');
+  });
+
+  it("getSheet handles legacy call", async () => {
+    const { getSheet } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true, rows: [1, 2] }));
+    const rows = await getSheet('Tests');
+    expect(rows).toHaveLength(2);
+  });
 });

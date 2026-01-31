@@ -24,6 +24,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   if (path === "/announcements") {
     if (method === "GET") {
       try {
+        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const result = await pool.query(
           "SELECT * FROM announcements ORDER BY created_at DESC"
         );
@@ -35,6 +36,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     }
     if (method === "POST") {
       try {
+        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const body = await readBody(req);
         const { title, body: content, severity, tournament_id, is_published } = body;
 
@@ -65,6 +67,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
     if (method === "PUT") {
       try {
+        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const body = await readBody(req);
         const { title, body: content, severity, tournament_id, is_published } = body;
         const safeTournamentId = tournament_id === 'general' || !tournament_id ? null : tournament_id;
@@ -102,6 +105,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
     if (method === "DELETE") {
       try {
+        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
         const result = await pool.query("DELETE FROM announcements WHERE id = $1 RETURNING id", [id]);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Not found" });

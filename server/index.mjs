@@ -54,7 +54,7 @@ const ssl =
     ? { rejectUnauthorized: false }
     : false;
 
-const pool =
+export const pool =
   PROVIDER_MODE === "db"
     ? new Pool({
       connectionString: DATABASE_URL,
@@ -114,7 +114,7 @@ export function setCacheHeaders(res, { maxAge, swr, noStore } = {}) {
   );
 }
 
-function sendJson(req, res, status, payload, { cache, head = false } = {}) {
+export function sendJson(req, res, status, payload, { cache, head = false } = {}) {
   const body = JSON.stringify(payload);
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -138,7 +138,7 @@ function sendJson(req, res, status, payload, { cache, head = false } = {}) {
 }
 
 // Allow GitHub Pages + local dev to access the API in browsers.
-function applyCors(req, res) {
+export function applyCors(req, res) {
   const requestOrigin = req.headers.origin || "";
   if (!requestOrigin) return;
 
@@ -407,7 +407,7 @@ async function fetchAppsJson(targetUrl) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+export const server = http.createServer(async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -488,6 +488,7 @@ const server = http.createServer(async (req, res) => {
 
       if (PROVIDER_MODE === "db") {
         try {
+          if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
           const result = await pool.query(
             `SELECT * FROM announcements 
              WHERE is_published = true 
@@ -522,6 +523,7 @@ const server = http.createServer(async (req, res) => {
 
       if (PROVIDER_MODE === "db") {
         try {
+          if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
           // Fetch from the actual tournament table now that we know it exists
           const result = await pool.query(
             `SELECT id, name FROM tournament ORDER BY created_at DESC`
