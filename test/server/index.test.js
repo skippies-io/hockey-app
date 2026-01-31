@@ -99,9 +99,7 @@ describe('server utility functions', () => {
 
   it('sendJson handles HEAD and cache', () => {
     const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
-    const req = { headers: { 'if-none-match': '"abc"' } };
-    // Trigger 304 by providing matching etag (calculated from payload)
-    // Actually hashing is complex to mock exactly here, let's just test early return for head
+    // Test early return for HEAD requests
     sendJson({}, res, 200, { ok: true }, { head: true });
     expect(res.writeHead).toHaveBeenCalledWith(200);
     expect(res.end).toHaveBeenCalled();

@@ -174,4 +174,16 @@ describe("api helpers", () => {
     await new Promise(r => setTimeout(r, 20));
     expect(mockFetch).toHaveBeenCalled();
   });
+
+  it("fetchJSON background refresh handles failure gracefully", async () => {
+    const { getGroups } = await import("./api.js");
+    const now = Date.now();
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+    sessionStorage.setItem(key, JSON.stringify({ t: now - 90_000, data: { groups: [] } }));
+
+    mockFetch.mockRejectedValueOnce(new Error("BG FAIL"));
+    await getGroups();
+    await new Promise(r => setTimeout(r, 20));
+    // Should not throw, just log/ignore
+  });
 });

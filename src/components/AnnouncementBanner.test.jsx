@@ -76,6 +76,12 @@ describe('AnnouncementBanner', () => {
     expect(info.style.backgroundColor).toBe('rgb(239, 246, 255)');
     expect(alert.style.backgroundColor).toBe('rgb(254, 242, 242)');
     expect(warning.style.backgroundColor).toBe('rgb(255, 247, 237)');
-    expect(success.style.backgroundColor).toBe('rgb(236, 253, 245)'); // #ecfdf5 converted to rgb(236, 253, 245)
+    expect(success.style.backgroundColor).toBe('rgb(236, 253, 245)');
+  });
+  it('is resilient to corrupted localStorage', () => {
+    localStorage.setItem('hj_dismissed_announcements', 'invalid-json');
+    render(<AnnouncementBanner announcements={mockAnnouncements} />);
+    expect(screen.getByText('Test 1')).toBeDefined();
+    expect(screen.getByText('Test 2')).toBeDefined();
   });
 });
