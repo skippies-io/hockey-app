@@ -58,6 +58,31 @@ describe("api helpers", () => {
     );
   });
 
+  it("normalizes API base to include /api", async () => {
+    vi.stubEnv("VITE_PROVIDER", "supabase");
+    vi.stubEnv("VITE_API_BASE", "http://example.test/");
+    vi.resetModules();
+    const { API_BASE } = await import("./api.js");
+    expect(API_BASE).toBe("http://example.test/api");
+  });
+
+  it("keeps /api suffix when already present", async () => {
+    vi.stubEnv("VITE_PROVIDER", "supabase");
+    vi.stubEnv("VITE_API_BASE", "http://example.test/api");
+    vi.resetModules();
+    const { API_BASE } = await import("./api.js");
+    expect(API_BASE).toBe("http://example.test/api");
+  });
+
+  it("prefers DB api base for db provider", async () => {
+    vi.stubEnv("VITE_PROVIDER", "db");
+    vi.stubEnv("VITE_DB_API_BASE", "http://db.example.test/api");
+    vi.stubEnv("VITE_API_BASE", "http://raw.example.test/api");
+    vi.resetModules();
+    const { API_BASE } = await import("./api.js");
+    expect(API_BASE).toBe("http://db.example.test/api");
+  });
+
   it("omits tournamentId when not provided", async () => {
     const { getGroups } = await import("./api.js");
 
@@ -173,6 +198,38 @@ describe("api helpers", () => {
     // Wait for background fetch (it's un-awaited in the code)
     await new Promise(r => setTimeout(r, 20));
     expect(mockFetch).toHaveBeenCalled();
+  });
+
+  it("fetchJSON ignores invalid cached JSON and refetches", async () => {
+    const { getGroups } = await import("./api.js");
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+    sessionStorage.setItem(key, "{bad-json");
+
+    mockFetch.mockImplementationOnce(() => mockOkJson({ groups: [{ id: "FRESH" }] }));
+    const data = await getGroups();
+    expect(data[0].id).toBe("FRESH");
+    expect(mockFetch).toHaveBeenCalled();
+  });
+
+  it("stale refresh ignores non-ok response", async () => {
+    const { getGroups } = await import("./api.js");
+    const now = Date.now();
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ t: now - 90_000, data: { groups: [{ id: "STALE" }] } })
+    );
+
+    mockFetch.mockImplementationOnce(() =>
+      Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+    );
+
+    const data = await getGroups();
+    expect(data[0].id).toBe("STALE");
+
+    await new Promise((r) => setTimeout(r, 0));
+    const cached = JSON.parse(sessionStorage.getItem(key));
+    expect(cached.data.groups[0].id).toBe("STALE");
   });
 
   it("fetchJSON background refresh handles failure gracefully", async () => {
