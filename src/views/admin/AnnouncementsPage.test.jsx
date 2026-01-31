@@ -4,7 +4,7 @@ import React from 'react';
 import AnnouncementsPage from './AnnouncementsPage';
 
 // Mock fetch
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 // Mock scrollTo
 window.scrollTo = vi.fn();
