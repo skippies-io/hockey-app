@@ -140,4 +140,16 @@ describe('handleAdminRequest', () => {
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
     });
+
+    it('POST handles db error during insert', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(JSON.stringify({ title: 't' }));
+            if (event === 'end') cb();
+        });
+        mockPool.query.mockRejectedValueOnce(new Error('INSERT FAIL'));
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
+    });
 });

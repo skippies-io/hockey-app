@@ -110,6 +110,18 @@ describe("api helpers", () => {
     );
   });
 
+  it("sendFeedback throws on network or api failure", async () => {
+    const { sendFeedback } = await import("./api.js");
+
+    // Network error
+    mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await expect(sendFeedback({})).rejects.toThrow('Network error');
+
+    // API error
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: false, error: 'Server says no' }));
+    await expect(sendFeedback({})).rejects.toThrow('Server says no');
+  });
+
   it("refreshAll clears session storage keys", async () => {
     const { refreshAll } = await import("./api.js");
     sessionStorage.setItem('hj:cache:v1:test', 'val');
