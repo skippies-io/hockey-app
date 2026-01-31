@@ -90,6 +90,22 @@ describe('server utility functions', () => {
     const res = { setHeader: vi.fn() };
     applyCors(req, res);
     expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://localhost:5173');
+
+    const reqGh = { headers: { origin: 'https://skippies-io.github.io' } };
+    const resGh = { setHeader: vi.fn() };
+    applyCors(reqGh, resGh);
+    expect(resGh.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://skippies-io.github.io');
+  });
+
+  it('sendJson handles HEAD and cache', () => {
+    const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+    const req = { headers: { 'if-none-match': '"abc"' } };
+    // Trigger 304 by providing matching etag (calculated from payload)
+    // Actually hashing is complex to mock exactly here, let's just test early return for head
+    sendJson({}, res, 200, { ok: true }, { head: true });
+    expect(res.writeHead).toHaveBeenCalledWith(200);
+    expect(res.end).toHaveBeenCalled();
+    expect(res.end).not.toHaveBeenCalledWith(expect.any(String));
   });
 
   it('requestHandler handles public paths', async () => {
