@@ -23,7 +23,7 @@ const STANDINGS_CACHE_TTL_MS = 60_000;
 export const fixturesCache = new Map();
 export const standingsCache = new Map();
 
-if (PROVIDER_MODE === "db" && !DATABASE_URL) {
+if (PROVIDER_MODE === "db" && !DATABASE_URL && !process.env.VITEST) {
   console.error("Missing DATABASE_URL for DB API server (PROVIDER_MODE=db).");
   process.exit(1);
 }
@@ -743,6 +743,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`DB API server listening on http://localhost:${PORT}${API_PATH}`);
-});
+if (!process.env.VITEST) {
+  server.listen(PORT, () => {
+    console.log(`DB API server listening on http://localhost:${PORT}${API_PATH}`);
+  });
+}
