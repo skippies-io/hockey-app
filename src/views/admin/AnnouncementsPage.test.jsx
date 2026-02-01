@@ -24,10 +24,10 @@ describe('AnnouncementsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetch.mockImplementation((url) => {
-      if (typeof url === 'string' && url.includes('/api/admin/announcements')) {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
       }
-      if (typeof url === 'string' && url.includes('/api/tournaments')) {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
@@ -87,7 +87,7 @@ describe('AnnouncementsPage', () => {
     fireEvent.click(publishBtn);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/admin/announcements', expect.objectContaining({
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8787/api/admin/announcements', expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"title":"New Ann"'),
       }));
@@ -109,7 +109,7 @@ describe('AnnouncementsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /update & publish/i }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/admin/announcements/1', expect.objectContaining({
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8787/api/admin/announcements/1', expect.objectContaining({
         method: 'PUT'
       }));
     });
@@ -124,7 +124,7 @@ describe('AnnouncementsPage', () => {
 
     expect(window.confirm).toHaveBeenCalled();
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/admin/announcements/1', expect.objectContaining({
+      expect(fetch).toHaveBeenCalledWith('http://localhost:8787/api/admin/announcements/1', expect.objectContaining({
         method: 'DELETE'
       }));
     });
@@ -152,10 +152,10 @@ describe('AnnouncementsPage', () => {
           json: () => Promise.resolve({ ok: false, error: 'Server exploded' }) 
         });
       }
-      if (typeof url === 'string' && url.includes('/api/admin/announcements')) {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
       }
-      if (typeof url === 'string' && url.includes('/api/tournaments')) {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
@@ -186,7 +186,7 @@ describe('AnnouncementsPage', () => {
     window.alert = vi.fn();
     fetch.mockImplementation((url, opt) => {
       if (opt?.method === 'DELETE') return Promise.resolve({ ok: false });
-      if (url.includes('/api/admin/announcements')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      if (url.includes('http://localhost:8787/api/admin/announcements')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
     });
     

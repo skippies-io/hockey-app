@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE } from '../../lib/api';
 
 // Character Limits
 const MAX_TITLE = 50;
@@ -164,8 +165,8 @@ export default function AnnouncementsPage() {
     setLoading(true);
     try {
       const [annsRes, tournsRes] = await Promise.all([
-        fetch('/api/admin/announcements'),
-        fetch('/api/tournaments')
+        fetch(`${API_BASE}/admin/announcements`),
+        fetch(`${API_BASE}/tournaments`)
       ]);
 
       if (annsRes.ok) {
@@ -215,7 +216,7 @@ export default function AnnouncementsPage() {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
 
     try {
-      const res = await fetch(`/api/admin/announcements/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/admin/announcements/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setAnnouncements(prev => prev.filter(a => a.id !== id));
         // If we were editing this item, clear the form
@@ -253,8 +254,8 @@ export default function AnnouncementsPage() {
     };
 
     const url = editingId 
-      ? `/api/admin/announcements/${editingId}`
-      : '/api/admin/announcements';
+      ? `${API_BASE}/admin/announcements/${editingId}`
+      : `${API_BASE}/admin/announcements`;
     
     const method = editingId ? 'PUT' : 'POST';
 
