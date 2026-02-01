@@ -1,8 +1,28 @@
 // src/lib/api.js
 const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
-export const API_BASE =
-  PROVIDER === "db" ? import.meta.env.VITE_DB_API_BASE : import.meta.env.VITE_API_BASE;
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
+const RAW_API_BASE = import.meta.env.VITE_API_BASE;
+const DEFAULT_DEV_API_BASE = "http://localhost:8787/api";
+const normalizeApiBase = (base) => {
+  if (!base) return base;
+  const trimmed = base.endsWith("/") ? base.slice(0, -1) : base;
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
+const resolveApiBase = () => {
+  if (PROVIDER === "db") {
+    return normalizeApiBase(
+      import.meta.env.DEV
+        ? (DB_API_BASE || RAW_API_BASE || DEFAULT_DEV_API_BASE)
+        : (DB_API_BASE || RAW_API_BASE)
+    );
+  }
+  return normalizeApiBase(
+    import.meta.env.DEV
+      ? (RAW_API_BASE || DEFAULT_DEV_API_BASE)
+      : RAW_API_BASE
+  );
+};
+export const API_BASE = resolveApiBase();
 const APP_VER = import.meta.env.VITE_APP_VERSION || "v1";
 const MAX_AGE_MS = 60_000; // 60s client-side cache
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
@@ -15,15 +35,8 @@ function sleep(ms) {
 }
 
 export function tournamentsEndpoint() {
-  // Prefer an explicit API base (db or apps), otherwise fall back to same-origin.
-  const base = API_BASE || import.meta.env.VITE_API_BASE || import.meta.env.VITE_DB_API_BASE;
-
-  // If no env base is configured (common in tests), use same-origin.
-  if (!base) return "/api/tournaments";
-
-  // Normalize to origin (strip trailing /api if present)
-  const origin = String(base).replace(/\/api\/?$/, "");
-  return `${origin}/api/tournaments`;
+  if (!API_BASE) return "/api/tournaments";
+  return `${API_BASE}/tournaments`;
 }
 
 async function fetchWithRetry(url, retryOptions = {}) {
@@ -145,21 +158,7 @@ export async function getFranchises(tournamentId) {
 
 export async function getAnnouncements(tournamentId) {
   const t = tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : "";
-  // Ensure we hit the API base correctly. If API_BASE has query params (like in legacy), this might fail.
-  // Assuming API_BASE is just the origin for DB mode.
-  // Ideally, use '/api/announcements' relative if on same domain or construct properly.
-
-  // Reuse fetchJSON logic but we need to construct the URL carefully if API_BASE is strange.
-  // For DB mode, API_BASE is usually just the host url.
-
-  // Robust construction:
-  let baseUrl = API_BASE || "/api";
-  if (baseUrl.includes("?")) baseUrl = baseUrl.split("?")[0];
-  // Remove trailing specific path if strictly endpoint based, but API_BASE usually = endpoint for apps script.
-  // For DB mode, let's assume relative path /api/announcements is safer if we are proxied.
-  // But let's stick to the pattern:
-
-  const url = `${baseUrl.replace(/\/api\/?$/, "")}/api/announcements${t}`;
+  const url = `${API_BASE}/announcements${t}`;
   try {
     const j = await fetchJSON(url, { revalidate: true });
     return j.data || [];

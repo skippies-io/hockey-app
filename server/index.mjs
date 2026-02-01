@@ -502,11 +502,22 @@ export const requestHandler = async (req, res) => {
       }
 
       const tournamentId = url.searchParams.get("tournamentId"); // Optional
-      const query = `SELECT * FROM announcements 
-                     WHERE is_published = true 
-                       AND (tournament_id IS NULL OR tournament_id = $1)
-                     ORDER BY created_at DESC`;
-      const params = tournamentId ? [tournamentId] : [];
+
+      let query = `SELECT * FROM announcements
+                   WHERE is_published = true`;
+      let params = [];
+
+      if (tournamentId) {
+        // Include global + tournament-specific announcements
+        query += ` AND (tournament_id IS NULL OR tournament_id = $1)`;
+        params = [tournamentId];
+      } else {
+        // No tournament selected: global announcements only
+        query += ` AND tournament_id IS NULL`;
+      }
+
+      query += ` ORDER BY created_at DESC`;
+
       await handleDbGet(req, res, query, params, { maxAge: 60, swr: 300 });
       return;
     }

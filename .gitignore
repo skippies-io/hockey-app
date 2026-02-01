@@ -42,3 +42,6 @@ secrets/
 docs/debugging/
 coverage/
 .env
+
+# local env files
+.env*.local
