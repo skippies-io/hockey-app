@@ -12,8 +12,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     if (method === "GET") {
       try {
         if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+        const tournamentId = url.searchParams.get("tournamentId");
+        const params = [tournamentId ?? null];
         const result = await pool.query(
-          "SELECT * FROM announcements ORDER BY created_at DESC"
+          `SELECT *
+           FROM announcements
+           WHERE ($1::text IS NULL OR tournament_id = $1)
+           ORDER BY created_at DESC`,
+          params
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {

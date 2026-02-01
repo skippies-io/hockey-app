@@ -483,6 +483,10 @@ export const requestHandler = async (req, res) => {
       return;
     }
     // Admin Routes
+    if (url.pathname === "/api/admin/announcements") {
+      await handleAdminRequest(req, res, { url, pool, sendJson });
+      return;
+    }
     if (url.pathname.startsWith("/api/admin")) {
       await handleAdminRequest(req, res, { url, pool, sendJson });
       return;
