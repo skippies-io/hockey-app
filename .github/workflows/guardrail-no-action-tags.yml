@@ -1,13 +1,33 @@
-name: Guardrail (smoke)
+name: Guardrail: npm ci requires --ignore-scripts
 
-"on": [push, pull_request, workflow_dispatch]
+"on":
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  hello:
+  guardrail-npm-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Hello
-        run: echo "hello"
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Fail if any workflow uses plain npm ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -nE '^[[:space:]]*run:[[:space:]]*"?npm ci"?[[:space:]]*$' .github/workflows; then
+            echo ""
+            echo "ERROR: Detected plain 'npm ci' in workflow. Use 'npm ci --ignore-scripts'."
+            exit 1
+          fi
+          echo "OK: No plain 'npm ci' found in workflows."
