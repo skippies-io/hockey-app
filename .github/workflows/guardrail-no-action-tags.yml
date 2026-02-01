@@ -1,6 +1,6 @@
-name: Guardrail: no GitHub Action tags
+name: Guardrail: npm ci requires --ignore-scripts
 
-"on":
+on:
   pull_request:
     paths:
       - ".github/workflows/**"
@@ -9,21 +9,25 @@ name: Guardrail: no GitHub Action tags
       - main
     paths:
       - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  forbid-action-tags:
+  guardrail-npm-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
-      - name: Fail if any workflow uses @vX tags
+      - name: Fail if any workflow uses plain npm ci
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -nE "uses:[[:space:]]*[^@]+@v[0-9]+" .github/workflows; then
+          if grep -R -nE '^[[:space:]]*run:[[:space:]]*"?npm ci"?[[:space:]]*$' .github/workflows; then
             echo ""
-            echo "ERROR: Detected GitHub Action tag refs (@vX). Pin actions to full commit SHAs."
+            echo "ERROR: Detected plain 'npm ci' in workflow. Use 'npm ci --ignore-scripts'."
             exit 1
           fi
-          echo "OK: No @vX tag refs found in workflows."
+          echo "OK: No plain 'npm ci' found in workflows."
