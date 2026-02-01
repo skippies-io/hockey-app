@@ -1,6 +1,6 @@
 name: Guardrail: no GitHub Action tags
 
-on:
+"on":
   pull_request:
     paths:
       - ".github/workflows/**"
