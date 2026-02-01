@@ -1,6 +1,6 @@
 name: Guardrail: npm ci requires --ignore-scripts
 
-on:
+"on":
   pull_request:
     paths:
       - ".github/workflows/**"
