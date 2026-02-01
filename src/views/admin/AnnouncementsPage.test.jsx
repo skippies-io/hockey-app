@@ -1,8 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
-import AnnouncementsPage from './AnnouncementsPage';
-
 // Mock fetch
 globalThis.fetch = vi.fn();
 
@@ -23,6 +21,8 @@ describe('AnnouncementsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('VITE_API_BASE', 'http://localhost:8787/api');
+    vi.resetModules();
     fetch.mockImplementation((url) => {
       if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
@@ -34,8 +34,13 @@ describe('AnnouncementsPage', () => {
     });
   });
 
+  async function renderPage() {
+    const { default: AnnouncementsPage } = await import('./AnnouncementsPage');
+    return render(<AnnouncementsPage />);
+  }
+
   it('renders loading state initially and then the list', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     expect(screen.getByText(/loading/i)).toBeDefined();
     
     await waitFor(() => {
@@ -47,7 +52,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('filters list by published/draft', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     const publishedTab = screen.getByRole('button', { name: /^Published$/ });
@@ -62,7 +67,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('updates character counters as you type', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
     const titleInput = screen.getByPlaceholderText(/headline/i);
@@ -77,7 +82,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('allows creating a new announcement', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
     fireEvent.change(screen.getByPlaceholderText(/headline/i), { target: { value: 'New Ann' } });
@@ -95,7 +100,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('allows editing an existing announcement', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     fireEvent.click(screen.getByText('Pub 1'));
@@ -116,7 +121,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('allows deleting an announcement', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     const deleteBtn = screen.getAllByTitle(/delete/i)[0];
@@ -131,7 +136,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('allows cloning an announcement', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     const cloneBtn = screen.getAllByRole('button', { name: /clone/i })[0];
@@ -161,7 +166,7 @@ describe('AnnouncementsPage', () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
     });
 
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
     fireEvent.click(screen.getByRole('button', { name: /publish now/i }));
@@ -172,7 +177,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('prevents saving if character limits are exceeded', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
     const titleInput = screen.getByPlaceholderText(/headline/i);
@@ -190,7 +195,7 @@ describe('AnnouncementsPage', () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
     });
     
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     const deleteBtn = screen.getAllByTitle(/delete/i)[0];
@@ -202,7 +207,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('allows canceling an edit', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
 
     fireEvent.click(screen.getByText('Pub 1'));
@@ -214,7 +219,7 @@ describe('AnnouncementsPage', () => {
   });
 
   it('supports keyboard navigation for accessibility', async () => {
-    render(<AnnouncementsPage />);
+    await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
     
     // Test interaction on announcement card (using click to ensure stability)
