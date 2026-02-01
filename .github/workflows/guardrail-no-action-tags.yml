@@ -1,6 +1,6 @@
 name: Guardrail: npm ci requires --ignore-scripts
 
-"on": [push, pull_request, workflow_dispatch]
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -nE '^[[:space:]]*run:[[:space:]]*"?npm ci"?[[:space:]]*$' .github/workflows; then
+          if grep -R -nE '^[[:space:]]*run:[[:space:]]*("npm ci"|npm ci)[[:space:]]*$' .github/workflows; then
             echo ""
             echo "ERROR: Detected plain 'npm ci' in workflow. Use 'npm ci --ignore-scripts'."
             exit 1
