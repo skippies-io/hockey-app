@@ -1,4 +1,4 @@
-name: Guardrail: npm ci requires --ignore-scripts
+name: Guardrail npm ci
 
 on: [push, pull_request, workflow_dispatch]
 
