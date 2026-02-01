@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { API_BASE } from '../../lib/api';
 
 // Character Limits
 const MAX_TITLE = 50;
