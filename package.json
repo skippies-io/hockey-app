@@ -11,6 +11,7 @@
     "dev:full": "node scripts/dev-full.mjs",
     "build": "vite build",
     "lint": "eslint .",
+    "verify": "npm run lint && npm run test",
     "smoke:apps": "node scripts/smoke.mjs --provider apps",
     "smoke:db": "node scripts/smoke.mjs --provider db",
     "smoke:db:server": "node scripts/smoke-with-server.mjs --provider db",

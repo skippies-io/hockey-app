@@ -1,4 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  query: vi.fn(),
+}));
+
+vi.mock('pg', () => {
+  const Pool = class {
+    constructor() {
+      this.query = mocks.query;
+      this.connect = vi.fn();
+      this.on = vi.fn();
+    }
+  };
+  return { Pool };
+});
 import {
   getClientIp,
   rateLimitStore,
