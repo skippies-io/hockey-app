@@ -66,6 +66,35 @@ describe('AnnouncementsPage', () => {
     expect(screen.getByText('Draft 1')).toBeDefined();
   });
 
+  it('filters history by context selection', async () => {
+    const contextAnnouncements = [
+      { id: 'g1', title: 'General 1', body: 'Body G', severity: 'info', is_published: true, created_at: new Date().toISOString(), tournament_id: null },
+      { id: 't1a', title: 'Tournament 1 Ann', body: 'Body T', severity: 'info', is_published: true, created_at: new Date().toISOString(), tournament_id: 't1' }
+    ];
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: contextAnnouncements }) });
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('General 1'));
+    expect(screen.getByText('Tournament 1 Ann')).toBeDefined();
+
+    const contextSelect = screen.getByLabelText('Context filter');
+    fireEvent.change(contextSelect, { target: { value: 'general' } });
+    expect(screen.getByText('General 1')).toBeDefined();
+    expect(screen.queryByText('Tournament 1 Ann')).toBeNull();
+
+    fireEvent.change(contextSelect, { target: { value: 't1' } });
+    expect(screen.queryByText('General 1')).toBeNull();
+    expect(screen.getByText('Tournament 1 Ann')).toBeDefined();
+  });
+
   it('updates character counters as you type', async () => {
     await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
