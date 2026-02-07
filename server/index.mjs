@@ -158,7 +158,7 @@ export function applyCors(req, res) {
 
   res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
@@ -429,6 +429,7 @@ export const requestHandler = async (req, res) => {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
     console.log("Incoming Request:", req.method, url.pathname); // DEBUG
+    applyCors(req, res);
     const isOptions = req.method === "OPTIONS";
     const isHealth = url.pathname === "/health";
 
@@ -484,10 +485,22 @@ export const requestHandler = async (req, res) => {
     }
     // Admin Routes
     if (url.pathname === "/api/admin/announcements") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
       await handleAdminRequest(req, res, { url, pool, sendJson });
       return;
     }
     if (url.pathname.startsWith("/api/admin")) {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
       await handleAdminRequest(req, res, { url, pool, sendJson });
       return;
     }
