@@ -16,6 +16,7 @@
 ## Release / Production changes
 
 - [ ] I ran `docs/release-hygiene-checklist.md` (required if prod/release/cutover)
+- [ ] Deployment protocol reviewed (`docs/operations/deployment.md`) if this affects GitHub Pages
 - [ ] This PR changes production env/provider behaviour (yes/no)
 - [ ] Rollback plan included (env toggle + restart)
 
