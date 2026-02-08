@@ -11,7 +11,7 @@ describe('handleAdminRequest', () => {
         mockReq = {
             method: 'GET',
             on: vi.fn((event, cb) => {
-                if (event === 'end') setTimeout(cb, 0);
+                if (event === 'end') cb();
             }),
         };
         mockRes = {};
@@ -20,6 +20,13 @@ describe('handleAdminRequest', () => {
         };
         mockSendJson = vi.fn();
     });
+
+    const setReqBody = (req, body) => {
+        req.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(body);
+            if (event === 'end') cb();
+        });
+    };
 
     it('GET /announcements returns all announcements', async () => {
         const url = new URL('http://localhost/api/admin/announcements');
@@ -193,5 +200,42 @@ describe('handleAdminRequest', () => {
         mockPool.query.mockRejectedValueOnce(new Error('DELETE FAIL'));
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
+    });
+
+    it('returns 501 when DB is not configured', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.any(Object));
+    });
+
+    it('POST uses null tournament_id for general announcements', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ title: 't', body: 'b', tournament_id: 'general' }));
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 3, title: 't' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('INSERT INTO announcements'),
+            expect.arrayContaining([null])
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.any(Object));
+    });
+
+    it('POST returns 500 when insert returns no rows', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ title: 't', body: 'b' }));
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ error: 'Insert failed to return data' })
+        );
     });
 });
