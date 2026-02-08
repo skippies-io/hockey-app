@@ -38,6 +38,21 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 'var(--hj-space-4)',
+    gap: 'var(--hj-space-3)',
+  },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--hj-space-3)',
+    flexWrap: 'wrap',
+  },
+  filterSelect: {
+    padding: '6px 10px',
+    borderRadius: '6px',
+    border: '1px solid #d1d5db',
+    fontSize: '0.85rem',
+    backgroundColor: 'white',
+    color: '#111827',
   },
   filterTabs: {
     display: 'flex',
@@ -107,6 +122,11 @@ const styles = {
     transition: 'transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1)',
     boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
   }),
+  historyList: {
+    maxHeight: 'calc(100vh - 220px)',
+    overflowY: 'auto',
+    paddingRight: '6px',
+  },
   listItem: (isDraft) => ({
     borderTop: '1px solid #e5e7eb',
     borderBottom: '1px solid #e5e7eb',
@@ -144,6 +164,7 @@ export default function AnnouncementsPage() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, published, draft
+  const [contextFilter, setContextFilter] = useState('all'); // all, general, tournament id
   
   // Form State
   const [editingId, setEditingId] = useState(null);
@@ -282,8 +303,10 @@ export default function AnnouncementsPage() {
 
   // Filter Logic
   const filteredList = announcements.filter(a => {
-    if (filter === 'published') return a.is_published;
-    if (filter === 'draft') return !a.is_published;
+    if (filter === 'published' && !a.is_published) return false;
+    if (filter === 'draft' && a.is_published) return false;
+    if (contextFilter === 'general' && a.tournament_id) return false;
+    if (contextFilter !== 'all' && contextFilter !== 'general' && a.tournament_id !== contextFilter) return false;
     return true;
   });
 
@@ -426,7 +449,21 @@ export default function AnnouncementsPage() {
         {/* RIGHT COLUMN: HISTORY */}
         <div>
           <div style={styles.headerRow}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>History</h2>
+            <div style={styles.headerLeft}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>History</h2>
+              <select
+                aria-label="Context filter"
+                style={styles.filterSelect}
+                value={contextFilter}
+                onChange={(e) => setContextFilter(e.target.value)}
+              >
+                <option value="all">All Contexts</option>
+                <option value="general">General (Global)</option>
+                {tournaments.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
             <div style={styles.filterTabs}>
               {['all', 'published', 'draft'].map(f => (
                 <button
@@ -447,7 +484,7 @@ export default function AnnouncementsPage() {
                No announcements found.
              </div>
           ) : (
-            <div>
+            <div style={styles.historyList}>
               {filteredList.map(a => (
                 <div 
                   key={a.id} 
