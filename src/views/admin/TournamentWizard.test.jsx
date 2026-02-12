@@ -129,4 +129,45 @@ describe("TournamentWizard", () => {
       expect(screen.getAllByLabelText("Team 1").length).toBeGreaterThan(0);
     });
   });
+
+  it("supports imports and auto-assigning pools", async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+    const poolCountInput = screen.getByRole("spinbutton", { name: "Pool Count" });
+    fireEvent.change(poolCountInput, { target: { value: "2" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+      target: { value: "PP Amber" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
+    const teamInputs = screen.getAllByPlaceholderText("PP Amber");
+    fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
+    const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
+    fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
+
+    const autoAssignButtons = screen.getAllByRole("button", { name: /Auto-assign pools/i });
+    fireEvent.click(autoAssignButtons[0]);
+    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
+    expect(poolCombos[0].value).toBe("A");
+    expect(poolCombos[1].value).toBe("B");
+
+    const franchiseImportInputs = screen.getAllByPlaceholderText(/Purple Panthers/i);
+    fireEvent.change(franchiseImportInputs[0], {
+      target: { value: "Purple Panthers\nBlue Cranes" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Import Franchises/i }));
+    expect(screen.getAllByPlaceholderText("Purple Panthers").length).toBeGreaterThan(1);
+  });
 });
