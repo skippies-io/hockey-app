@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { computeFormErrors } from "./tournamentWizardUtils";
@@ -186,6 +186,70 @@ describe("TournamentWizard", () => {
       expect(
         screen.queryAllByRole("button", { name: /Remove Fixture/i }).length
       ).toBe(0);
+    });
+  });
+
+  it("manages venues, group venues, and time slots", async () => {
+    await renderWizard();
+
+    const venuesSection = screen
+      .getByRole("heading", { name: "Venues" })
+      .closest("section");
+    if (!venuesSection) throw new Error("Venues section not found");
+    const venuesScope = within(venuesSection);
+
+    await waitFor(() => {
+      expect(venuesScope.getAllByRole("option", { name: "Venue A" }).length).toBe(1);
+    });
+
+    fireEvent.change(venuesScope.getByRole("combobox"), {
+      target: { value: "Venue A" },
+    });
+
+    fireEvent.click(venuesScope.getByRole("button", { name: /Add New/i }));
+    fireEvent.change(venuesScope.getByPlaceholderText(/New venue name/i), {
+      target: { value: "Venue B" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+
+    const groupSection = screen
+      .getByRole("heading", { name: "Groups" })
+      .closest("section");
+    if (!groupSection) throw new Error("Groups section not found");
+    const groupScope = within(groupSection);
+    fireEvent.click(groupScope.getByLabelText("Venue A"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+
+    const timeSlotsSection = screen
+      .getByRole("heading", { name: "Time Slots" })
+      .closest("section");
+    if (!timeSlotsSection) throw new Error("Time Slots section not found");
+    const timeSlotsScope = within(timeSlotsSection);
+
+    fireEvent.click(timeSlotsScope.getByRole("button", { name: /Add Slot/i }));
+    const slotDateInputs = timeSlotsScope.getAllByLabelText("Date");
+    const slotTimeInputs = timeSlotsScope.getAllByLabelText("Time");
+    const slotVenueSelects = timeSlotsScope.getAllByLabelText("Venue");
+
+    fireEvent.change(slotDateInputs[1], { target: { value: "2026-01-12" } });
+    fireEvent.change(slotTimeInputs[1], { target: { value: "10:30" } });
+    fireEvent.change(slotVenueSelects[1], { target: { value: "Venue A" } });
+    fireEvent.change(timeSlotsScope.getAllByLabelText("Label")[1], {
+      target: { value: "Court 2" },
+    });
+
+    fireEvent.click(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i })[1]);
+    await waitFor(() => {
+      expect(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i }).length)
+        .toBe(1);
     });
   });
 
