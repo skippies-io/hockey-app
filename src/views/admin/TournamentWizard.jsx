@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import { API_BASE } from "../../lib/api";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
 
@@ -56,6 +57,11 @@ function WizardStepHeader({ step, onStepChange }) {
   );
 }
 
+WizardStepHeader.propTypes = {
+  step: PropTypes.number.isRequired,
+  onStepChange: PropTypes.func.isRequired,
+};
+
 function Field({ label, children, hint, error }) {
   return (
     <label className="wizard-field">
@@ -66,6 +72,18 @@ function Field({ label, children, hint, error }) {
     </label>
   );
 }
+
+Field.propTypes = {
+  label: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+  hint: PropTypes.string,
+  error: PropTypes.string,
+};
+
+Field.defaultProps = {
+  hint: "",
+  error: "",
+};
 
 function SectionCard({ title, children, actions }) {
   return (
@@ -78,6 +96,16 @@ function SectionCard({ title, children, actions }) {
     </section>
   );
 }
+
+SectionCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+  actions: PropTypes.node,
+};
+
+SectionCard.defaultProps = {
+  actions: null,
+};
 
 function emptyGroup() {
   return { id: "", label: "", format: "", venues: [], pool_count: 1 };
