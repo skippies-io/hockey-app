@@ -170,4 +170,60 @@ describe("TournamentWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Import Franchises/i }));
     expect(screen.getAllByPlaceholderText("Purple Panthers").length).toBeGreaterThan(1);
   });
+
+  it("shows generator validation errors when required fields are missing", async () => {
+    await renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Generate Fixtures/i }));
+    expect(screen.getByText(/Generator requires group, date, and pool/i)).toBeDefined();
+  });
+
+  it("handles submit failures with an error message", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/admin/tournament-wizard")) {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ ok: false, error: "Save failed" }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderWizard();
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), {
+      target: { value: "HJ Indoor 2026" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("2026"), {
+      target: { value: "2026" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+      target: { value: "PP Amber" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+      target: { value: "A" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Save failed/i)).toBeDefined();
+    });
+  });
 });
