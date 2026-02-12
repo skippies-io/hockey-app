@@ -134,13 +134,44 @@ describe("TournamentWizard", () => {
   it("updates and removes fixtures", async () => {
     await renderWizard();
 
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+
     fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    const fixtureGroupSelects = screen.getAllByLabelText("Group");
+    const fixtureDateInputs = screen.getAllByLabelText("Date");
+    const fixtureVenueSelects = screen.getAllByLabelText("Venue");
+    const fixturePoolInputs = screen.getAllByLabelText("Pool");
+    const fixtureTimeInput = screen.getByLabelText("Time (optional)");
+    const fixtureGroupSelect = fixtureGroupSelects[fixtureGroupSelects.length - 1];
+    const fixtureDateInput = fixtureDateInputs[fixtureDateInputs.length - 1];
+    const fixtureVenueSelect = fixtureVenueSelects[fixtureVenueSelects.length - 1];
+    const fixturePoolInput = fixturePoolInputs[fixturePoolInputs.length - 1];
+    const fixtureRoundInput = screen.getAllByLabelText("Round")[0];
     const team1Input = screen.getAllByLabelText("Team 1")[0];
     const team2Input = screen.getAllByLabelText("Team 2")[0];
+
+    fireEvent.change(fixtureGroupSelect, { target: { value: "U11B" } });
+    fireEvent.change(fixtureDateInput, { target: { value: "2026-01-10" } });
+    fireEvent.change(fixtureTimeInput, { target: { value: "09:00" } });
+    fireEvent.change(fixtureVenueSelect, { target: { value: "Venue A" } });
+    fireEvent.change(fixturePoolInput, { target: { value: "A" } });
+    fireEvent.change(fixtureRoundInput, { target: { value: "Round 1" } });
     fireEvent.change(team1Input, { target: { value: "PP Amber" } });
     fireEvent.change(team2Input, { target: { value: "Knights" } });
 
     await waitFor(() => {
+      expect(fixtureGroupSelect.value).toBe("U11B");
+      expect(fixtureDateInput.value).toBe("2026-01-10");
+      expect(fixtureTimeInput.value).toBe("09:00");
+      expect(fixtureVenueSelect.value).toBe("Venue A");
+      expect(fixturePoolInput.value).toBe("A");
+      expect(fixtureRoundInput.value).toBe("Round 1");
       expect(team1Input.value).toBe("PP Amber");
       expect(team2Input.value).toBe("Knights");
     });
