@@ -6,6 +6,7 @@ describe('handleAdminRequest', () => {
     let mockRes;
     let mockPool;
     let mockSendJson;
+    let mockClient;
 
     beforeEach(() => {
         mockReq = {
@@ -15,8 +16,13 @@ describe('handleAdminRequest', () => {
             }),
         };
         mockRes = {};
+        mockClient = {
+            query: vi.fn(),
+            release: vi.fn(),
+        };
         mockPool = {
             query: vi.fn(),
+            connect: vi.fn(async () => mockClient),
         };
         mockSendJson = vi.fn();
     });
@@ -236,6 +242,181 @@ describe('handleAdminRequest', () => {
             mockRes,
             500,
             expect.objectContaining({ error: 'Insert failed to return data' })
+        );
+    });
+
+    const buildWizardPayload = (overrides = {}) => ({
+        tournament: { id: 'hj-test-2026', name: 'HJ Test 2026', season: '2026' },
+        venues: [{ name: 'Beaulieu College' }],
+        groups: [{ id: 'U11B', label: 'U11 Boys', format: '' }],
+        groupVenues: [{ group_id: 'U11B', venue_name: 'Beaulieu College' }],
+        franchises: [{ name: 'Purple Panthers' }, { name: 'Knights' }],
+        teams: [
+            { group_id: 'U11B', name: 'PP Amber', franchise_name: 'Purple Panthers', is_placeholder: false },
+            { group_id: 'U11B', name: 'Knights Orange', franchise_name: 'Knights', is_placeholder: false },
+        ],
+        fixtures: [
+            {
+                group_id: 'U11B',
+                date: '2026-01-08',
+                time: '',
+                venue: 'Beaulieu College',
+                round: 'Round 1',
+                pool: 'A',
+                team1: 'PP Amber',
+                team2: 'Knights Orange',
+            },
+        ],
+        ...overrides,
+    });
+
+    function mockWizardDbHappyPath() {
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql.includes('SELECT 1 FROM tournament')) {
+                return { rowCount: 0, rows: [] };
+            }
+            return { rowCount: 1, rows: [] };
+        });
+    }
+
+    it('POST /tournament-wizard creates tournament in a transaction', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify(buildWizardPayload()));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+        expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true, tournament_id: 'hj-test-2026' })
+        );
+    });
+
+    it('POST /tournament-wizard rejects missing tournament name', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({ tournament: { id: 'hj-test-2026', name: '' } });
+        setReqBody(mockReq, JSON.stringify(payload));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('tournament.id and tournament.name') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects missing groups', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({ groups: [] });
+        setReqBody(mockReq, JSON.stringify(payload));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('At least one group') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects fixtures without date or pool', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            fixtures: [
+                {
+                    group_id: 'U11B',
+                    date: '',
+                    time: '',
+                    venue: 'Beaulieu College',
+                    round: 'Round 1',
+                    pool: '',
+                    team1: 'PP Amber',
+                    team2: 'Knights Orange',
+                },
+            ],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Fixture date is required') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects placeholder teams in fixtures', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            teams: [
+                { group_id: 'U11B', name: 'Winner QF1', franchise_name: '', is_placeholder: true },
+                { group_id: 'U11B', name: 'Knights Orange', franchise_name: 'Knights', is_placeholder: false },
+            ],
+            fixtures: [
+                {
+                    group_id: 'U11B',
+                    date: '2026-01-08',
+                    time: '',
+                    venue: 'Beaulieu College',
+                    round: 'Round 1',
+                    pool: 'A',
+                    team1: 'Winner QF1',
+                    team2: 'Knights Orange',
+                },
+            ],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('placeholder teams') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects duplicate fixtures', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const fixture = {
+            group_id: 'U11B',
+            date: '2026-01-08',
+            time: '',
+            venue: 'Beaulieu College',
+            round: 'Round 1',
+            pool: 'A',
+            team1: 'PP Amber',
+            team2: 'Knights Orange',
+        };
+        const payload = buildWizardPayload({ fixtures: [fixture, fixture] });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Duplicate fixture') })
         );
     });
 });
