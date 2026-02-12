@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { API_BASE } from "../../lib/api";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
@@ -28,8 +28,8 @@ function normalizeId(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)/g, "");
 }
 
 function slugForTournament(name, season) {
@@ -107,12 +107,13 @@ SectionCard.defaultProps = {
   actions: null,
 };
 
-function emptyGroup() {
-  return { id: "", label: "", format: "", venues: [], pool_count: 1 };
+function emptyGroup(key) {
+  return { _key: key, id: "", label: "", format: "", venues: [], pool_count: 1 };
 }
 
-function emptyTeam(groupId = "") {
+function emptyTeam(key, groupId = "") {
   return {
+    _key: key,
     group_id: groupId,
     name: "",
     franchise_name: "",
@@ -121,8 +122,9 @@ function emptyTeam(groupId = "") {
   };
 }
 
-function emptyFixture(groupId = "") {
+function emptyFixture(key, groupId = "") {
   return {
+    _key: key,
     group_id: groupId,
     date: "",
     time: "",
@@ -138,7 +140,7 @@ function poolLabels(count) {
   const labels = [];
   const total = Math.max(1, Number(count) || 1);
   for (let i = 0; i < total; i += 1) {
-    labels.push(String.fromCharCode(65 + i));
+    labels.push(String.fromCodePoint(65 + i));
   }
   return labels;
 }
@@ -179,6 +181,11 @@ function roundRobinPairs(teams) {
 }
 
 export default function TournamentWizard() {
+  const keyCounter = useRef(0);
+  const makeKey = React.useCallback((prefix) => {
+    keyCounter.current += 1;
+    return `${prefix}-${keyCounter.current}`;
+  }, []);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -190,10 +197,13 @@ export default function TournamentWizard() {
     name: "",
     season: "",
   });
-  const [venues, setVenues] = useState([{ name: "", isNew: false }]);
-  const [groups, setGroups] = useState([emptyGroup()]);
+  const [venues, setVenues] = useState(() => [
+    { _key: makeKey("venue"), name: "", isNew: false },
+  ]);
+  const [groups, setGroups] = useState(() => [emptyGroup(makeKey("group"))]);
   const [franchises, setFranchises] = useState([
     {
+      _key: makeKey("franchise"),
       name: "",
       logo_url: "",
       manager_name: "",
@@ -204,10 +214,10 @@ export default function TournamentWizard() {
       contact_email: "",
     },
   ]);
-  const [teams, setTeams] = useState([emptyTeam()]);
-  const [fixtures, setFixtures] = useState([emptyFixture()]);
+  const [teams, setTeams] = useState(() => [emptyTeam(makeKey("team"))]);
+  const [fixtures, setFixtures] = useState(() => [emptyFixture(makeKey("fixture"))]);
   const [timeSlots, setTimeSlots] = useState([
-    { date: "", time: "", venue: "", label: "" },
+    { _key: makeKey("slot"), date: "", time: "", venue: "", label: "" },
   ]);
 
   const [generator, setGenerator] = useState({
@@ -323,7 +333,9 @@ export default function TournamentWizard() {
   const franchiseOptions = useMemo(() => {
     const fromForm = franchises.map((f) => f.name).filter(Boolean);
     const merged = [...CANONICAL_FRANCHISES, ...fromForm];
-    return Array.from(new Set(merged.map((n) => n.trim()).filter(Boolean))).sort();
+    return Array.from(new Set(merged.map((n) => n.trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b)
+    );
   }, [franchises]);
 
   function updateTournament(next) {
@@ -339,7 +351,7 @@ export default function TournamentWizard() {
   }
 
   function addVenue() {
-    setVenues((prev) => [...prev, { name: "", isNew: false }]);
+    setVenues((prev) => [...prev, { _key: makeKey("venue"), name: "", isNew: false }]);
   }
 
   function removeVenue(index) {
@@ -363,7 +375,7 @@ export default function TournamentWizard() {
   }
 
   function addGroup() {
-    setGroups((prev) => [...prev, emptyGroup()]);
+    setGroups((prev) => [...prev, emptyGroup(makeKey("group"))]);
   }
 
   function removeGroup(index) {
@@ -398,6 +410,7 @@ export default function TournamentWizard() {
     setFranchises((prev) => [
       ...prev,
       {
+        _key: makeKey("franchise"),
         name: "",
         logo_url: "",
         manager_name: "",
@@ -445,7 +458,10 @@ export default function TournamentWizard() {
   }
 
   function addTimeSlot() {
-    setTimeSlots((prev) => [...prev, { date: "", time: "", venue: "", label: "" }]);
+    setTimeSlots((prev) => [
+      ...prev,
+      { _key: makeKey("slot"), date: "", time: "", venue: "", label: "" },
+    ]);
   }
 
   function updateTimeSlot(index, patch) {
@@ -462,6 +478,7 @@ export default function TournamentWizard() {
 
   function applyFranchiseImport() {
     const entries = parseLines(franchiseImport).map((name) => ({
+      _key: makeKey("franchise"),
       name,
       logo_url: "",
       manager_name: "",
@@ -486,6 +503,7 @@ export default function TournamentWizard() {
       if (!group_id || !name) continue;
       const parsed = parseFranchiseName(name);
       entries.push({
+        _key: makeKey("team"),
         group_id,
         name,
         franchise_name: franchise_name || parsed.franchise || "",
@@ -499,7 +517,7 @@ export default function TournamentWizard() {
   }
 
   function addTeam() {
-    setTeams((prev) => [...prev, emptyTeam()]);
+    setTeams((prev) => [...prev, emptyTeam(makeKey("team"))]);
   }
 
   function removeTeam(index) {
@@ -515,7 +533,7 @@ export default function TournamentWizard() {
   }
 
   function addFixture() {
-    setFixtures((prev) => [...prev, emptyFixture()]);
+    setFixtures((prev) => [...prev, emptyFixture(makeKey("fixture"))]);
   }
 
   function removeFixture(index) {
@@ -543,7 +561,7 @@ export default function TournamentWizard() {
     const groupPools = poolsByGroup.get(groupId) || [pool];
     const targetPools = pool === "ALL" ? groupPools : [pool];
     const nextFixtures = [];
-    targetPools.forEach((poolLabel) => {
+    for (const poolLabel of targetPools) {
       const poolTeams = teams
         .filter(
           (t) =>
@@ -552,11 +570,14 @@ export default function TournamentWizard() {
             ((t.pool || "").trim() === poolLabel || groupPools.length === 1)
         )
         .map((t) => normalizeTeamName(t.name));
-      if (poolTeams.length < 2) return;
+      if (poolTeams.length < 2) continue;
       const rounds = roundRobinPairs(poolTeams);
-      rounds.forEach((pairs, roundIdx) => {
-        pairs.forEach(([team1, team2]) => {
+      for (let roundIdx = 0; roundIdx < rounds.length; roundIdx += 1) {
+        const pairs = rounds[roundIdx];
+        for (let pairIdx = 0; pairIdx < pairs.length; pairIdx += 1) {
+          const [team1, team2] = pairs[pairIdx];
           nextFixtures.push({
+            _key: makeKey("fixture"),
             group_id: groupId,
             date: startDate,
             time: time || "",
@@ -566,9 +587,9 @@ export default function TournamentWizard() {
             team1,
             team2,
           });
-        });
-      });
-    });
+        }
+      }
+    }
     setFixtures((prev) => [...prev, ...nextFixtures]);
     setSaveError("");
     setSaveSuccess(`Generated ${nextFixtures.length} fixtures.`);
@@ -590,24 +611,63 @@ export default function TournamentWizard() {
           name: tournament.name,
           season: tournament.season,
         },
-        venues: venues.filter((v) => v.name && v.name.trim()),
+        venues: venues
+          .filter((v) => v.name?.trim())
+          .map((v) => ({ name: v.name.trim() })),
         groups: groups
-          .filter((g) => g.id && g.label)
+          .filter((g) => g.id?.trim() && g.label?.trim())
           .map((g) => ({
             id: g.id,
             label: g.label,
             format: g.format,
           })),
         groupVenues: groups.flatMap((g) =>
-          (g.venues || []).map((venueName) => ({
+          (g.venues ?? []).filter(Boolean).map((venueName) => ({
             group_id: g.id,
             venue_name: venueName,
           }))
         ),
-        franchises: franchises.filter((f) => f.name && f.name.trim()),
-        teams: teams.filter((t) => t.name && t.group_id),
-        fixtures: fixtures.filter((f) => f.team1 && f.team2 && f.group_id),
-        timeSlots: timeSlots.filter((s) => s.date && s.time && s.venue),
+        franchises: franchises
+          .filter((f) => f.name?.trim())
+          .map((f) => ({
+            name: f.name,
+            logo_url: f.logo_url,
+            manager_name: f.manager_name,
+            manager_photo_url: f.manager_photo_url,
+            description: f.description,
+            contact_phone: f.contact_phone,
+            location_map_url: f.location_map_url,
+            contact_email: f.contact_email,
+          })),
+        teams: teams
+          .filter((t) => t.name?.trim() && t.group_id)
+          .map((t) => ({
+            group_id: t.group_id,
+            name: t.name,
+            franchise_name: t.franchise_name,
+            pool: t.pool,
+            is_placeholder: t.is_placeholder,
+          })),
+        fixtures: fixtures
+          .filter((f) => f.team1?.trim() && f.team2?.trim() && f.group_id)
+          .map((f) => ({
+            group_id: f.group_id,
+            date: f.date,
+            time: f.time,
+            venue: f.venue,
+            round: f.round,
+            pool: f.pool,
+            team1: f.team1,
+            team2: f.team2,
+          })),
+        timeSlots: timeSlots
+          .filter((s) => s.date?.trim() && s.time?.trim() && s.venue?.trim())
+          .map((s) => ({
+            date: s.date,
+            time: s.time,
+            venue: s.venue,
+            label: s.label,
+          })),
       };
 
       const res = await fetch(`${API_BASE}/admin/tournament-wizard`, {
@@ -718,48 +778,52 @@ export default function TournamentWizard() {
             title="Venues"
             actions={<button type="button" onClick={addVenue}>Add Venue</button>}
           >
-            {venues.map((venue, idx) => (
-              <div className="wizard-row" key={`venue-${idx}`}>
-                <Field label="Venue">
-                  {!venue.isNew ? (
-                    <select
-                      value={venue.name}
-                      className={!venue.name.trim() ? "wizard-input invalid" : "wizard-input"}
-                      onChange={(e) => handleVenueChange(idx, e.target.value)}
+            {venues.map((venue, idx) => {
+              const venueHasName = Boolean(venue.name?.trim());
+              const venueIsNew = venue.isNew;
+              return (
+                <div className="wizard-row" key={venue._key}>
+                  <Field label="Venue">
+                    {venueIsNew ? (
+                      <input
+                        type="text"
+                        value={venue.name}
+                        className={venueHasName ? "wizard-input" : "wizard-input invalid"}
+                        onChange={(e) => handleVenueChange(idx, e.target.value)}
+                        placeholder="New venue name"
+                      />
+                    ) : (
+                      <select
+                        value={venue.name}
+                        className={venueHasName ? "wizard-input" : "wizard-input invalid"}
+                        onChange={(e) => handleVenueChange(idx, e.target.value)}
+                      >
+                        <option value="">Select venue</option>
+                        {venueOptions.map((name) => (
+                          <option key={`venue-opt-${name}`} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {venueHasName ? null : (
+                      <span className="wizard-field-error">
+                        {venueIsNew ? "Required" : "Select a venue"}
+                      </span>
+                    )}
+                  </Field>
+                  <div className="wizard-inline">
+                    <button
+                      type="button"
+                      onClick={() => setVenueMode(idx, venueIsNew ? false : true)}
                     >
-                      <option value="">Select venue</option>
-                      {venueOptions.map((name) => (
-                        <option key={`venue-opt-${name}`} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={venue.name}
-                      className={!venue.name.trim() ? "wizard-input invalid" : "wizard-input"}
-                      onChange={(e) => handleVenueChange(idx, e.target.value)}
-                      placeholder="New venue name"
-                    />
-                  )}
-                  {!venue.name.trim() ? (
-                    <span className="wizard-field-error">
-                      {venue.isNew ? "Required" : "Select a venue"}
-                    </span>
-                  ) : null}
-                </Field>
-                <div className="wizard-inline">
-                  <button
-                    type="button"
-                    onClick={() => setVenueMode(idx, !venue.isNew)}
-                  >
-                    {venue.isNew ? "Choose Existing" : "Add New"}
-                  </button>
+                      {venueIsNew ? "Choose Existing" : "Add New"}
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => removeVenue(idx)}>Remove</button>
                 </div>
-                <button type="button" onClick={() => removeVenue(idx)}>Remove</button>
-              </div>
-            ))}
+              );
+            })}
           </SectionCard>
         </div>
       )}
@@ -770,13 +834,13 @@ export default function TournamentWizard() {
           actions={<button type="button" onClick={addGroup}>Add Group</button>}
         >
           {groups.map((group, idx) => (
-            <div className="wizard-block" key={`group-${idx}`}>
+            <div className="wizard-block" key={group._key}>
               <div className="wizard-row">
                 <Field label="Group ID">
                   <input
                     type="text"
                     value={group.id}
-                    className={!group.id.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={group.id.trim() ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateGroup(idx, { id: e.target.value })}
                     placeholder="U11B"
                   />
@@ -785,7 +849,7 @@ export default function TournamentWizard() {
                   <input
                     type="text"
                     value={group.label}
-                    className={!group.label.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={group.label.trim() ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateGroup(idx, { label: e.target.value })}
                     placeholder="U11 Boys"
                   />
@@ -853,14 +917,16 @@ export default function TournamentWizard() {
               </Field>
               <button type="button" onClick={applyFranchiseImport}>Import Franchises</button>
             </div>
-            {franchises.map((franchise, idx) => (
-              <div className="wizard-block" key={`franchise-${idx}`}>
+            {franchises.map((franchise, idx) => {
+              const franchiseHasName = Boolean(franchise.name?.trim());
+              return (
+              <div className="wizard-block" key={franchise._key}>
                 <div className="wizard-row">
                   <Field label="Name">
                   <input
                     type="text"
                     value={franchise.name}
-                    className={!franchise.name.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={franchiseHasName ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFranchise(idx, { name: e.target.value })}
                     placeholder="Purple Panthers"
                   />
@@ -939,7 +1005,8 @@ export default function TournamentWizard() {
                 </Field>
                 <button type="button" onClick={() => removeFranchise(idx)}>Remove Franchise</button>
               </div>
-            ))}
+            );
+            })}
           </SectionCard>
 
           <SectionCard
@@ -958,13 +1025,17 @@ export default function TournamentWizard() {
               </Field>
               <button type="button" onClick={applyTeamImport}>Import Teams</button>
             </div>
-            {teams.map((team, idx) => (
-              <div className="wizard-block" key={`team-${idx}`}>
+            {teams.map((team, idx) => {
+              const teamHasGroup = Boolean(team.group_id);
+              const teamHasName = Boolean(team.name?.trim());
+              const teamHasFranchise = Boolean(team.franchise_name?.trim());
+              return (
+              <div className="wizard-block" key={team._key}>
                 <div className="wizard-row">
                   <Field label="Group">
                     <select
                     value={team.group_id}
-                    className={!team.group_id ? "wizard-input invalid" : "wizard-input"}
+                    className={teamHasGroup ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateTeam(idx, { group_id: e.target.value })}
                   >
                       <option value="">Select group</option>
@@ -979,7 +1050,7 @@ export default function TournamentWizard() {
                     <input
                       type="text"
                       value={team.name}
-                      className={!team.name.trim() ? "wizard-input invalid" : "wizard-input"}
+                      className={teamHasName ? "wizard-input" : "wizard-input invalid"}
                       onChange={(e) => updateTeam(idx, { name: e.target.value })}
                       placeholder="PP Amber"
                     />
@@ -990,7 +1061,7 @@ export default function TournamentWizard() {
                   <input
                     type="text"
                     value={team.franchise_name}
-                    className={!team.franchise_name.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={teamHasFranchise ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateTeam(idx, { franchise_name: e.target.value })}
                     placeholder="Purple Panthers"
                     list={`franchise-options-${idx}`}
@@ -1035,7 +1106,8 @@ export default function TournamentWizard() {
                 ) : null}
                 <button type="button" onClick={() => removeTeam(idx)}>Remove Team</button>
               </div>
-            ))}
+            );
+            })}
           </SectionCard>
         </div>
       )}
@@ -1138,14 +1210,18 @@ export default function TournamentWizard() {
             title="Time Slots"
             actions={<button type="button" onClick={addTimeSlot}>Add Slot</button>}
           >
-            {timeSlots.map((slot, idx) => (
-              <div className="wizard-block" key={`slot-${idx}`}>
+            {timeSlots.map((slot, idx) => {
+              const slotHasDate = Boolean(slot.date);
+              const slotHasTime = Boolean(slot.time);
+              const slotHasVenue = Boolean(slot.venue);
+              return (
+              <div className="wizard-block" key={slot._key}>
                 <div className="wizard-row">
                   <Field label="Date">
                     <input
                       type="date"
                       value={slot.date}
-                      className={!slot.date ? "wizard-input invalid" : "wizard-input"}
+                      className={slotHasDate ? "wizard-input" : "wizard-input invalid"}
                       onChange={(e) => updateTimeSlot(idx, { date: e.target.value })}
                     />
                   </Field>
@@ -1153,7 +1229,7 @@ export default function TournamentWizard() {
                     <input
                       type="text"
                       value={slot.time}
-                      className={!slot.time ? "wizard-input invalid" : "wizard-input"}
+                      className={slotHasTime ? "wizard-input" : "wizard-input invalid"}
                       onChange={(e) => updateTimeSlot(idx, { time: e.target.value })}
                       placeholder="09:00"
                     />
@@ -1161,7 +1237,7 @@ export default function TournamentWizard() {
                   <Field label="Venue">
                     <select
                       value={slot.venue}
-                      className={!slot.venue ? "wizard-input invalid" : "wizard-input"}
+                      className={slotHasVenue ? "wizard-input" : "wizard-input invalid"}
                       onChange={(e) => updateTimeSlot(idx, { venue: e.target.value })}
                     >
                       <option value="">Select venue</option>
@@ -1184,15 +1260,22 @@ export default function TournamentWizard() {
                 </Field>
                 <button type="button" onClick={() => removeTimeSlot(idx)}>Remove Slot</button>
               </div>
-            ))}
+            );
+            })}
           </SectionCard>
-          {fixtures.map((fixture, idx) => (
-            <div className="wizard-block" key={`fixture-${idx}`}>
+          {fixtures.map((fixture, idx) => {
+            const fixtureHasGroup = Boolean(fixture.group_id);
+            const fixtureHasDate = Boolean(fixture.date);
+            const fixtureHasPool = Boolean(fixture.pool?.trim());
+            const fixtureHasTeam1 = Boolean(fixture.team1?.trim());
+            const fixtureHasTeam2 = Boolean(fixture.team2?.trim());
+            return (
+            <div className="wizard-block" key={fixture._key}>
               <div className="wizard-row">
                 <Field label="Group">
                   <select
                     value={fixture.group_id}
-                    className={!fixture.group_id ? "wizard-input invalid" : "wizard-input"}
+                    className={fixtureHasGroup ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFixture(idx, { group_id: e.target.value })}
                   >
                     <option value="">Select group</option>
@@ -1207,7 +1290,7 @@ export default function TournamentWizard() {
                   <input
                     type="date"
                     value={fixture.date}
-                    className={!fixture.date ? "wizard-input invalid" : "wizard-input"}
+                    className={fixtureHasDate ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFixture(idx, { date: e.target.value })}
                   />
                 </Field>
@@ -1240,7 +1323,7 @@ export default function TournamentWizard() {
                   <input
                     type="text"
                     value={fixture.pool}
-                    className={!fixture.pool.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={fixtureHasPool ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFixture(idx, { pool: e.target.value })}
                     placeholder="A"
                   />
@@ -1260,7 +1343,7 @@ export default function TournamentWizard() {
                   <input
                     type="text"
                     value={fixture.team1}
-                    className={!fixture.team1.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={fixtureHasTeam1 ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFixture(idx, { team1: e.target.value })}
                     list={`fixture-team1-${idx}`}
                   />
@@ -1274,7 +1357,7 @@ export default function TournamentWizard() {
                   <input
                     type="text"
                     value={fixture.team2}
-                    className={!fixture.team2.trim() ? "wizard-input invalid" : "wizard-input"}
+                    className={fixtureHasTeam2 ? "wizard-input" : "wizard-input invalid"}
                     onChange={(e) => updateFixture(idx, { team2: e.target.value })}
                     list={`fixture-team2-${idx}`}
                   />
@@ -1287,7 +1370,8 @@ export default function TournamentWizard() {
               </div>
               <button type="button" onClick={() => removeFixture(idx)}>Remove Fixture</button>
             </div>
-          ))}
+          );
+          })}
         </SectionCard>
       )}
     </div>

@@ -1,0 +1,132 @@
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import React from "react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+globalThis.fetch = vi.fn();
+
+describe("TournamentWizard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("VITE_API_BASE", "http://localhost:8787/api");
+    vi.resetModules();
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [{ name: "Venue A" }] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/admin/tournament-wizard")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, tournament_id: "hj-test-2026" }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+  });
+
+  async function renderWizard() {
+    const { default: TournamentWizard } = await import("./TournamentWizard");
+    return render(<TournamentWizard />);
+  }
+
+  it("renders and navigates between steps", async () => {
+    await renderWizard();
+
+    expect(screen.getByText("Tournament Setup Wizard")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    expect(screen.getByRole("heading", { name: "Fixtures" })).toBeDefined();
+  });
+
+  it("submits a tournament when required fields are present", async () => {
+    await renderWizard();
+
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), {
+      target: { value: "HJ Indoor 2026" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("2026"), {
+      target: { value: "2026" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+      target: { value: "PP Amber" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+      target: { value: "A" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/tournament-wizard",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    });
+  });
+
+  it("generates fixtures for a group", async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11B"), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
+      target: { value: "U11 Boys" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+      target: { value: "PP Amber" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+      target: { value: "A" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
+    const teamInputs = screen.getAllByPlaceholderText("PP Amber");
+    fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
+    const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
+    fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
+    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
+    fireEvent.change(poolCombos[1], { target: { value: "A" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    const fixtureGroupSelects = screen.getAllByRole("combobox", { name: "Group" });
+    fireEvent.change(fixtureGroupSelects[0], { target: { value: "U11B" } });
+    fireEvent.change(screen.getAllByLabelText("Date")[0], {
+      target: { value: "2026-01-08" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Generate Fixtures/i }));
+    await waitFor(() => {
+      expect(screen.getAllByLabelText("Team 1").length).toBeGreaterThan(0);
+    });
+  });
+});

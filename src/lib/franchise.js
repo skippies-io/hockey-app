@@ -35,13 +35,13 @@ const CORRECTIONS = [
 ];
 
 function normalizeSpaces(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
+  return String(value || "").replaceAll(/\s+/g, " ").trim();
 }
 
 export function normalizeTeamName(name) {
   const raw = normalizeSpaces(name);
   if (!raw) return "";
-  return normalizeSpaces(raw.replace(/\s*-\s*/g, " "));
+  return normalizeSpaces(raw.split("-").join(" "));
 }
 
 function toTitleCase(value) {
@@ -49,7 +49,7 @@ function toTitleCase(value) {
     .split(" ")
     .map((word) => {
       if (!word) return word;
-      const clean = word.replace(/[^A-Za-z0-9]/g, "");
+      const clean = word.replaceAll(/[^A-Za-z0-9]/g, "");
       const upper = clean.toUpperCase();
       if (ACRONYM_KEEP.has(upper)) return upper;
       const lower = word.toLowerCase();
@@ -61,7 +61,7 @@ function toTitleCase(value) {
 function applyCorrections(value) {
   let s = normalizeSpaces(value);
   for (const rule of CORRECTIONS) {
-    s = s.replace(rule.re, rule.replace);
+    s = s.replaceAll(rule.re, rule.replace);
   }
   return s;
 }
@@ -87,7 +87,7 @@ export function parseFranchiseName(name) {
   const tokens = raw.split(" ");
   let end = tokens.length;
   while (end > 0) {
-    const token = tokens[end - 1].replace(/[^A-Za-z0-9]/g, "");
+    const token = tokens[end - 1].replaceAll(/[^A-Za-z0-9]/g, "");
     const tokenLower = token.toLowerCase();
     if (!token) {
       end -= 1;
