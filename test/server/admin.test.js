@@ -439,6 +439,28 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('POST /tournament-wizard rejects duplicate group ids', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            groups: [
+                { id: 'U11B', label: 'U11 Boys', format: '' },
+                { id: 'U11B', label: 'Duplicate', format: '' },
+            ],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Duplicate group id') })
+        );
+    });
+
     it('POST /tournament-wizard rejects time slots with unknown venues', async () => {
         const url = new URL('http://localhost/api/admin/tournament-wizard');
         mockReq.method = 'POST';
