@@ -131,6 +131,28 @@ describe("TournamentWizard", () => {
     });
   });
 
+  it("updates and removes fixtures", async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    const team1Input = screen.getAllByLabelText("Team 1")[0];
+    const team2Input = screen.getAllByLabelText("Team 2")[0];
+    fireEvent.change(team1Input, { target: { value: "PP Amber" } });
+    fireEvent.change(team2Input, { target: { value: "Knights" } });
+
+    await waitFor(() => {
+      expect(team1Input.value).toBe("PP Amber");
+      expect(team2Input.value).toBe("Knights");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove Fixture/i }));
+    await waitFor(() => {
+      expect(
+        screen.queryAllByRole("button", { name: /Remove Fixture/i }).length
+      ).toBe(0);
+    });
+  });
+
   it("supports imports and auto-assigning pools", async () => {
     await renderWizard();
 
