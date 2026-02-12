@@ -419,4 +419,70 @@ describe('handleAdminRequest', () => {
             expect.objectContaining({ error: expect.stringContaining('Duplicate fixture') })
         );
     });
+
+    it('POST /tournament-wizard rejects time slots missing date/time/venue', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            timeSlots: [{ date: '', time: '09:00', venue: 'Beaulieu College', label: 'Court 1' }],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Time slots require date') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects time slots with unknown venues', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            timeSlots: [{ date: '2026-01-08', time: '09:00', venue: 'Unknown Venue', label: '' }],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Unknown venue') })
+        );
+    });
+
+    it('GET /venues returns venue list', async () => {
+        const url = new URL('http://localhost/api/admin/venues');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ name: 'Beaulieu College' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.any(Array) })
+        );
+    });
+
+    it('POST /venues returns method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/venues');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            405,
+            expect.objectContaining({ error: expect.stringContaining('Method not allowed') })
+        );
+    });
 });

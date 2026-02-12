@@ -8,20 +8,20 @@ function slug(input) {
   const base = String(input || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)/g, "");
   const digest = hashString(String(input)).slice(0, 12);
   return base ? `${base}-${digest}` : digest;
 }
 
 function normalizeSpaces(value) {
-  return String(value || "").replace(/\s+/g, " ").trim();
+  return String(value || "").replaceAll(/\s+/g, " ").trim();
 }
 
 function normalizeTeamName(value) {
   const raw = normalizeSpaces(value);
   if (!raw) return "";
-  return normalizeSpaces(raw.replace(/\s*-\s*/g, " "));
+  return normalizeSpaces(raw.split("-").join(" "));
 }
 
 function toTitleCase(value) {
