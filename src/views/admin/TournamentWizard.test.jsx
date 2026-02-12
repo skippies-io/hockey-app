@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { computeFormErrors } from "./TournamentWizard";
 
 globalThis.fetch = vi.fn();
 
@@ -225,5 +226,50 @@ describe("TournamentWizard", () => {
     await waitFor(() => {
       expect(screen.getByText(/Save failed/i)).toBeDefined();
     });
+  });
+
+  it("computes form errors for invalid inputs", () => {
+    const errors = computeFormErrors({
+      tournament: { id: "", name: "", season: "" },
+      groups: [{ id: "", label: "" }],
+      teams: [
+        { group_id: "", name: "PP Amber", pool: "" },
+        { group_id: "U11B", name: "PP Amber", pool: "" },
+      ],
+      fixtures: [
+        { group_id: "U11B", team1: "PP Amber", team2: "PP Amber", date: "", pool: "" },
+        { group_id: "U11B", team1: "PP Amber", team2: "PP Amber", date: "2026-01-01", pool: "A" },
+        { group_id: "UNKNOWN", team1: "X", team2: "Y", date: "2026-01-01", pool: "A" },
+      ],
+    });
+
+    expect(errors).toEqual(expect.arrayContaining([
+      "Tournament name is required.",
+      "Tournament season is required.",
+      "At least one group is required.",
+      "All teams must be assigned to a valid group.",
+      "Fixtures include an unknown group.",
+      "All non-placeholder teams should have a pool.",
+      "All fixtures must have a date.",
+      "All fixtures must have a pool.",
+    ]));
+
+    const duplicateErrors = computeFormErrors({
+      tournament: { id: "hj-test", name: "HJ", season: "2026" },
+      groups: [{ id: "U11B", label: "U11 Boys" }],
+      teams: [
+        { group_id: "U11B", name: "PP Amber", pool: "A" },
+        { group_id: "U11B", name: "PP Amber", pool: "B" },
+      ],
+      fixtures: [
+        { group_id: "U11B", team1: "PP Amber", team2: "Knights", date: "2026-01-01", pool: "A" },
+        { group_id: "U11B", team1: "PP Amber", team2: "Knights", date: "2026-01-01", pool: "A" },
+      ],
+    });
+
+    expect(duplicateErrors).toEqual(expect.arrayContaining([
+      "Duplicate team names found within a group.",
+      "Duplicate fixtures found (same teams/date/time/pool).",
+    ]));
   });
 });
