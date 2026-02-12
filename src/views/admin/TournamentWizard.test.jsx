@@ -159,6 +159,11 @@ describe("TournamentWizard", () => {
     fireEvent.change(fixtureGroupSelect, { target: { value: "U11B" } });
     fireEvent.change(fixtureDateInput, { target: { value: "2026-01-10" } });
     fireEvent.change(fixtureTimeInput, { target: { value: "09:00" } });
+    await waitFor(() => {
+      expect(
+        fixtureVenueSelect.querySelector('option[value="Venue A"]')
+      ).not.toBeNull();
+    });
     fireEvent.change(fixtureVenueSelect, { target: { value: "Venue A" } });
     fireEvent.change(fixturePoolInput, { target: { value: "A" } });
     fireEvent.change(fixtureRoundInput, { target: { value: "Round 1" } });
