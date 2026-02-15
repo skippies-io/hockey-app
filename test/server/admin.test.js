@@ -271,9 +271,21 @@ describe('handleAdminRequest', () => {
     });
 
     function mockWizardDbHappyPath() {
-        mockClient.query.mockImplementation(async (sql) => {
+        mockClient.query.mockImplementation(async (sql, params = []) => {
             if (sql.includes('SELECT 1 FROM tournament')) {
                 return { rowCount: 0, rows: [] };
+            }
+            if (sql.includes('FROM venue_directory')) {
+                const names = Array.isArray(params[0]) ? params[0] : [];
+                return {
+                    rowCount: names.length,
+                    rows: names.map((name) => ({
+                        name,
+                        address: null,
+                        location_map_url: null,
+                        website_url: null,
+                    })),
+                };
             }
             return { rowCount: 1, rows: [] };
         });
@@ -494,9 +506,28 @@ describe('handleAdminRequest', () => {
         );
     });
 
-    it('POST /venues returns method not allowed', async () => {
+    it('POST /venues creates a venue directory entry', async () => {
         const url = new URL('http://localhost/api/admin/venues');
         mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ name: 'Beaulieu College' }));
+        mockPool.query.mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [{ id: 'beaulieu-college', name: 'Beaulieu College' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('PUT /venues returns method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/venues');
+        mockReq.method = 'PUT';
 
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
 

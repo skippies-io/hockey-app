@@ -22,7 +22,7 @@ describe('AdminLayout', () => {
     expect(screen.getByRole('navigation', { name: 'Admin Navigation' })).toBeTruthy();
     expect(screen.getByText('Admin Console Loaded')).toBeTruthy();
 
-    ['Dashboard', 'Tournaments', 'Announcements', 'Teams', 'Fixtures'].forEach((label) => {
+    ['Dashboard', 'Tournaments', 'Venues', 'Groups', 'Franchises', 'Announcements', 'Teams', 'Fixtures'].forEach((label) => {
       expect(screen.getByRole('link', { name: label })).toBeTruthy();
     });
 

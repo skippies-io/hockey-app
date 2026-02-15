@@ -1852,6 +1852,28 @@ select {
   cursor: not-allowed;
 }
 
+.wizard-secondary {
+  padding: var(--hj-space-2) var(--hj-space-4);
+  border-radius: var(--hj-radius-pill);
+  border: 1px solid var(--hj-color-border-subtle);
+  background: var(--hj-color-surface);
+  color: var(--hj-color-text-primary);
+  font-weight: var(--hj-font-weight-semibold);
+  cursor: pointer;
+}
+
+.wizard-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wizard-step-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-3);
+  margin: var(--hj-space-3) 0 var(--hj-space-4);
+}
+
 .wizard-alert {
   padding: var(--hj-space-2) var(--hj-space-3);
   border-radius: var(--hj-radius-md);

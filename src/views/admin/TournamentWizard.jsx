@@ -1,30 +1,10 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { API_BASE } from "../../lib/api";
-import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
+import { normalizeTeamName } from "../../lib/franchise";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
 const STEP_LABELS = ["Tournament", "Groups", "Teams", "Fixtures"];
-const CANONICAL_FRANCHISES = [
-  "Purple Panthers",
-  "Blue Cranes",
-  "Black Hawks",
-  "BHA",
-  "Gryphons",
-  "Mighty Ducks",
-  "Northern Guardians",
-  "Dragons",
-  "Giants",
-  "Knights",
-  "GS Hockey",
-  "Meta SMS",
-  "Gladiators",
-  "Khosa",
-  "Pink Otters",
-  "Reddam",
-  "Turfwar",
-];
-
 function normalizeId(value) {
   return String(value || "")
     .trim()
@@ -117,9 +97,6 @@ function emptyTeam(key, groupId = "") {
     _key: key,
     group_id: groupId,
     name: "",
-    franchise_name: "",
-    pool: "",
-    is_placeholder: false,
   };
 }
 
@@ -199,22 +176,9 @@ export default function TournamentWizard() {
     season: "",
   });
   const [venues, setVenues] = useState(() => [
-    { _key: makeKey("venue"), name: "", isNew: false },
+    { _key: makeKey("venue"), name: "" },
   ]);
   const [groups, setGroups] = useState(() => [emptyGroup(makeKey("group"))]);
-  const [franchises, setFranchises] = useState([
-    {
-      _key: makeKey("franchise"),
-      name: "",
-      logo_url: "",
-      manager_name: "",
-      manager_photo_url: "",
-      description: "",
-      contact_phone: "",
-      location_map_url: "",
-      contact_email: "",
-    },
-  ]);
   const [teams, setTeams] = useState(() => [emptyTeam(makeKey("team"))]);
   const [fixtures, setFixtures] = useState(() => [emptyFixture(makeKey("fixture"))]);
   const [timeSlots, setTimeSlots] = useState([
@@ -230,7 +194,6 @@ export default function TournamentWizard() {
     roundPrefix: "Round",
   });
   const [generatorErrors, setGeneratorErrors] = useState({});
-  const [franchiseImport, setFranchiseImport] = useState("");
   const [teamImport, setTeamImport] = useState("");
 
   const formErrors = useMemo(
@@ -261,13 +224,29 @@ export default function TournamentWizard() {
     return map;
   }, [groups]);
 
-  const allVenueOptions = useMemo(() => {
-    const list = [
-      ...venueOptions,
-      ...venues.filter((v) => v.isNew && v.name).map((v) => v.name),
-    ];
+  React.useEffect(() => {
+    setTeams((prev) => {
+      const next = prev.map((team) => ({ ...team }));
+      const grouped = new Map();
+      next.forEach((team) => {
+        if (!team.group_id || !team.name?.trim()) return;
+        if (!grouped.has(team.group_id)) grouped.set(team.group_id, []);
+        grouped.get(team.group_id).push(team);
+      });
+      grouped.forEach((groupTeams, groupId) => {
+        const labels = poolsByGroup.get(groupId) || ["A"];
+        groupTeams.forEach((team, idx) => {
+          team.pool = labels[idx % labels.length];
+        });
+      });
+      return next;
+    });
+  }, [poolsByGroup]);
+
+  const selectedVenueOptions = useMemo(() => {
+    const list = venues.map((v) => v.name).filter(Boolean);
     return Array.from(new Set(list.map((v) => v.trim()).filter(Boolean)));
-  }, [venueOptions, venues]);
+  }, [venues]);
 
 
   const teamOptionsByGroup = useMemo(() => {
@@ -280,14 +259,6 @@ export default function TournamentWizard() {
     });
     return map;
   }, [teams]);
-
-  const franchiseOptions = useMemo(() => {
-    const fromForm = franchises.map((f) => f.name).filter(Boolean);
-    const merged = [...CANONICAL_FRANCHISES, ...fromForm];
-    return Array.from(new Set(merged.map((n) => n.trim()).filter(Boolean))).sort((a, b) =>
-      a.localeCompare(b)
-    );
-  }, [franchises]);
 
   function updateTournament(next) {
     setTournament((prev) => ({ ...prev, ...next }));
@@ -302,19 +273,11 @@ export default function TournamentWizard() {
   }
 
   function addVenue() {
-    setVenues((prev) => [...prev, { _key: makeKey("venue"), name: "", isNew: false }]);
+    setVenues((prev) => [...prev, { _key: makeKey("venue"), name: "" }]);
   }
 
   function removeVenue(index) {
     setVenues((prev) => prev.filter((_, idx) => idx !== index));
-  }
-
-  function setVenueMode(index, isNew) {
-    setVenues((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], isNew, name: "" };
-      return next;
-    });
   }
 
   function updateGroup(index, patch) {
@@ -349,61 +312,22 @@ export default function TournamentWizard() {
     });
   }
 
-  function updateFranchise(index, patch) {
-    setFranchises((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], ...patch };
-      return next;
-    });
-  }
-
-  function addFranchise() {
-    setFranchises((prev) => [
-      ...prev,
-      {
-        _key: makeKey("franchise"),
-        name: "",
-        logo_url: "",
-        manager_name: "",
-        manager_photo_url: "",
-        description: "",
-        contact_phone: "",
-        location_map_url: "",
-        contact_email: "",
-      },
-    ]);
-  }
-
-  function removeFranchise(index) {
-    setFranchises((prev) => prev.filter((_, idx) => idx !== index));
-  }
-
   function updateTeam(index, patch) {
     setTeams((prev) => {
       const next = [...prev];
       const updated = { ...next[index], ...patch };
-      if (patch.name && !patch.franchise_name) {
-        const parsed = parseFranchiseName(patch.name);
-        if (!parsed.placeholder && parsed.franchise) {
-          updated.franchise_name = parsed.franchise;
-        }
-        updated.is_placeholder = parsed.placeholder;
-      }
       next[index] = updated;
-      return next;
-    });
-  }
-
-  function autoAssignPoolsForGroup(groupId) {
-    const groupPoolLabels = poolsByGroup.get(groupId) || ["A"];
-    setTeams((prev) => {
-      const next = prev.map((team) => ({ ...team }));
-      const groupTeams = next.filter(
-        (team) => team.group_id === groupId && !team.is_placeholder
-      );
-      groupTeams.forEach((team, idx) => {
-        team.pool = groupPoolLabels[idx % groupPoolLabels.length];
-      });
+      const groupId = updated.group_id;
+      if (groupId) {
+        const groupPoolLabels = poolsByGroup.get(groupId) || ["A"];
+        let cursor = 0;
+        next.forEach((team) => {
+          if (team.group_id === groupId && team.name?.trim()) {
+            team.pool = groupPoolLabels[cursor % groupPoolLabels.length];
+            cursor += 1;
+          }
+        });
+      }
       return next;
     });
   }
@@ -427,43 +351,37 @@ export default function TournamentWizard() {
     setTimeSlots((prev) => prev.filter((_, idx) => idx !== index));
   }
 
-  function applyFranchiseImport() {
-    const entries = parseLines(franchiseImport).map((name) => ({
-      _key: makeKey("franchise"),
-      name,
-      logo_url: "",
-      manager_name: "",
-      manager_photo_url: "",
-      description: "",
-      contact_phone: "",
-      location_map_url: "",
-      contact_email: "",
-    }));
-    if (!entries.length) return;
-    setFranchises((prev) => [...prev, ...entries]);
-    setFranchiseImport("");
-  }
-
   function applyTeamImport() {
     const lines = parseLines(teamImport);
     const entries = [];
     for (const line of lines) {
-      const [group_id, name, franchise_name, pool] = line
+      const [group_id, name] = line
         .split(",")
         .map((part) => part.trim());
       if (!group_id || !name) continue;
-      const parsed = parseFranchiseName(name);
       entries.push({
         _key: makeKey("team"),
         group_id,
         name,
-        franchise_name: franchise_name || parsed.franchise || "",
-        pool: pool || "",
-        is_placeholder: parsed.placeholder,
       });
     }
     if (!entries.length) return;
-    setTeams((prev) => [...prev, ...entries]);
+    setTeams((prev) => {
+      const next = [...prev, ...entries].map((team) => ({ ...team }));
+      const grouped = new Map();
+      next.forEach((team) => {
+        if (!team.group_id || !team.name?.trim()) return;
+        if (!grouped.has(team.group_id)) grouped.set(team.group_id, []);
+        grouped.get(team.group_id).push(team);
+      });
+      grouped.forEach((groupTeams, groupId) => {
+        const labels = poolsByGroup.get(groupId) || ["A"];
+        groupTeams.forEach((team, idx) => {
+          team.pool = labels[idx % labels.length];
+        });
+      });
+      return next;
+    });
     setTeamImport("");
   }
 
@@ -503,7 +421,7 @@ export default function TournamentWizard() {
       return;
     }
     const teamsInGroup = teams
-      .filter((t) => t.group_id === groupId && !t.is_placeholder)
+      .filter((t) => t.group_id === groupId)
       .map((t) => normalizeTeamName(t.name));
     if (teamsInGroup.length < 2) {
       setSaveError("Not enough teams in the group to generate fixtures.");
@@ -517,7 +435,6 @@ export default function TournamentWizard() {
         .filter(
           (t) =>
             t.group_id === groupId &&
-            !t.is_placeholder &&
             ((t.pool || "").trim() === poolLabel || groupPools.length === 1)
         )
         .map((t) => normalizeTeamName(t.name));
@@ -578,26 +495,12 @@ export default function TournamentWizard() {
             venue_name: venueName,
           }))
         ),
-        franchises: franchises
-          .filter((f) => f.name?.trim())
-          .map((f) => ({
-            name: f.name,
-            logo_url: f.logo_url,
-            manager_name: f.manager_name,
-            manager_photo_url: f.manager_photo_url,
-            description: f.description,
-            contact_phone: f.contact_phone,
-            location_map_url: f.location_map_url,
-            contact_email: f.contact_email,
-          })),
         teams: teams
           .filter((t) => t.name?.trim() && t.group_id)
           .map((t) => ({
             group_id: t.group_id,
             name: t.name,
-            franchise_name: t.franchise_name,
-            pool: t.pool,
-            is_placeholder: t.is_placeholder,
+            is_placeholder: false,
           })),
         fixtures: fixtures
           .filter((f) => f.team1?.trim() && f.team2?.trim() && f.group_id)
@@ -657,6 +560,40 @@ export default function TournamentWizard() {
     };
   }, []);
 
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/groups`);
+        if (!res.ok) throw new Error("Failed to load group seeds");
+        const json = await res.json();
+        if (!alive) return;
+        const list = Array.isArray(json?.data) ? json.data : [];
+        setGroups((prev) => {
+          const isPristine =
+            prev.length === 1 &&
+            !prev[0].id?.trim() &&
+            !prev[0].label?.trim() &&
+            !prev[0].format?.trim();
+          if (!isPristine || list.length === 0) return prev;
+          return list.map((seed) => ({
+            _key: makeKey("group"),
+            id: seed.id || "",
+            label: seed.label || "",
+            format: seed.format || "Round-robin",
+            venues: [],
+            pool_count: 1,
+          }));
+        });
+      } catch (err) {
+        console.warn("Failed to load group seeds", err);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [makeKey]);
+
   return (
     <div className="wizard-page">
       <header className="wizard-header">
@@ -688,6 +625,24 @@ export default function TournamentWizard() {
       {saveSuccess ? <div className="wizard-alert success">{saveSuccess}</div> : null}
 
       <WizardStepHeader step={step} onStepChange={setStep} />
+      <div className="wizard-step-nav">
+        <button
+          type="button"
+          className="wizard-secondary"
+          onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+          disabled={step === 0}
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          className="wizard-primary"
+          onClick={() => setStep((prev) => Math.min(STEP_LABELS.length - 1, prev + 1))}
+          disabled={step === STEP_LABELS.length - 1}
+        >
+          Next
+        </button>
+      </div>
 
       {step === 0 && (
         <div className="wizard-grid">
@@ -731,46 +686,27 @@ export default function TournamentWizard() {
           >
             {venues.map((venue, idx) => {
               const venueHasName = Boolean(venue.name?.trim());
-              const venueIsNew = venue.isNew;
               return (
                 <div className="wizard-row" key={venue._key}>
                   <Field label="Venue">
-                    {venueIsNew ? (
-                      <input
-                        type="text"
-                        value={venue.name}
-                        className={venueHasName ? "wizard-input" : "wizard-input invalid"}
-                        onChange={(e) => handleVenueChange(idx, e.target.value)}
-                        placeholder="New venue name"
-                      />
-                    ) : (
-                      <select
-                        value={venue.name}
-                        className={venueHasName ? "wizard-input" : "wizard-input invalid"}
-                        onChange={(e) => handleVenueChange(idx, e.target.value)}
-                      >
-                        <option value="">Select venue</option>
-                        {venueOptions.map((name) => (
-                          <option key={`venue-opt-${name}`} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <select
+                      value={venue.name}
+                      className={venueHasName ? "wizard-input" : "wizard-input invalid"}
+                      onChange={(e) => handleVenueChange(idx, e.target.value)}
+                    >
+                      <option value="">Select venue</option>
+                      {venueOptions.map((name) => (
+                        <option key={`venue-opt-${name}`} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
                     {venueHasName ? null : (
                       <span className="wizard-field-error">
-                        {venueIsNew ? "Required" : "Select a venue"}
+                        Select a venue
                       </span>
                     )}
                   </Field>
-                  <div className="wizard-inline">
-                    <button
-                      type="button"
-                      onClick={() => setVenueMode(idx, venueIsNew ? false : true)}
-                    >
-                      {venueIsNew ? "Choose Existing" : "Add New"}
-                    </button>
-                  </div>
                   <button type="button" onClick={() => removeVenue(idx)}>Remove</button>
                 </div>
               );
@@ -829,10 +765,10 @@ export default function TournamentWizard() {
               <div className="wizard-choices">
                 <span className="wizard-field-label">Venues</span>
                 <div className="wizard-choice-list">
-                  {allVenueOptions.length === 0 && (
-                    <span className="wizard-choice-empty">Add venues in Step 1.</span>
+                  {selectedVenueOptions.length === 0 && (
+                    <span className="wizard-choice-empty">Select venues in Step 1.</span>
                   )}
-                  {allVenueOptions.map((venueName) => (
+                  {selectedVenueOptions.map((venueName) => (
                     <label key={`${group.id}-${venueName}`} className="wizard-choice">
                       <input
                         type="checkbox"
@@ -853,125 +789,17 @@ export default function TournamentWizard() {
       {step === 2 && (
         <div className="wizard-grid">
           <SectionCard
-            title="Franchises"
-            actions={<button type="button" onClick={addFranchise}>Add Franchise</button>}
-          >
-            <div className="wizard-block">
-              <Field label="Bulk Import (one franchise per line)">
-                <textarea
-                  rows={3}
-                  value={franchiseImport}
-                  className="wizard-input"
-                  onChange={(e) => setFranchiseImport(e.target.value)}
-                  placeholder="Purple Panthers\nBlue Cranes\nBlack Hawks"
-                />
-              </Field>
-              <button type="button" onClick={applyFranchiseImport}>Import Franchises</button>
-            </div>
-            {franchises.map((franchise, idx) => {
-              const franchiseHasName = Boolean(franchise.name?.trim());
-              return (
-              <div className="wizard-block" key={franchise._key}>
-                <div className="wizard-row">
-                  <Field label="Name">
-                  <input
-                    type="text"
-                    value={franchise.name}
-                    className={franchiseHasName ? "wizard-input" : "wizard-input invalid"}
-                    onChange={(e) => updateFranchise(idx, { name: e.target.value })}
-                    placeholder="Purple Panthers"
-                  />
-                </Field>
-                <Field label="Logo URL">
-                  <input
-                    type="text"
-                    value={franchise.logo_url}
-                    className="wizard-input"
-                    onChange={(e) => updateFranchise(idx, { logo_url: e.target.value })}
-                    placeholder="https://..."
-                  />
-                </Field>
-                </div>
-                <div className="wizard-row">
-                  <Field label="Manager Name">
-                  <input
-                    type="text"
-                    value={franchise.manager_name}
-                    className="wizard-input"
-                    onChange={(e) => updateFranchise(idx, { manager_name: e.target.value })}
-                    placeholder="Manager name"
-                  />
-                </Field>
-                  <Field label="Manager Photo URL">
-                  <input
-                    type="text"
-                    value={franchise.manager_photo_url}
-                    className="wizard-input"
-                    onChange={(e) =>
-                      updateFranchise(idx, { manager_photo_url: e.target.value })
-                    }
-                    placeholder="https://..."
-                  />
-                </Field>
-                </div>
-                <div className="wizard-row">
-                  <Field label="Contact Phone">
-                  <input
-                    type="text"
-                    value={franchise.contact_phone}
-                    className="wizard-input"
-                    onChange={(e) => updateFranchise(idx, { contact_phone: e.target.value })}
-                    placeholder="+27..."
-                  />
-                </Field>
-                  <Field label="Contact Email">
-                  <input
-                    type="text"
-                    value={franchise.contact_email}
-                    className="wizard-input"
-                    onChange={(e) => updateFranchise(idx, { contact_email: e.target.value })}
-                    placeholder="name@example.com"
-                  />
-                </Field>
-                </div>
-                <Field label="Location Map URL">
-                  <input
-                    type="text"
-                    value={franchise.location_map_url}
-                    className="wizard-input"
-                    onChange={(e) =>
-                      updateFranchise(idx, { location_map_url: e.target.value })
-                    }
-                    placeholder="https://maps.google.com/..."
-                  />
-                </Field>
-                <Field label="Description">
-                  <textarea
-                    rows={3}
-                    value={franchise.description}
-                    className="wizard-input"
-                    onChange={(e) => updateFranchise(idx, { description: e.target.value })}
-                    placeholder="Franchise description"
-                  />
-                </Field>
-                <button type="button" onClick={() => removeFranchise(idx)}>Remove Franchise</button>
-              </div>
-            );
-            })}
-          </SectionCard>
-
-          <SectionCard
             title="Teams"
             actions={<button type="button" onClick={addTeam}>Add Team</button>}
           >
             <div className="wizard-block">
-              <Field label="Bulk Import (group_id, team_name, franchise, pool)">
+              <Field label="Bulk Import (group_id, team_name)">
                 <textarea
                   rows={4}
                   value={teamImport}
                   className="wizard-input"
                   onChange={(e) => setTeamImport(e.target.value)}
-                  placeholder="U11B, PP Amber, Purple Panthers, A\nU11B, Knights Orange, Knights, A"
+                  placeholder="U11B, PP Amber\nU11B, Knights Orange"
                 />
               </Field>
               <button type="button" onClick={applyTeamImport}>Import Teams</button>
@@ -979,7 +807,6 @@ export default function TournamentWizard() {
             {teams.map((team, idx) => {
               const teamHasGroup = Boolean(team.group_id);
               const teamHasName = Boolean(team.name?.trim());
-              const teamHasFranchise = Boolean(team.franchise_name?.trim());
               return (
               <div className="wizard-block" key={team._key}>
                 <div className="wizard-row">
@@ -1007,54 +834,6 @@ export default function TournamentWizard() {
                     />
                   </Field>
                 </div>
-                <div className="wizard-row">
-                  <Field label="Franchise">
-                  <input
-                    type="text"
-                    value={team.franchise_name}
-                    className={teamHasFranchise ? "wizard-input" : "wizard-input invalid"}
-                    onChange={(e) => updateTeam(idx, { franchise_name: e.target.value })}
-                    placeholder="Purple Panthers"
-                    list={`franchise-options-${idx}`}
-                  />
-                    <datalist id={`franchise-options-${idx}`}>
-                      {franchiseOptions.map((name) => (
-                        <option key={`franchise-${idx}-${name}`} value={name} />
-                      ))}
-                    </datalist>
-                    {team.name ? (
-                      <span className="wizard-field-hint">
-                        Suggested: {parseFranchiseName(team.name).franchise || "—"}
-                      </span>
-                    ) : null}
-                  </Field>
-                  <Field label="Pool">
-                    <select
-                      value={team.pool}
-                      className="wizard-input"
-                      onChange={(e) => updateTeam(idx, { pool: e.target.value })}
-                    >
-                      <option value="">Select pool</option>
-                      {(poolsByGroup.get(team.group_id) || []).map((label) => (
-                        <option key={`${team.group_id}-${label}`} value={label}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Placeholder">
-                    <input
-                      type="checkbox"
-                      checked={team.is_placeholder}
-                      onChange={(e) => updateTeam(idx, { is_placeholder: e.target.checked })}
-                    />
-                  </Field>
-                </div>
-                {team.group_id ? (
-                  <button type="button" onClick={() => autoAssignPoolsForGroup(team.group_id)}>
-                    Auto-assign pools for {team.group_id}
-                  </button>
-                ) : null}
                 <button type="button" onClick={() => removeTeam(idx)}>Remove Team</button>
               </div>
             );
@@ -1124,7 +903,7 @@ export default function TournamentWizard() {
                   onChange={(e) => setGenerator((prev) => ({ ...prev, venue: e.target.value }))}
                 >
                   <option value="">Select venue</option>
-                  {allVenueOptions.map((venue) => (
+                  {selectedVenueOptions.map((venue) => (
                     <option key={`gen-venue-${venue}`} value={venue}>
                       {venue}
                     </option>
@@ -1145,18 +924,6 @@ export default function TournamentWizard() {
             </div>
             <button type="button" onClick={generateFixtures}>Generate Fixtures</button>
           </div>
-          {generator.groupId ? (
-            <div className="wizard-block">
-              <Field label="Pool helper">
-                <button
-                  type="button"
-                  onClick={() => autoAssignPoolsForGroup(generator.groupId)}
-                >
-                  Auto-assign pools for {generator.groupId}
-                </button>
-              </Field>
-            </div>
-          ) : null}
           <SectionCard
             title="Time Slots"
             actions={<button type="button" onClick={addTimeSlot}>Add Slot</button>}
@@ -1192,7 +959,7 @@ export default function TournamentWizard() {
                       onChange={(e) => updateTimeSlot(idx, { venue: e.target.value })}
                     >
                       <option value="">Select venue</option>
-                      {allVenueOptions.map((venue) => (
+                      {selectedVenueOptions.map((venue) => (
                         <option key={`slot-venue-${venue}`} value={venue}>
                           {venue}
                         </option>
@@ -1263,7 +1030,7 @@ export default function TournamentWizard() {
                     onChange={(e) => updateFixture(idx, { venue: e.target.value })}
                   >
                     <option value="">Select venue</option>
-                    {allVenueOptions.map((venue) => (
+                    {selectedVenueOptions.map((venue) => (
                       <option key={`fixture-venue-${venue}`} value={venue}>
                         {venue}
                       </option>

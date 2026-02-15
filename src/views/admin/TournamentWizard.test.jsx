@@ -14,7 +14,7 @@ describe("TournamentWizard", () => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ ok: true, data: [{ name: "Venue A" }] }),
+          json: () => Promise.resolve({ ok: true, data: [{ name: "Venue A" }, { name: "Venue B" }] }),
         });
       }
       if (typeof url === "string" && url.includes("/admin/tournament-wizard")) {
@@ -71,9 +71,6 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
     fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
 
@@ -106,17 +103,12 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
     fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
     const teamInputs = screen.getAllByPlaceholderText("PP Amber");
     fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
     const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
     fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
-    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
-    fireEvent.change(poolCombos[1], { target: { value: "A" } });
 
     fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
     const fixtureGroupSelects = screen.getAllByRole("combobox", { name: "Group" });
@@ -133,6 +125,18 @@ describe("TournamentWizard", () => {
 
   it("updates and removes fixtures", async () => {
     await renderWizard();
+
+    const venuesSection = screen
+      .getByRole("heading", { name: "Venues" })
+      .closest("section");
+    if (!venuesSection) throw new Error("Venues section not found");
+    const venuesScope = within(venuesSection);
+    await waitFor(() => {
+      expect(venuesScope.getAllByRole("option", { name: "Venue A" }).length).toBe(1);
+    });
+    fireEvent.change(venuesScope.getByRole("combobox"), {
+      target: { value: "Venue A" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
@@ -206,10 +210,9 @@ describe("TournamentWizard", () => {
       target: { value: "Venue A" },
     });
 
-    fireEvent.click(venuesScope.getByRole("button", { name: /Add New/i }));
-    fireEvent.change(venuesScope.getByPlaceholderText(/New venue name/i), {
-      target: { value: "Venue B" },
-    });
+    fireEvent.click(venuesScope.getByRole("button", { name: /Add Venue/i }));
+    const venueSelects = venuesScope.getAllByRole("combobox");
+    fireEvent.change(venueSelects[1], { target: { value: "Venue B" } });
 
     fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
@@ -253,7 +256,7 @@ describe("TournamentWizard", () => {
     });
   });
 
-  it("supports imports and auto-assigning pools", async () => {
+  it("supports team imports", async () => {
     await renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
@@ -263,35 +266,14 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
-    const poolCountInput = screen.getByRole("spinbutton", { name: "Pool Count" });
-    fireEvent.change(poolCountInput, { target: { value: "2" } });
 
     fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
-      target: { value: "U11B" },
+    const teamImportInput = screen.getByRole("textbox", { name: /Bulk Import/i });
+    fireEvent.change(teamImportInput, {
+      target: { value: "U11B, PP Amber\nU11B, Knights Orange" },
     });
-    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
-      target: { value: "PP Amber" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
-    const teamInputs = screen.getAllByPlaceholderText("PP Amber");
-    fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
-    const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
-    fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
-
-    const autoAssignButtons = screen.getAllByRole("button", { name: /Auto-assign pools/i });
-    fireEvent.click(autoAssignButtons[0]);
-    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
-    expect(poolCombos[0].value).toBe("A");
-    expect(poolCombos[1].value).toBe("B");
-
-    const franchiseImportInputs = screen.getAllByPlaceholderText(/Purple Panthers/i);
-    fireEvent.change(franchiseImportInputs[0], {
-      target: { value: "Purple Panthers\nBlue Cranes" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Import Franchises/i }));
-    expect(screen.getAllByPlaceholderText("Purple Panthers").length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByRole("button", { name: /Import Teams/i }));
+    expect(screen.getAllByPlaceholderText("PP Amber").length).toBeGreaterThan(1);
   });
 
   it("shows generator validation errors when required fields are missing", async () => {
@@ -339,9 +321,6 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
     fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
 
@@ -355,8 +334,8 @@ describe("TournamentWizard", () => {
       tournament: { id: "", name: "", season: "" },
       groups: [{ id: "", label: "" }],
       teams: [
-        { group_id: "", name: "PP Amber", pool: "" },
-        { group_id: "U11B", name: "PP Amber", pool: "" },
+        { group_id: "", name: "PP Amber" },
+        { group_id: "U11B", name: "PP Amber" },
       ],
       fixtures: [
         { group_id: "U11B", team1: "PP Amber", team2: "PP Amber", date: "", pool: "" },
@@ -371,7 +350,6 @@ describe("TournamentWizard", () => {
       "At least one group is required.",
       "All teams must be assigned to a valid group.",
       "Fixtures include an unknown group.",
-      "All non-placeholder teams should have a pool.",
       "All fixtures must have a date.",
       "All fixtures must have a pool.",
     ]));
@@ -380,8 +358,8 @@ describe("TournamentWizard", () => {
       tournament: { id: "hj-test", name: "HJ", season: "2026" },
       groups: [{ id: "U11B", label: "U11 Boys" }],
       teams: [
-        { group_id: "U11B", name: "PP Amber", pool: "A" },
-        { group_id: "U11B", name: "PP Amber", pool: "B" },
+        { group_id: "U11B", name: "PP Amber" },
+        { group_id: "U11B", name: "PP Amber" },
       ],
       fixtures: [
         { group_id: "U11B", team1: "PP Amber", team2: "Knights", date: "2026-01-01", pool: "A" },
