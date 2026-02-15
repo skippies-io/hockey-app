@@ -538,4 +538,166 @@ describe('handleAdminRequest', () => {
             expect.objectContaining({ error: expect.stringContaining('Method not allowed') })
         );
     });
+
+    it('PUT /venues/:id updates a venue directory entry', async () => {
+        const url = new URL('http://localhost/api/admin/venues/venue-1');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ name: 'Venue One', address: '123 Road' }));
+        mockPool.query.mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [{ id: 'venue-1', name: 'Venue One' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('DELETE /venues/:id removes a venue directory entry', async () => {
+        const url = new URL('http://localhost/api/admin/venues/venue-1');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'venue-1' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ deleted: 'venue-1' })
+        );
+    });
+
+    it('GET /groups returns directory list', async () => {
+        const url = new URL('http://localhost/api/admin/groups');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'U11B', label: 'U11 Boys' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.any(Array) })
+        );
+    });
+
+    it('POST /groups creates a group directory entry', async () => {
+        const url = new URL('http://localhost/api/admin/groups');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ id: 'U11B', label: 'U11 Boys', format: 'Round-robin' }));
+        mockPool.query.mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [{ id: 'U11B', label: 'U11 Boys', format: 'Round-robin' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('PUT /groups/:id updates a group directory entry', async () => {
+        const url = new URL('http://localhost/api/admin/groups/U11B');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ label: 'U11 Boys Updated', format: 'Round-robin' }));
+        mockPool.query.mockResolvedValueOnce({
+            rowCount: 1,
+            rows: [{ id: 'U11B', label: 'U11 Boys Updated' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('DELETE /groups/:id removes a group directory entry', async () => {
+        const url = new URL('http://localhost/api/admin/groups/U11B');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'U11B' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ deleted: 'U11B' })
+        );
+    });
+
+    it('GET /franchises returns franchise list', async () => {
+        const url = new URL('http://localhost/api/admin/franchises?tournamentId=hj-test');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'fr-1', name: 'Purple Panthers' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.any(Array) })
+        );
+    });
+
+    it('POST /franchises creates a franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 'hj-test', name: 'Purple Panthers' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'fr-1', name: 'Purple Panthers' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('PUT /franchises/:id updates a franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ name: 'Purple Panthers Updated' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'fr-1', name: 'Purple Panthers Updated' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('DELETE /franchises/:id removes a franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'fr-1' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ deleted: 'fr-1' })
+        );
+    });
 });

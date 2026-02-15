@@ -39,6 +39,37 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function sendMethodNotAllowed(req, res, sendJson) {
+  return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+}
+
+function requireDb(pool, req, res, sendJson) {
+  if (!pool) {
+    sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    return false;
+  }
+  return true;
+}
+
+async function readBodyOrError(req, res, sendJson) {
+  const body = await readBody(req);
+  if (!body) {
+    sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+    return null;
+  }
+  return body;
+}
+
+async function withAdminDb(pool, req, res, sendJson, label, handler) {
+  if (!requireDb(pool, req, res, sendJson)) return null;
+  try {
+    return await handler();
+  } catch (err) {
+    console.error(label, err);
+    return sendJson(req, res, 500, { ok: false, error: err.message });
+  }
+}
+
 export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   // Simple router for Admin API
@@ -48,12 +79,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   if (path === "/tournament-wizard") {
     if (method !== "POST") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+      return sendMethodNotAllowed(req, res, sendJson);
     }
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-      const body = await readBody(req);
-      if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      if (!requireDb(pool, req, res, sendJson)) return null;
+      const body = await readBodyOrError(req, res, sendJson);
+      if (!body) return null;
 
       const {
         tournament,
@@ -453,8 +484,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   if (path === "/venues") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         const result = await pool.query(
           `SELECT
              vd.id,
@@ -479,17 +509,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
            ORDER BY name ASC`
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
         const name = normalizeSpaces(body?.name);
         const address = normalizeSpaces(body?.address) || null;
         const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
@@ -509,36 +535,28 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Venue already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
-    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return sendMethodNotAllowed(req, res, sendJson);
   }
 
   if (path === "/groups") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         const result = await pool.query(
           `SELECT id, label, format
            FROM group_directory
            ORDER BY id ASC`
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
         const id = normalizeSpaces(body?.id);
         const label = normalizeSpaces(body?.label);
         const format = normalizeSpaces(body?.format) || null;
@@ -556,19 +574,15 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Group already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
-    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return sendMethodNotAllowed(req, res, sendJson);
   }
 
   if (path === "/franchises") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         const tournamentId = url.searchParams.get("tournamentId");
         const result = await pool.query(
           `SELECT
@@ -588,17 +602,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           [tournamentId ?? null]
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
         const tournamentId = normalizeSpaces(body?.tournament_id);
         const nameRaw = normalizeSpaces(body?.name);
         if (!tournamentId || !nameRaw) {
@@ -649,13 +659,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Franchise already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
-    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return sendMethodNotAllowed(req, res, sendJson);
   }
 
   const franchiseMatch = path.match(/^\/franchises\/([^/]+)/);
@@ -664,13 +671,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const tournamentId = url.searchParams.get("tournamentId");
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         if (!tournamentId) {
           return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
         }
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
         const nameRaw = normalizeSpaces(body?.name);
         if (!nameRaw) {
           return sendJson(req, res, 400, { ok: false, error: "name is required" });
@@ -715,15 +721,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         if (!tournamentId) {
           return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
         }
@@ -737,13 +739,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
-    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return sendMethodNotAllowed(req, res, sendJson);
   }
 
   const groupMatch = path.match(/^\/groups\/([^/]+)/);
@@ -751,10 +750,9 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const id = groupMatch[1];
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
         const label = normalizeSpaces(body?.label);
         const format = normalizeSpaces(body?.format) || null;
         if (!label) {
@@ -773,15 +771,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
         const result = await pool.query(
           "DELETE FROM group_directory WHERE id = $1 RETURNING id",
           [id]
@@ -790,13 +784,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
-    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return sendMethodNotAllowed(req, res, sendJson);
   }
 
   const venueMatch = path.match(/^\/venues\/([^/]+)/);
