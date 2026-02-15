@@ -24,6 +24,30 @@ function normalizeTeamName(value) {
   return normalizeSpaces(raw.split("-").join(" "));
 }
 
+const GROUP_DIRECTORY_COLUMNS = ["id", "label", "format"];
+const VENUE_DIRECTORY_COLUMNS = [
+  "id",
+  "name",
+  "address",
+  "location_map_url",
+  "website_url",
+];
+const FRANCHISE_COLUMNS = [
+  "tournament_id",
+  "id",
+  "name",
+  "logo_url",
+  "manager_name",
+  "manager_photo_url",
+  "description",
+  "contact_phone",
+  "location_map_url",
+  "contact_email",
+];
+const FRANCHISE_UPDATE_COLUMNS = FRANCHISE_COLUMNS.filter(
+  (column) => !["tournament_id", "id"].includes(column)
+);
+
 function toTitleCase(value) {
   return normalizeSpaces(value)
     .split(" ")
@@ -609,10 +633,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           }
           const id = slug(name);
           const result = await pool.query(
-            `INSERT INTO venue_directory (id, name, address, location_map_url, website_url)
+            `INSERT INTO venue_directory (${VENUE_DIRECTORY_COLUMNS.join(", ")})
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (name) DO NOTHING
-             RETURNING id, name, address, location_map_url, website_url`,
+             RETURNING ${VENUE_DIRECTORY_COLUMNS.join(", ")}`,
             [id, name, address, locationMapUrl, websiteUrl]
           );
           if (result.rowCount === 0) {
@@ -632,7 +656,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
       getHandler: () =>
         withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
           const result = await pool.query(
-            `SELECT id, label, format
+            `SELECT ${GROUP_DIRECTORY_COLUMNS.join(", ")}
              FROM group_directory
              ORDER BY id ASC`
           );
@@ -649,10 +673,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
             return sendJson(req, res, 400, { ok: false, error: "Group id and label are required" });
           }
           const result = await pool.query(
-            `INSERT INTO group_directory (id, label, format)
+            `INSERT INTO group_directory (${GROUP_DIRECTORY_COLUMNS.join(", ")})
              VALUES ($1, $2, $3)
              ON CONFLICT (id) DO NOTHING
-             RETURNING id, label, format`,
+             RETURNING ${GROUP_DIRECTORY_COLUMNS.join(", ")}`,
             [id, label, format]
           );
           if (result.rowCount === 0) {
@@ -673,17 +697,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
           const tournamentId = url.searchParams.get("tournamentId");
           const result = await pool.query(
-            `SELECT
-               tournament_id,
-               id,
-               name,
-               logo_url,
-               manager_name,
-               manager_photo_url,
-               description,
-               contact_phone,
-               location_map_url,
-               contact_email
+            `SELECT ${FRANCHISE_COLUMNS.join(", ")}
              FROM franchise
              WHERE ($1::text IS NULL OR tournament_id = $1)
              ORDER BY tournament_id ASC, name ASC`,
@@ -703,31 +717,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           const name = toTitleCase(nameRaw);
           const id = slug(`${tournamentId}:${name}`);
           const result = await pool.query(
-            `INSERT INTO franchise (
-               tournament_id,
-               id,
-               name,
-               logo_url,
-               manager_name,
-               manager_photo_url,
-               description,
-               contact_phone,
-               location_map_url,
-               contact_email
-             )
+            `INSERT INTO franchise (${FRANCHISE_COLUMNS.join(", ")})
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
              ON CONFLICT (tournament_id, name) DO NOTHING
-             RETURNING
-               tournament_id,
-               id,
-               name,
-               logo_url,
-               manager_name,
-               manager_photo_url,
-               description,
-               contact_phone,
-               location_map_url,
-               contact_email`,
+             RETURNING ${FRANCHISE_COLUMNS.join(", ")}`,
             [
               tournamentId,
               id,
@@ -771,28 +764,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
             return sendJson(req, res, 400, { ok: false, error: "name is required" });
           }
           const name = toTitleCase(nameRaw);
+          const updateSet = FRANCHISE_UPDATE_COLUMNS.map(
+            (column, idx) => `${column} = $${idx + 1}`
+          ).join(", ");
           const result = await pool.query(
             `UPDATE franchise
-             SET name = $1,
-                 logo_url = $2,
-                 manager_name = $3,
-                 manager_photo_url = $4,
-                 description = $5,
-                 contact_phone = $6,
-                 location_map_url = $7,
-                 contact_email = $8
+             SET ${updateSet}
              WHERE tournament_id = $9 AND id = $10
-             RETURNING
-               tournament_id,
-               id,
-               name,
-               logo_url,
-               manager_name,
-               manager_photo_url,
-               description,
-               contact_phone,
-               location_map_url,
-               contact_email`,
+             RETURNING ${FRANCHISE_COLUMNS.join(", ")}`,
             [
               name,
               body.logo_url || null,
@@ -854,7 +833,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
             ],
             requiredMessage: "Group label is required",
             notFoundMessage: "Group not found",
-            returnColumns: ["id", "label", "format"],
+            returnColumns: GROUP_DIRECTORY_COLUMNS,
           })
         ),
       deleteHandler: () =>
@@ -899,13 +878,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
             requiredMessage: "Venue name is required",
             notFoundMessage: "Venue not found",
             conflictMessage: "Venue name already exists",
-            returnColumns: [
-              "id",
-              "name",
-              "address",
-              "location_map_url",
-              "website_url",
-            ],
+            returnColumns: VENUE_DIRECTORY_COLUMNS,
           })
         ),
       deleteHandler: () =>
