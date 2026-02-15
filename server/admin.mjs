@@ -70,6 +70,75 @@ async function withAdminDb(pool, req, res, sendJson, label, handler) {
   }
 }
 
+function normalizeField(value) {
+  return normalizeSpaces(value) || null;
+}
+
+async function updateDirectoryEntry({
+  pool,
+  req,
+  res,
+  sendJson,
+  id,
+  table,
+  columns,
+  requiredMessage,
+  notFoundMessage,
+  conflictMessage,
+  returnColumns,
+}) {
+  const body = await readBodyOrError(req, res, sendJson);
+  if (!body) return null;
+  const values = [];
+  const setClauses = [];
+  for (const column of columns) {
+    const raw = column.normalize(body?.[column.key]);
+    if (column.required && !raw) {
+      return sendJson(req, res, 400, { ok: false, error: requiredMessage });
+    }
+    values.push(raw ?? null);
+    setClauses.push(`${column.key} = $${values.length}`);
+  }
+  values.push(id);
+  const sql = `UPDATE ${table}
+           SET ${setClauses.join(", ")},
+               updated_at = NOW()
+           WHERE id = $${values.length}
+           RETURNING ${returnColumns.join(", ")}`;
+  try {
+    const result = await pool.query(sql, values);
+    if (result.rowCount === 0) {
+      return sendJson(req, res, 404, { ok: false, error: notFoundMessage });
+    }
+    return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+  } catch (err) {
+    console.error("Admin API Error:", err);
+    if (conflictMessage && String(err?.message || "").includes("unique")) {
+      return sendJson(req, res, 409, { ok: false, error: conflictMessage });
+    }
+    return sendJson(req, res, 500, { ok: false, error: err.message });
+  }
+}
+
+async function deleteDirectoryEntry({
+  pool,
+  req,
+  res,
+  sendJson,
+  id,
+  table,
+  notFoundMessage,
+}) {
+  const result = await pool.query(
+    `DELETE FROM ${table} WHERE id = $1 RETURNING id`,
+    [id]
+  );
+  if (result.rowCount === 0) {
+    return sendJson(req, res, 404, { ok: false, error: notFoundMessage });
+  }
+  return sendJson(req, res, 200, { ok: true, deleted: id });
+}
+
 export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   // Simple router for Admin API
@@ -750,41 +819,37 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const id = groupMatch[1];
 
     if (method === "PUT") {
-      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
-        const body = await readBodyOrError(req, res, sendJson);
-        if (!body) return null;
-        const label = normalizeSpaces(body?.label);
-        const format = normalizeSpaces(body?.format) || null;
-        if (!label) {
-          return sendJson(req, res, 400, { ok: false, error: "Group label is required" });
-        }
-        const result = await pool.query(
-          `UPDATE group_directory
-           SET label = $1,
-               format = $2,
-               updated_at = NOW()
-           WHERE id = $3
-           RETURNING id, label, format`,
-          [label, format, id]
-        );
-        if (result.rowCount === 0) {
-          return sendJson(req, res, 404, { ok: false, error: "Group not found" });
-        }
-        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        updateDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          table: "group_directory",
+          columns: [
+            { key: "label", normalize: normalizeSpaces, required: true },
+            { key: "format", normalize: normalizeField, required: false },
+          ],
+          requiredMessage: "Group label is required",
+          notFoundMessage: "Group not found",
+          returnColumns: ["id", "label", "format"],
+        })
+      );
     }
 
     if (method === "DELETE") {
-      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
-        const result = await pool.query(
-          "DELETE FROM group_directory WHERE id = $1 RETURNING id",
-          [id]
-        );
-        if (result.rowCount === 0) {
-          return sendJson(req, res, 404, { ok: false, error: "Group not found" });
-        }
-        return sendJson(req, res, 200, { ok: true, deleted: id });
-      });
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        deleteDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          table: "group_directory",
+          notFoundMessage: "Group not found",
+        })
+      );
     }
 
     return sendMethodNotAllowed(req, res, sendJson);
@@ -795,56 +860,46 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const id = venueMatch[1];
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
-        const name = normalizeSpaces(body?.name);
-        const address = normalizeSpaces(body?.address) || null;
-        const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
-        const websiteUrl = normalizeSpaces(body?.website_url) || null;
-        if (!name) {
-          return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
-        }
-        const result = await pool.query(
-          `UPDATE venue_directory
-           SET name = $1,
-               address = $2,
-               location_map_url = $3,
-               website_url = $4,
-               updated_at = NOW()
-           WHERE id = $5
-           RETURNING id, name, address, location_map_url, website_url`,
-          [name, address, locationMapUrl, websiteUrl, id]
-        );
-        if (result.rowCount === 0) {
-          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
-        }
-        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        if (String(err?.message || "").includes("unique")) {
-          return sendJson(req, res, 409, { ok: false, error: "Venue name already exists" });
-        }
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        updateDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          table: "venue_directory",
+          columns: [
+            { key: "name", normalize: normalizeSpaces, required: true },
+            { key: "address", normalize: normalizeField, required: false },
+            { key: "location_map_url", normalize: normalizeField, required: false },
+            { key: "website_url", normalize: normalizeField, required: false },
+          ],
+          requiredMessage: "Venue name is required",
+          notFoundMessage: "Venue not found",
+          conflictMessage: "Venue name already exists",
+          returnColumns: [
+            "id",
+            "name",
+            "address",
+            "location_map_url",
+            "website_url",
+          ],
+        })
+      );
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const result = await pool.query(
-          "DELETE FROM venue_directory WHERE id = $1 RETURNING id",
-          [id]
-        );
-        if (result.rowCount === 0) {
-          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
-        }
-        return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        console.error("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      return withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        deleteDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          table: "venue_directory",
+          notFoundMessage: "Venue not found",
+        })
+      );
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
