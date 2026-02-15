@@ -16,12 +16,6 @@ export function computeFormErrors({ tournament, groups, teams, fixtures }) {
   if (invalidFixtures.length) {
     errors.push("Fixtures include an unknown group.");
   }
-  const teamsMissingPool = teams.filter(
-    (t) => t.group_id && !t.is_placeholder && !t.pool
-  );
-  if (teamsMissingPool.length) {
-    errors.push("All non-placeholder teams should have a pool.");
-  }
   const fixturesMissingDate = fixtures.filter((f) => f.team1 && f.team2 && !f.date);
   if (fixturesMissingDate.length) {
     errors.push("All fixtures must have a date.");
