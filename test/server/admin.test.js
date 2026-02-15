@@ -309,6 +309,22 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('POST /tournament-wizard returns 500 when db connect fails', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify(buildWizardPayload()));
+        mockPool.connect.mockRejectedValueOnce(new Error('connect failed'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('POST /tournament-wizard rejects missing tournament name', async () => {
         const url = new URL('http://localhost/api/admin/tournament-wizard');
         mockReq.method = 'POST';
@@ -368,6 +384,66 @@ describe('handleAdminRequest', () => {
             mockRes,
             400,
             expect.objectContaining({ error: expect.stringContaining('Fixture date is required') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects fixtures missing team names', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            fixtures: [
+                {
+                    group_id: 'U11B',
+                    date: '2026-01-08',
+                    time: '',
+                    venue: 'Beaulieu College',
+                    round: 'Round 1',
+                    pool: 'A',
+                    team1: '',
+                    team2: '',
+                },
+            ],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('team1 and team2 are required') })
+        );
+    });
+
+    it('POST /tournament-wizard rejects fixtures with unknown teams', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            fixtures: [
+                {
+                    group_id: 'U11B',
+                    date: '2026-01-08',
+                    time: '',
+                    venue: 'Beaulieu College',
+                    round: 'Round 1',
+                    pool: 'A',
+                    team1: 'Missing Team',
+                    team2: 'Knights Orange',
+                },
+            ],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Fixture teams not found') })
         );
     });
 
@@ -492,6 +568,27 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('POST /tournament-wizard returns 500 when transaction fails', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify(buildWizardPayload()));
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql === 'BEGIN' || sql === 'ROLLBACK') {
+                return { rowCount: 0, rows: [] };
+            }
+            throw new Error('transaction failed');
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('GET /venues returns venue list', async () => {
         const url = new URL('http://localhost/api/admin/venues');
         mockPool.query.mockResolvedValueOnce({ rows: [{ name: 'Beaulieu College' }] });
@@ -522,6 +619,37 @@ describe('handleAdminRequest', () => {
             mockRes,
             201,
             expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('POST /venues requires name', async () => {
+        const url = new URL('http://localhost/api/admin/venues');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('POST /venues returns 409 when venue exists', async () => {
+        const url = new URL('http://localhost/api/admin/venues');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ name: 'Beaulieu College' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            409,
+            expect.objectContaining({ ok: false })
         );
     });
 
@@ -606,6 +734,37 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('POST /groups requires id and label', async () => {
+        const url = new URL('http://localhost/api/admin/groups');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('POST /groups returns 409 when group exists', async () => {
+        const url = new URL('http://localhost/api/admin/groups');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ id: 'U11B', label: 'U11 Boys' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            409,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('PUT /groups/:id updates a group directory entry', async () => {
         const url = new URL('http://localhost/api/admin/groups/U11B');
         mockReq.method = 'PUT';
@@ -670,6 +829,37 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('POST /franchises requires tournament_id and name', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('POST /franchises returns 409 when franchise exists', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 'hj-test', name: 'Purple Panthers' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            409,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('PUT /franchises/:id updates a franchise', async () => {
         const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
         mockReq.method = 'PUT';
@@ -686,6 +876,52 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('PUT /franchises/:id requires tournamentId', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ name: 'Purple Panthers Updated' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('PUT /franchises/:id requires name', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('PUT /franchises/:id returns 404 when missing', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ name: 'Purple Panthers Updated' }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('DELETE /franchises/:id removes a franchise', async () => {
         const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
         mockReq.method = 'DELETE';
@@ -698,6 +934,35 @@ describe('handleAdminRequest', () => {
             mockRes,
             200,
             expect.objectContaining({ deleted: 'fr-1' })
+        );
+    });
+
+    it('DELETE /franchises/:id requires tournamentId', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1');
+        mockReq.method = 'DELETE';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('DELETE /franchises/:id returns 404 when missing', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/fr-1?tournamentId=hj-test');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false })
         );
     });
 });
