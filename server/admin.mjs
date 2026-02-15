@@ -84,6 +84,12 @@ async function readBodyOrError(req, res, sendJson) {
   return body;
 }
 
+async function withBody(req, res, sendJson, handler) {
+  const body = await readBodyOrError(req, res, sendJson);
+  if (!body) return null;
+  return handler(body);
+}
+
 async function withAdminDb(pool, req, res, sendJson, label, handler) {
   if (!requireDb(pool, req, res, sendJson)) return null;
   try {
@@ -104,6 +110,63 @@ function handleItem({ method, req, res, sendJson, putHandler, deleteHandler }) {
   if (method === "PUT") return putHandler();
   if (method === "DELETE") return deleteHandler();
   return sendMethodNotAllowed(req, res, sendJson);
+}
+
+function handleDirectoryItem({
+  method,
+  req,
+  res,
+  sendJson,
+  pool,
+  id,
+  config,
+}) {
+  return handleItem({
+    method,
+    req,
+    res,
+    sendJson,
+    putHandler: () =>
+      withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        updateDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          ...config,
+        })
+      ),
+    deleteHandler: () =>
+      withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
+        deleteDirectoryEntry({
+          pool,
+          req,
+          res,
+          sendJson,
+          id,
+          table: config.table,
+          notFoundMessage: config.notFoundMessage,
+        })
+      ),
+  });
+}
+
+function parseAnnouncementPayload(body, req, res, sendJson) {
+  const { title, body: content, severity, tournament_id, is_published } = body;
+  if (!title || !content) {
+    sendJson(req, res, 400, { ok: false, error: "Title and Message are required" });
+    return null;
+  }
+  const safeTournamentId = tournament_id === "general" || !tournament_id ? null : tournament_id;
+  return {
+    title,
+    content,
+    severity,
+    safeTournamentId,
+    isPublished: !!is_published,
+    refreshDate: !!body.refresh_date,
+  };
 }
 
 function normalizeField(value) {
@@ -282,6 +345,16 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           );
         }
 
+        const resolveVenueEntry = async (venueName) => {
+          const entry = venueMap.get(venueName.toLowerCase());
+          if (!entry) {
+            await client.query("ROLLBACK");
+            sendJson(req, res, 400, { ok: false, error: `Unknown venue: ${venueName}` });
+            return null;
+          }
+          return entry;
+        };
+
         const groupIds = new Set();
         for (const group of groups) {
           const groupId = normalizeSpaces(group?.id);
@@ -308,11 +381,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           const groupId = normalizeSpaces(link?.group_id);
           const venueName = normalizeSpaces(link?.venue_name);
           if (!groupId || !venueName) continue;
-          const venueEntry = venueMap.get(venueName.toLowerCase());
-          if (!venueEntry) {
-            await client.query("ROLLBACK");
-            return sendJson(req, res, 400, { ok: false, error: `Unknown venue: ${venueName}` });
-          }
+          const venueEntry = await resolveVenueEntry(venueName);
+          if (!venueEntry) return null;
           await client.query(
             `INSERT INTO group_venue (tournament_id, group_id, venue_id)
              VALUES ($1, $2, $3)
@@ -499,11 +569,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
             await client.query("ROLLBACK");
             return sendJson(req, res, 400, { ok: false, error: "Time slots require date, time, and venue" });
           }
-          const venueEntry = venueMap.get(venueName.toLowerCase());
-          if (!venueEntry) {
-            await client.query("ROLLBACK");
-            return sendJson(req, res, 400, { ok: false, error: `Unknown venue: ${venueName}` });
-          }
+          const venueEntry = await resolveVenueEntry(venueName);
+          if (!venueEntry) return null;
           const id = slug(`${tournamentId}:${venueEntry.id}:${date}:${time}:${label || ""}`);
           await client.query(
             `INSERT INTO time_slot (tournament_id, id, venue_id, date, time, label)
@@ -557,22 +624,22 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     if (method === "POST") {
       try {
         if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
-        const { title, body: content, severity, tournament_id, is_published } = body;
-
-        if (!title || !content) {
-          return sendJson(req, res, 400, { ok: false, error: "Title and Message are required" });
-        }
-
-        // Use null for tournament_id if it's "general" or empty
-        const safeTournamentId = tournament_id === 'general' || !tournament_id ? null : tournament_id;
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
+        const payload = parseAnnouncementPayload(body, req, res, sendJson);
+        if (!payload) return null;
 
         const result = await pool.query(
           `INSERT INTO announcements (tournament_id, title, body, severity, is_published)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING *`,
-          [safeTournamentId, title, content, severity || 'info', !!is_published]
+          [
+            payload.safeTournamentId,
+            payload.title,
+            payload.content,
+            payload.severity || "info",
+            payload.isPublished,
+          ]
         );
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
@@ -622,27 +689,27 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }),
       postHandler: () =>
         withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
-          const body = await readBodyOrError(req, res, sendJson);
-          if (!body) return null;
-          const name = normalizeSpaces(body?.name);
-          const address = normalizeSpaces(body?.address) || null;
-          const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
-          const websiteUrl = normalizeSpaces(body?.website_url) || null;
-          if (!name) {
-            return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
-          }
-          const id = slug(name);
-          const result = await pool.query(
-            `INSERT INTO venue_directory (${VENUE_DIRECTORY_COLUMNS.join(", ")})
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (name) DO NOTHING
-             RETURNING ${VENUE_DIRECTORY_COLUMNS.join(", ")}`,
-            [id, name, address, locationMapUrl, websiteUrl]
-          );
-          if (result.rowCount === 0) {
-            return sendJson(req, res, 409, { ok: false, error: "Venue already exists" });
-          }
-          return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          return withBody(req, res, sendJson, async (body) => {
+            const name = normalizeSpaces(body?.name);
+            const address = normalizeSpaces(body?.address) || null;
+            const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
+            const websiteUrl = normalizeSpaces(body?.website_url) || null;
+            if (!name) {
+              return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
+            }
+            const id = slug(name);
+            const result = await pool.query(
+              `INSERT INTO venue_directory (${VENUE_DIRECTORY_COLUMNS.join(", ")})
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT (name) DO NOTHING
+               RETURNING ${VENUE_DIRECTORY_COLUMNS.join(", ")}`,
+              [id, name, address, locationMapUrl, websiteUrl]
+            );
+            if (result.rowCount === 0) {
+              return sendJson(req, res, 409, { ok: false, error: "Venue already exists" });
+            }
+            return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          });
         }),
     });
   }
@@ -664,25 +731,25 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }),
       postHandler: () =>
         withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
-          const body = await readBodyOrError(req, res, sendJson);
-          if (!body) return null;
-          const id = normalizeSpaces(body?.id);
-          const label = normalizeSpaces(body?.label);
-          const format = normalizeSpaces(body?.format) || null;
-          if (!id || !label) {
-            return sendJson(req, res, 400, { ok: false, error: "Group id and label are required" });
-          }
-          const result = await pool.query(
-            `INSERT INTO group_directory (${GROUP_DIRECTORY_COLUMNS.join(", ")})
-             VALUES ($1, $2, $3)
-             ON CONFLICT (id) DO NOTHING
-             RETURNING ${GROUP_DIRECTORY_COLUMNS.join(", ")}`,
-            [id, label, format]
-          );
-          if (result.rowCount === 0) {
-            return sendJson(req, res, 409, { ok: false, error: "Group already exists" });
-          }
-          return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          return withBody(req, res, sendJson, async (body) => {
+            const id = normalizeSpaces(body?.id);
+            const label = normalizeSpaces(body?.label);
+            const format = normalizeSpaces(body?.format) || null;
+            if (!id || !label) {
+              return sendJson(req, res, 400, { ok: false, error: "Group id and label are required" });
+            }
+            const result = await pool.query(
+              `INSERT INTO group_directory (${GROUP_DIRECTORY_COLUMNS.join(", ")})
+               VALUES ($1, $2, $3)
+               ON CONFLICT (id) DO NOTHING
+               RETURNING ${GROUP_DIRECTORY_COLUMNS.join(", ")}`,
+              [id, label, format]
+            );
+            if (result.rowCount === 0) {
+              return sendJson(req, res, 409, { ok: false, error: "Group already exists" });
+            }
+            return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          });
         }),
     });
   }
@@ -707,37 +774,37 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }),
       postHandler: () =>
         withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () => {
-          const body = await readBodyOrError(req, res, sendJson);
-          if (!body) return null;
-          const tournamentId = normalizeSpaces(body?.tournament_id);
-          const nameRaw = normalizeSpaces(body?.name);
-          if (!tournamentId || !nameRaw) {
-            return sendJson(req, res, 400, { ok: false, error: "tournament_id and name are required" });
-          }
-          const name = toTitleCase(nameRaw);
-          const id = slug(`${tournamentId}:${name}`);
-          const result = await pool.query(
-            `INSERT INTO franchise (${FRANCHISE_COLUMNS.join(", ")})
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-             ON CONFLICT (tournament_id, name) DO NOTHING
-             RETURNING ${FRANCHISE_COLUMNS.join(", ")}`,
-            [
-              tournamentId,
-              id,
-              name,
-              body.logo_url || null,
-              body.manager_name || null,
-              body.manager_photo_url || null,
-              body.description || null,
-              body.contact_phone || null,
-              body.location_map_url || null,
-              body.contact_email || null,
-            ]
-          );
-          if (result.rowCount === 0) {
-            return sendJson(req, res, 409, { ok: false, error: "Franchise already exists" });
-          }
-          return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          return withBody(req, res, sendJson, async (body) => {
+            const tournamentId = normalizeSpaces(body?.tournament_id);
+            const nameRaw = normalizeSpaces(body?.name);
+            if (!tournamentId || !nameRaw) {
+              return sendJson(req, res, 400, { ok: false, error: "tournament_id and name are required" });
+            }
+            const name = toTitleCase(nameRaw);
+            const id = slug(`${tournamentId}:${name}`);
+            const result = await pool.query(
+              `INSERT INTO franchise (${FRANCHISE_COLUMNS.join(", ")})
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+               ON CONFLICT (tournament_id, name) DO NOTHING
+               RETURNING ${FRANCHISE_COLUMNS.join(", ")}`,
+              [
+                tournamentId,
+                id,
+                name,
+                body.logo_url || null,
+                body.manager_name || null,
+                body.manager_photo_url || null,
+                body.description || null,
+                body.contact_phone || null,
+                body.location_map_url || null,
+                body.contact_email || null,
+              ]
+            );
+            if (result.rowCount === 0) {
+              return sendJson(req, res, 409, { ok: false, error: "Franchise already exists" });
+            }
+            return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+          });
         }),
     });
   }
@@ -813,41 +880,23 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   if (groupMatch) {
     const id = groupMatch[1];
 
-    return handleItem({
+    return handleDirectoryItem({
       method,
       req,
       res,
       sendJson,
-      putHandler: () =>
-        withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
-          updateDirectoryEntry({
-            pool,
-            req,
-            res,
-            sendJson,
-            id,
-            table: "group_directory",
-            columns: [
-              { key: "label", normalize: normalizeSpaces, required: true },
-              { key: "format", normalize: normalizeField, required: false },
-            ],
-            requiredMessage: "Group label is required",
-            notFoundMessage: "Group not found",
-            returnColumns: GROUP_DIRECTORY_COLUMNS,
-          })
-        ),
-      deleteHandler: () =>
-        withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
-          deleteDirectoryEntry({
-            pool,
-            req,
-            res,
-            sendJson,
-            id,
-            table: "group_directory",
-            notFoundMessage: "Group not found",
-          })
-        ),
+      pool,
+      id,
+      config: {
+        table: "group_directory",
+        columns: [
+          { key: "label", normalize: normalizeSpaces, required: true },
+          { key: "format", normalize: normalizeField, required: false },
+        ],
+        requiredMessage: "Group label is required",
+        notFoundMessage: "Group not found",
+        returnColumns: GROUP_DIRECTORY_COLUMNS,
+      },
     });
   }
 
@@ -855,44 +904,26 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   if (venueMatch) {
     const id = venueMatch[1];
 
-    return handleItem({
+    return handleDirectoryItem({
       method,
       req,
       res,
       sendJson,
-      putHandler: () =>
-        withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
-          updateDirectoryEntry({
-            pool,
-            req,
-            res,
-            sendJson,
-            id,
-            table: "venue_directory",
-            columns: [
-              { key: "name", normalize: normalizeSpaces, required: true },
-              { key: "address", normalize: normalizeField, required: false },
-              { key: "location_map_url", normalize: normalizeField, required: false },
-              { key: "website_url", normalize: normalizeField, required: false },
-            ],
-            requiredMessage: "Venue name is required",
-            notFoundMessage: "Venue not found",
-            conflictMessage: "Venue name already exists",
-            returnColumns: VENUE_DIRECTORY_COLUMNS,
-          })
-        ),
-      deleteHandler: () =>
-        withAdminDb(pool, req, res, sendJson, "Admin API Error:", async () =>
-          deleteDirectoryEntry({
-            pool,
-            req,
-            res,
-            sendJson,
-            id,
-            table: "venue_directory",
-            notFoundMessage: "Venue not found",
-          })
-        ),
+      pool,
+      id,
+      config: {
+        table: "venue_directory",
+        columns: [
+          { key: "name", normalize: normalizeSpaces, required: true },
+          { key: "address", normalize: normalizeField, required: false },
+          { key: "location_map_url", normalize: normalizeField, required: false },
+          { key: "website_url", normalize: normalizeField, required: false },
+        ],
+        requiredMessage: "Venue name is required",
+        notFoundMessage: "Venue not found",
+        conflictMessage: "Venue name already exists",
+        returnColumns: VENUE_DIRECTORY_COLUMNS,
+      },
     });
   }
 
@@ -904,15 +935,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     if (method === "PUT") {
       try {
         if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
-        const { title, body: content, severity, tournament_id, is_published } = body;
-
-        if (!title || !content) {
-          return sendJson(req, res, 400, { ok: false, error: "Title and Message are required" });
-        }
-
-        const safeTournamentId = tournament_id === 'general' || !tournament_id ? null : tournament_id;
+        const body = await readBodyOrError(req, res, sendJson);
+        if (!body) return null;
+        const payload = parseAnnouncementPayload(body, req, res, sendJson);
+        if (!payload) return null;
 
         // Logic: Update fields. If is_published is explicitly true, we effectively "republish".
         // To support "fresh date" on publish/republish, we can optionally update created_at.
@@ -924,9 +950,15 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         // Simpler: The frontend can send a "refresh_date": true flag if it wants to bump the date.
 
         let query = `UPDATE announcements SET title = $1, body = $2, severity = $3, tournament_id = $4, is_published = $5`;
-        const params = [title, content, severity, safeTournamentId, !!is_published];
+        const params = [
+          payload.title,
+          payload.content,
+          payload.severity,
+          payload.safeTournamentId,
+          payload.isPublished,
+        ];
 
-        if (body.refresh_date) {
+        if (payload.refreshDate) {
           query += `, created_at = NOW()`;
         }
 
