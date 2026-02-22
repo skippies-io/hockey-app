@@ -8,7 +8,7 @@
 
 :root {
   /* ===== Brand palette ===== */
-  --hj-color-brand: #1ed760;
+  --hj-color-brand: #15803d;
   --hj-color-brand-soft: #dcfce7;
   --hj-color-brand-strong: #16a34a;
 
@@ -129,6 +129,20 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Focus-visible styles for keyboard accessibility */
+:focus-visible {
+  outline: 2px solid var(--hj-color-brand);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--hj-color-brand);
+  outline-offset: 2px;
 }
 
 /* Headings / meta */

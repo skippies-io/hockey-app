@@ -157,8 +157,14 @@ export async function getFranchises(tournamentId) {
 }
 
 export async function getAnnouncements(tournamentId) {
-  const t = tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : "";
-  const url = `${API_BASE}/announcements${t}`;
+  const params = new URLSearchParams();
+  if (tournamentId) {
+    params.append('tournamentId', encodeURIComponent(tournamentId));
+  }
+  // Filter out expired announcements
+  params.append('expires_at', new Date().toISOString());
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+  const url = `${API_BASE}/announcements${queryString}`;
   try {
     const j = await fetchJSON(url, { revalidate: true });
     return j.data || [];

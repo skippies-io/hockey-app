@@ -20,6 +20,7 @@ import { getGroups, getStandingsRows } from "./lib/api";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
+import { useTournament } from "./context/TournamentContext";
 import Feedback from "./views/Feedback";
 import AppLayout from "./components/AppLayout";
 import TeamProfile from "./views/TeamProfile";
@@ -57,6 +58,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
   const [err, setErr] = useState(null);
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("teams");
+  const { activeTournamentId } = useTournament();
 
   const isAllAges = ageId === "all";
   const ageLabelMap = useMemo(() => {
@@ -95,7 +97,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
 
         const results = await Promise.all(
           ageList.map((g) =>
-            getStandingsRows(g.id).catch((e) => ({ __error: e }))
+            getStandingsRows(activeTournamentId, g.id).catch((e) => ({ __error: e }))
           )
         );
 
@@ -161,7 +163,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges]);
+  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournamentId]);
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));
