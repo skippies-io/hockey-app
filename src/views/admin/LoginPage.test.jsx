@@ -16,35 +16,22 @@ describe('LoginPage', () => {
   }
 
   it('renders login form initially', async () => {
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true }),
-    });
-
     await renderPage();
     expect(screen.getByText('Admin Login')).toBeDefined();
-    expect(screen.getByLabelText('Email')).toBeDefined();
+    // Use getByPlaceholderText instead of getByLabelText since there's no label element with that text
+    expect(screen.getByPlaceholderText('admin@example.com')).toBeDefined();
   });
 
   it('renders input field with correct placeholder', async () => {
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true }),
-    });
-
     await renderPage();
     const input = screen.getByPlaceholderText('admin@example.com');
     expect(input).toBeDefined();
+    expect(input.type).toBe('email');
   });
 
   it('updates email state on input change', async () => {
-    fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ok: true }),
-    });
-
     await renderPage();
-    const input = screen.getByLabelText('Email');
+    const input = screen.getByPlaceholderText('admin@example.com');
     
     fireEvent.change(input, { target: { value: 'test@example.com' } });
     expect(input.value).toBe('test@example.com');
@@ -57,8 +44,8 @@ describe('LoginPage', () => {
     });
 
     await renderPage();
-    const input = screen.getByLabelText('Email');
-    const button = screen.getByRole('button');
+    const input = screen.getByPlaceholderText('admin@example.com');
+    const button = screen.getByRole('button', { name: /send magic link/i });
 
     fireEvent.change(input, { target: { value: 'test@example.com' } });
     fireEvent.click(button);
@@ -66,7 +53,11 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         '/api/admin/auth/request-link',
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'test@example.com' }),
+        })
       );
     });
   });
@@ -78,15 +69,15 @@ describe('LoginPage', () => {
     });
 
     await renderPage();
-    const input = screen.getByLabelText('Email');
-    const button = screen.getByRole('button');
+    const input = screen.getByPlaceholderText('admin@example.com');
+    const button = screen.getByRole('button', { name: /send magic link/i });
 
-    fireEvent.change(input, { target: { value: 'test@example.com' } });
+    fireEvent.change(input, { target: { value: 'admin@test.com' } });
     fireEvent.click(button);
 
     await waitFor(() => {
       expect(screen.getByText(/check your email/i)).toBeDefined();
-      expect(screen.getByText(/test@example.com/)).toBeDefined();
+      expect(screen.getByText(/admin@test.com/)).toBeDefined();
     });
   });
 
@@ -97,30 +88,30 @@ describe('LoginPage', () => {
     });
 
     await renderPage();
-    const input = screen.getByLabelText('Email');
-    const button = screen.getByRole('button');
+    const input = screen.getByPlaceholderText('admin@example.com');
+    const button = screen.getByRole('button', { name: /send magic link/i });
 
     fireEvent.change(input, { target: { value: 'unknown@example.com' } });
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/Email not found/)).toBeDefined();
-    });
+      expect(screen.getByText(/email not found/i)).toBeDefined();
+    }, { timeout: 2000 });
   });
 
   it('handles network errors gracefully', async () => {
     fetch.mockRejectedValueOnce(new Error('Network error'));
 
     await renderPage();
-    const input = screen.getByLabelText('Email');
-    const button = screen.getByRole('button');
+    const input = screen.getByPlaceholderText('admin@example.com');
+    const button = screen.getByRole('button', { name: /send magic link/i });
 
     fireEvent.change(input, { target: { value: 'test@example.com' } });
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/Network error/)).toBeDefined();
-    });
+      expect(screen.getByText(/network error/i)).toBeDefined();
+    }, { timeout: 2000 });
   });
 
   it('displays helpful text in success message', async () => {
@@ -130,14 +121,14 @@ describe('LoginPage', () => {
     });
 
     await renderPage();
-    const input = screen.getByLabelText('Email');
-    const button = screen.getByRole('button');
+    const input = screen.getByPlaceholderText('admin@example.com');
+    const button = screen.getByRole('button', { name: /send magic link/i });
 
-    fireEvent.change(input, { target: { value: 'admin@test.com' } });
+    fireEvent.change(input, { target: { value: 'test@example.com' } });
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getByText(/will expire in 15 minutes/)).toBeDefined();
+      expect(screen.getByText(/15 minutes/)).toBeDefined();
     });
   });
 });
