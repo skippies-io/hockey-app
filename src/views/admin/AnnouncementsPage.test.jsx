@@ -12,11 +12,13 @@ window.confirm = vi.fn(() => true);
 
 describe('AnnouncementsPage', () => {
   const mockAnnouncements = [
-    { id: '1', title: 'Pub 1', body: 'Body 1', severity: 'info', is_published: true, created_at: new Date().toISOString() },
-    { id: '2', title: 'Draft 1', body: 'Body 2', severity: 'alert', is_published: false, created_at: new Date().toISOString() }
+    { id: '1', title: 'Pub 1', body: 'Body 1', severity: 'info', is_published: true, created_at: new Date().toISOString(), tournament_id: null },
+    { id: '2', title: 'Draft 1', body: 'Body 2', severity: 'alert', is_published: false, created_at: new Date().toISOString(), tournament_id: 't1' },
+    { id: '3', title: 'Pub 2', body: 'Body 3', severity: 'success', is_published: true, created_at: new Date().toISOString(), tournament_id: 't2' }
   ];
   const mockTournaments = [
-    { id: 't1', name: 'Tournament 1' }
+    { id: 't1', name: 'Tournament 1' },
+    { id: 't2', name: 'Tournament 2' }
   ];
 
   beforeEach(() => {
@@ -58,14 +60,37 @@ describe('AnnouncementsPage', () => {
     const publishedTab = screen.getByRole('button', { name: /^Published$/ });
     fireEvent.click(publishedTab);
     expect(screen.getByText('Pub 1')).toBeDefined();
+    expect(screen.getByText('Pub 2')).toBeDefined();
     expect(screen.queryByText('Draft 1')).toBeNull();
 
     const draftTab = screen.getByRole('button', { name: /^Draft$/ });
     fireEvent.click(draftTab);
     expect(screen.queryByText('Pub 1')).toBeNull();
+    expect(screen.queryByText('Pub 2')).toBeNull();
     expect(screen.getByText('Draft 1')).toBeDefined();
   });
 
+  it('filters list by context (general vs tournament)', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    const contextSelect = screen.getByLabelText('Context filter');
+
+    fireEvent.change(contextSelect, { target: { value: 'general' } });
+    expect(screen.getByText('Pub 1')).toBeDefined();
+    expect(screen.queryByText('Draft 1')).toBeNull();
+    expect(screen.queryByText('Pub 2')).toBeNull();
+
+    fireEvent.change(contextSelect, { target: { value: 't1' } });
+    expect(screen.getByText('Draft 1')).toBeDefined();
+    expect(screen.queryByText('Pub 1')).toBeNull();
+    expect(screen.queryByText('Pub 2')).toBeNull();
+
+    fireEvent.change(contextSelect, { target: { value: 't2' } });
+    expect(screen.getByText('Pub 2')).toBeDefined();
+    expect(screen.queryByText('Pub 1')).toBeNull();
+    expect(screen.queryByText('Draft 1')).toBeNull();
+  });
   it('updates character counters as you type', async () => {
     await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));

@@ -59,6 +59,7 @@ export DATABASE_URL="postgres://postgres:postgres@localhost:5432/hockey"
 export TOURNAMENT_ID="hj-indoor-allstars-2025"
 export VITE_PROVIDER="db"
 export VITE_DB_API_BASE="http://localhost:8787/api"
+export VITE_BASE_PATH="/hockey-app/"
 npm run dev:full
 ```
 
@@ -84,6 +85,7 @@ npm run server
 # terminal 2
 export VITE_PROVIDER="db"
 export VITE_DB_API_BASE="http://localhost:8787/api"
+export VITE_BASE_PATH="/hockey-app/"
 npm run dev
 ```
 
@@ -122,6 +124,67 @@ git push origin vX.Y.Z
 
 Build artifacts are uploaded to GitHub Releases as `dist.zip` (and `specs.zip` when present).
 
+## Operations
+
+- Deployment protocol (GitHub Pages): `docs/operations/deployment.md`
+
 ## UI Roadmap (Draft)
 
 - [FixtureCard evolution](docs/ui/fixturecard-evolution.md)
+
+## Admin Tournament Wizard
+
+### Checklist (Go‑Live)
+
+1. Apply migrations:
+   - `db/migrations/006_franchise.sql`
+   - `db/migrations/007_venues_timeslots.sql`
+2. Ensure API server is running with DB provider:
+   - `VITE_PROVIDER="db"`
+   - `VITE_DB_API_BASE="http://localhost:8787/api"`
+3. Open the wizard:
+   - `/admin/tournaments`
+4. Create a tournament with at least one group, team, and fixture.
+5. Verify API insertions in DB:
+   - `tournament`, `groups`, `team`, `fixture`, `franchise`, `venue`, `group_venue`, `time_slot`
+
+### Wizard Payload (POST /api/admin/tournament-wizard)
+
+```json
+{
+  "tournament": { "id": "hj-indoor-2026", "name": "HJ Indoor 2026", "season": "2026" },
+  "venues": [{ "name": "Beaulieu College" }],
+  "groups": [{ "id": "U11B", "label": "U11 Boys", "format": "Round-robin" }],
+  "groupVenues": [{ "group_id": "U11B", "venue_name": "Beaulieu College" }],
+  "franchises": [
+    {
+      "name": "Purple Panthers",
+      "logo_url": "https://...",
+      "manager_name": "Manager",
+      "manager_photo_url": "https://...",
+      "description": "Franchise description",
+      "contact_phone": "+27...",
+      "location_map_url": "https://maps.google.com/...",
+      "contact_email": "manager@example.com"
+    }
+  ],
+  "teams": [
+    { "group_id": "U11B", "name": "PP Amber", "franchise_name": "Purple Panthers", "pool": "A", "is_placeholder": false }
+  ],
+  "fixtures": [
+    {
+      "group_id": "U11B",
+      "date": "2026-01-08",
+      "time": "TBD",
+      "venue": "Beaulieu College",
+      "round": "Round 1",
+      "pool": "A",
+      "team1": "PP Amber",
+      "team2": "Knights Orange"
+    }
+  ],
+  "timeSlots": [
+    { "date": "2026-01-08", "time": "09:00", "venue": "Beaulieu College", "label": "Court 1 AM" }
+  ]
+}
+```

@@ -19,9 +19,14 @@ function resolveBuildId(env) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
   const buildId = resolveBuildId(env);
+  const basePath = (() => {
+    const raw = env.VITE_BASE_PATH || '/hockey-app/';
+    const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
+    return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+  })();
 
   return {
-    base: '/hockey-app/',
+    base: basePath,
     plugins: [react()],
     define: {
       'import.meta.env.VITE_BUILD_ID': JSON.stringify(buildId),
@@ -29,6 +34,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'jsdom',
+      setupFiles: ['test/setup-env.js'],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],
@@ -36,7 +42,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      hmr: { path: '/hockey-app/' },
+      hmr: { path: basePath },
       allowedHosts: true,      // ← allow all external tunneling hosts
       host: true,               // ← allow LAN access + tunnels
       proxy: {
