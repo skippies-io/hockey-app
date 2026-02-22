@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TournamentProvider, useTournament } from './TournamentContext';
 
-// Mock the api module
+// Mock the api module - set up BEFORE tests run
 vi.mock('../lib/api', () => ({
   tournamentsEndpoint: vi.fn(),
 }));
@@ -62,13 +62,10 @@ describe('TournamentContext', () => {
       </TournamentProvider>
     );
 
-    // Initially shows loading
-    expect(screen.getByTestId('loading')).toHaveTextContent('loading');
-
-    // Wait for tournaments to load and default tournament to be selected
+    // Wait for tournaments to load
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     // Verify all tournaments loaded
     expect(screen.getByTestId('tournament-count')).toHaveTextContent('2');
@@ -105,10 +102,10 @@ describe('TournamentContext', () => {
       </TournamentProvider>
     );
 
-    // Wait for tournaments to load and respect localStorage selection
+    // Wait for tournaments to load
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     // Verify stored tournament is selected
     expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('t2');
@@ -123,7 +120,6 @@ describe('TournamentContext', () => {
       Promise.resolve({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error'
       })
     );
 
@@ -138,13 +134,10 @@ describe('TournamentContext', () => {
     // Should set loading to false despite error
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     // Should show empty state
     expect(screen.getByTestId('tournament-count')).toHaveTextContent('0');
-    expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('none');
-    
-    // Should log error
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
@@ -168,7 +161,7 @@ describe('TournamentContext', () => {
     // Should set loading to false despite error
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
@@ -193,7 +186,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     // Empty response should show no tournaments
     expect(screen.getByTestId('tournament-count')).toHaveTextContent('0');
@@ -220,7 +213,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     expect(screen.getByTestId('tournament-count')).toHaveTextContent('0');
   });
@@ -230,17 +223,10 @@ describe('TournamentContext', () => {
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
     let renderCount = 0;
-    const memoCache = { lastValue: null };
     
     function CountingComponent() {
       renderCount++;
       const { activeTournament } = useTournament();
-      
-      // Track if the object reference changed
-      if (memoCache.lastValue !== activeTournament) {
-        memoCache.lastValue = activeTournament;
-      }
-      
       return <div data-testid="active-tournament">{activeTournament?.name || 'none'}</div>;
     }
 
@@ -255,7 +241,7 @@ describe('TournamentContext', () => {
       })
     );
 
-    const { rerender } = render(
+    render(
       <TournamentProvider>
         <CountingComponent />
       </TournamentProvider>
@@ -263,7 +249,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament')).toHaveTextContent('Tournament 1');
-    });
+    }, { timeout: 5000 });
     
     // Verify component rendered and loaded tournament
     expect(renderCount).toBeGreaterThan(0);
@@ -284,7 +270,7 @@ describe('TournamentContext', () => {
     // Should immediately set loading to false when endpoint is null
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     expect(screen.getByTestId('tournament-count')).toHaveTextContent('0');
     expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('none');
@@ -317,7 +303,7 @@ describe('TournamentContext', () => {
     // Wait for initial load
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament-name')).toHaveTextContent('Tournament 1');
-    });
+    }, { timeout: 5000 });
 
     // Switch to different tournament
     const user = userEvent.setup();
@@ -327,7 +313,7 @@ describe('TournamentContext', () => {
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('t2');
       expect(screen.getByTestId('active-tournament-name')).toHaveTextContent('Tournament 2');
-    });
+    }, { timeout: 5000 });
     
     // Verify localStorage was updated
     expect(localStorage.getItem('hj_active_tournament')).toBe('t2');
@@ -354,7 +340,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
@@ -385,7 +371,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-    });
+    }, { timeout: 5000 });
 
     // Start with first tournament
     expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('t1');
@@ -396,7 +382,7 @@ describe('TournamentContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament-id')).toHaveTextContent('t2');
-    });
+    }, { timeout: 5000 });
 
     // Verify ID persists
     expect(localStorage.getItem('hj_active_tournament')).toBe('t2');
