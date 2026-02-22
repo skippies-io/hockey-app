@@ -61,7 +61,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
   const [err, setErr] = useState(null);
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("teams");
-  const { activeTournamentId } = useTournament();
+  const { activeTournament } = useTournament();
 
   const isAllAges = ageId === "all";
   const ageLabelMap = useMemo(() => {
@@ -94,13 +94,14 @@ function TeamsPage({ ageId, ageGroups = [] }) {
       setErr(null);
 
       try {
+        const tournamentId = activeTournament?.id;
         const ageList = isAllAges
           ? (ageGroups || []).filter((g) => g.id && g.id !== "all")
           : [{ id: ageId }];
 
         const results = await Promise.all(
           ageList.map((g) =>
-            getStandingsRows(activeTournamentId, g.id).catch((e) => ({ __error: e }))
+            getStandingsRows(tournamentId, g.id).catch((e) => ({ __error: e }))
           )
         );
 
@@ -166,7 +167,11 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
+<<<<<<< HEAD
   }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournamentId]);
+=======
+  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournament]);
+>>>>>>> 36a625d (fix: Quick wins bundle for Issue #92)
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));

@@ -265,6 +265,11 @@ select {
   font-size: var(--hj-font-size-sm);
 }
 
+select:focus-visible {
+  outline: 2px solid var(--hj-color-accent-strong);
+  outline-offset: 2px;
+}
+
 /* Buttons */
 .btn,
 .btn-primary,
@@ -304,6 +309,11 @@ select {
   box-shadow: var(--hj-shadow-sm);
 }
 
+.btn-primary:focus-visible {
+  outline: 2px solid var(--hj-color-brand-strong);
+  outline-offset: 2px;
+}
+
 .btn-secondary {
   background: var(--hj-color-surface-muted);
   color: var(--hj-color-ink);
@@ -314,6 +324,11 @@ select {
 .btn-secondary:hover {
   border-color: var(--hj-color-border-strong);
   background: var(--hj-color-border-subtle);
+}
+
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--hj-color-accent-strong);
+  outline-offset: 2px;
 }
 
 /* Tabs */
@@ -345,6 +360,11 @@ select {
   background: var(--hj-color-brand-soft);
   border-color: var(--hj-color-brand);
   color: var(--hj-color-ink);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--hj-color-accent-strong);
+  outline-offset: 2px;
 }
 
 .pills::-webkit-scrollbar {
@@ -523,6 +543,13 @@ select {
   box-shadow: 0 0 0 1px var(--hj-color-brand-soft);
 }
 
+.hj-input:focus-visible,
+.hj-textarea:focus-visible {
+  outline: 2px solid var(--hj-color-brand-strong);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px var(--hj-color-brand-soft);
+}
+
 .hj-textarea {
   min-height: 120px;
   resize: vertical;
@@ -568,7 +595,7 @@ select {
 }
 
 .star.is-off {
-  color: var(--hj-color-border-strong);
+  color: var(--hj-color-ink-muted);
 }
 
 /* ===== Team profile / hero ===== */
@@ -1382,6 +1409,7 @@ select {
 .rank-chip {
   font-size: var(--hj-font-size-xs);
   background: var(--hj-color-brand-soft);
+  color: var(--hj-color-ink);
   padding: 2px 6px;
   border-radius: var(--hj-radius-sm);
 }

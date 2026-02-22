@@ -29,7 +29,13 @@ export default function AppLayout({
       const isHome = location.pathname === '/';
       const targetId = isHome ? null : activeTournamentId;
       const data = await getAnnouncements(targetId);
-      setAnnouncements(data || []);
+      // Filter announcements by expires_at to show only active announcements
+      const now = Date.now();
+      const filtered = (data || []).filter(a => {
+        if (!a.expires_at) return true; // No expiry set, show it
+        return new Date(a.expires_at).getTime() > now; // Show if not expired
+      });
+      setAnnouncements(filtered);
     }
     void load();
   }, [location.pathname, activeTournamentId]);

@@ -53,19 +53,13 @@ export function TournamentProvider({ children }) {
   }, [activeTournamentId]);
 
   // Derived state: the full object for the active tournament
-  const activeTournament = availableTournaments.find(t => t.id === activeTournamentId) || null;
-
-  // Memoize context value to prevent unnecessary re-renders
-  const value = useMemo(() => ({
-    activeTournamentId,
-    setActiveTournamentId,
-    availableTournaments,
-    loading,
-    activeTournament,
-  }), [activeTournamentId, availableTournaments, loading, activeTournament]);
+  const activeTournament = useMemo(
+    () => availableTournaments.find(t => t.id === activeTournamentId) || null,
+    [availableTournaments, activeTournamentId]
+  );
 
   return (
-    <TournamentContext.Provider value={value}>
+    <TournamentContext.Provider value={{ activeTournamentId, setActiveTournamentId, availableTournaments, loading, activeTournament }}>
       {children}
     </TournamentContext.Provider>
   );
