@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleAdminRequest } from '../../server/admin.mjs';
 
+// Mock the auth module to bypass authentication in tests
+vi.mock('../../server/auth.mjs', () => ({
+    requestMagicLink: vi.fn(),
+    verifyMagicLink: vi.fn(),
+    requireAuth: vi.fn(() => ({ email: 'test@example.com', role: 'admin' })),
+}));
+
 describe('handleAdminRequest', () => {
     let mockReq;
     let mockRes;
@@ -505,6 +512,172 @@ describe('handleAdminRequest', () => {
             mockRes,
             405,
             expect.objectContaining({ error: expect.stringContaining('Method not allowed') })
+        );
+    });
+
+    // Auth endpoint tests (no authentication required for request-link/verify)
+    it('POST /auth/request-link requests magic link', async () => {
+        const { requestMagicLink } = await import('../../server/auth.mjs');
+        requestMagicLink.mockResolvedValueOnce({ success: true });
+
+        const url = new URL('http://localhost/api/admin/auth/request-link');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ email: 'admin@example.com' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(requestMagicLink).toHaveBeenCalledWith('admin@example.com');
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({
+                ok: true,
+                message: expect.stringContaining('Magic link sent')
+            })
+        );
+    });
+
+    it('POST /auth/request-link returns 400 for missing email', async () => {
+        const url = new URL('http://localhost/api/admin/auth/request-link');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: 'Email is required' })
+        );
+    });
+
+    it('POST /auth/request-link returns 405 for GET method', async () => {
+        const url = new URL('http://localhost/api/admin/auth/request-link');
+        mockReq.method = 'GET';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            405,
+            expect.objectContaining({ error: 'Method not allowed' })
+        );
+    });
+
+    it('POST /auth/verify verifies magic link and returns JWT', async () => {
+        const { verifyMagicLink } = await import('../../server/auth.mjs');
+        verifyMagicLink.mockReturnValueOnce({
+            token: 'jwt-token-here',
+            email: 'admin@example.com'
+        });
+
+        const url = new URL('http://localhost/api/admin/auth/verify');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ token: 'magic-token-123' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(verifyMagicLink).toHaveBeenCalledWith('magic-token-123');
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({
+                ok: true,
+                token: 'jwt-token-here',
+                email: 'admin@example.com'
+            })
+        );
+    });
+
+    it('POST /auth/verify returns 400 for missing token', async () => {
+        const url = new URL('http://localhost/api/admin/auth/verify');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({}));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: 'Token is required' })
+        );
+    });
+
+    it('POST /auth/verify returns 401 for invalid token', async () => {
+        const { verifyMagicLink } = await import('../../server/auth.mjs');
+        verifyMagicLink.mockImplementationOnce(() => {
+            throw new Error('Invalid or expired token');
+        });
+
+        const url = new URL('http://localhost/api/admin/auth/verify');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ token: 'invalid-token' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            401,
+            expect.objectContaining({ error: 'Invalid or expired token' })
+        );
+    });
+
+    it('POST /auth/verify returns 405 for GET method', async () => {
+        const url = new URL('http://localhost/api/admin/auth/verify');
+        mockReq.method = 'GET';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            405,
+            expect.objectContaining({ error: 'Method not allowed' })
+        );
+    });
+
+    // Tests for requireAuth middleware
+    it('Protected routes return 401 without authentication', async () => {
+        const { requireAuth } = await import('../../server/auth.mjs');
+        requireAuth.mockImplementationOnce(() => {
+            throw new Error('Unauthorised: No token provided');
+        });
+
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'GET';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            401,
+            expect.objectContaining({ error: expect.stringContaining('Unauthorised') })
+        );
+    });
+
+    it('Protected routes return 401 with invalid JWT', async () => {
+        const { requireAuth } = await import('../../server/auth.mjs');
+        requireAuth.mockImplementationOnce(() => {
+            throw new Error('Unauthorised: Invalid or expired session');
+        });
+
+        const url = new URL('http://localhost/api/admin/venues');
+        mockReq.method = 'GET';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            401,
+            expect.objectContaining({ error: expect.stringContaining('Unauthorised') })
         );
     });
 });
