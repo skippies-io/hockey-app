@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../lib/api';
 
+// Helper to get auth headers
+function getAuthHeaders() {
+  const token = localStorage.getItem('admin_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
+
 // Character Limits
 const MAX_TITLE = 50;
 const MAX_BODY = 280;
@@ -186,8 +195,8 @@ export default function AnnouncementsPage() {
     setLoading(true);
     try {
       const [annsRes, tournsRes] = await Promise.all([
-        fetch(`${API_BASE}/admin/announcements`),
-        fetch(`${API_BASE}/tournaments`)
+        fetch(`${API_BASE}/admin/announcements`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/tournaments`, { headers: getAuthHeaders() })
       ]);
 
       if (annsRes.ok) {
@@ -237,7 +246,10 @@ export default function AnnouncementsPage() {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/admin/announcements/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/admin/announcements/${id}`, { 
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         setAnnouncements(prev => prev.filter(a => a.id !== id));
         // If we were editing this item, clear the form
@@ -283,7 +295,7 @@ export default function AnnouncementsPage() {
     try {
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
       const json = await res.json();
