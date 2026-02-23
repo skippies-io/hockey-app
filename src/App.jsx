@@ -167,7 +167,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournamentId]);
+  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournament?.id]);
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));

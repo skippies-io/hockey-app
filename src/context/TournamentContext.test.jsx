@@ -60,7 +60,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -70,13 +70,13 @@ describe('TournamentContext', () => {
           ]
         })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Wait for tournaments to load
     await waitFor(() => {
@@ -100,7 +100,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -110,13 +110,13 @@ describe('TournamentContext', () => {
           ]
         })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Wait for tournaments to load
     await waitFor(() => {
@@ -132,12 +132,12 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: false,
         status: 500,
       })
-    );
+    ));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -145,7 +145,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Should set loading to false despite error
     await waitFor(() => {
@@ -162,9 +162,9 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.reject(new Error('Network error'))
-    );
+    ));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -172,7 +172,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Should set loading to false despite error
     await waitFor(() => {
@@ -187,18 +187,18 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: [] })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -214,18 +214,18 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: null })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -246,7 +246,7 @@ describe('TournamentContext', () => {
       return <div data-testid="active-tournament">{activeTournament?.name || 'none'}</div>;
     }
 
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -255,13 +255,13 @@ describe('TournamentContext', () => {
           ]
         })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <CountingComponent />
       </TournamentProvider>
-    );
+    ));
 
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament')).toHaveTextContent('Tournament 1');
@@ -281,7 +281,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Should immediately set loading to false when endpoint is null
     await waitFor(() => {
@@ -298,7 +298,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -308,13 +308,13 @@ describe('TournamentContext', () => {
           ]
         })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     // Wait for initial load
     await waitFor(() => {
@@ -339,12 +339,12 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON'))
       })
-    );
+    ));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -352,7 +352,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -366,7 +366,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    fetch = vi.fn(() =>
+    vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -377,13 +377,13 @@ describe('TournamentContext', () => {
           ]
         })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    );
+    ));
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
