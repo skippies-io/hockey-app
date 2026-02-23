@@ -1,7 +1,15 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const email = localStorage.getItem('admin_email') || '';
+  
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_email');
+    navigate('/admin/login');
+  };
   const sidebarStyle = {
     width: '250px',
     backgroundColor: 'var(--hj-color-surface-2)',
@@ -53,6 +61,31 @@ export default function AdminLayout() {
         <NavLink to="/admin/announcements" style={linkStyle}>Announcements</NavLink>
         <NavLink to="/admin/teams" style={linkStyle}>Teams</NavLink>
         <NavLink to="/admin/fixtures" style={linkStyle}>Fixtures</NavLink>
+        
+        <div style={{ marginTop: 'auto', paddingTop: 'var(--hj-space-4)', borderTop: '1px solid var(--hj-color-border-subtle)' }}>
+          <div style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-text-tertiary)', marginBottom: 'var(--hj-space-2)' }}>
+            Logged in as:
+          </div>
+          <div style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-text-secondary)', marginBottom: 'var(--hj-space-3)', wordBreak: 'break-word' }}>
+            {email}
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              padding: 'var(--hj-space-2)',
+              borderRadius: 'var(--hj-radius-md)',
+              border: '1px solid var(--hj-color-border)',
+              background: 'transparent',
+              color: 'var(--hj-color-text-secondary)',
+              cursor: 'pointer',
+              fontSize: 'var(--hj-font-size-sm)',
+              fontWeight: 'var(--hj-font-weight-medium)'
+            }}
+          >
+            Log out
+          </button>
+        </div>
       </nav>
 
       <main style={contentStyle}>

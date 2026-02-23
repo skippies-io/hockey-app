@@ -4,6 +4,15 @@ import { API_BASE } from "../../lib/api";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
+// Helper to get auth headers
+function getAuthHeaders() {
+  const token = localStorage.getItem('admin_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
+
 const STEP_LABELS = ["Tournament", "Groups", "Teams", "Fixtures"];
 const CANONICAL_FRANCHISES = [
   "Purple Panthers",
@@ -623,7 +632,7 @@ export default function TournamentWizard() {
 
       const res = await fetch(`${API_BASE}/admin/tournament-wizard`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       });
       const json = await res.json();
@@ -642,7 +651,7 @@ export default function TournamentWizard() {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/admin/venues`);
+        const res = await fetch(`${API_BASE}/admin/venues`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error("Failed to load venues");
         const json = await res.json();
         if (!alive) return;
