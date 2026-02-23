@@ -76,7 +76,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Wait for tournaments to load
     await waitFor(() => {
