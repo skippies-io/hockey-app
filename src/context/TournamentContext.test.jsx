@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TournamentProvider, useTournament } from './TournamentContext';
+/* global fetch */
 
 // Mock the api module - set up BEFORE tests run
 vi.mock('../lib/api', () => ({

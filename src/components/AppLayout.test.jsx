@@ -430,7 +430,7 @@ describe('AppLayout', () => {
     const { getAnnouncements } = await import('../lib/api');
     getAnnouncements.mockResolvedValue([]);
 
-    const { rerender } = render(
+    render(
       <MemoryRouter initialEntries={['/u12/fixtures']}>
         <AppLayout>
           <div>Test Content</div>

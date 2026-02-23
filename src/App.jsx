@@ -167,11 +167,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-<<<<<<< HEAD
   }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournamentId]);
-=======
-  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, activeTournament]);
->>>>>>> 36a625d (fix: Quick wins bundle for Issue #92)
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));
