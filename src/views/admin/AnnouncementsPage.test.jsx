@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 // Mock fetch
 globalThis.fetch = vi.fn();
@@ -34,6 +34,14 @@ describe('AnnouncementsPage', () => {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   async function renderPage() {

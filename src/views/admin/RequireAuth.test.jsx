@@ -13,6 +13,14 @@ describe('RequireAuth', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   it('renders children when token is present', () => {
     localStorage.setItem('admin_token', 'test-token-123');
 

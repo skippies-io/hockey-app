@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
@@ -40,6 +40,15 @@ describe("Feedback view", () => {
     mockParams = { ageId: "u12" };
     vi.clearAllMocks();
     sendFeedback.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.unmock("../lib/api");
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("validates message, submits successfully, then shows thanks + back navigation", async () => {

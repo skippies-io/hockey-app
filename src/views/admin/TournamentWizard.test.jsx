@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import React from "react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
 globalThis.fetch = vi.fn();
@@ -25,6 +25,14 @@ describe("TournamentWizard", () => {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   async function renderWizard() {
