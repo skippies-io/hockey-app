@@ -116,7 +116,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Wait for tournaments to load
     await waitFor(() => {
@@ -137,7 +137,7 @@ describe('TournamentContext', () => {
         ok: false,
         status: 500,
       })
-    ));
+    );
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -145,7 +145,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Should set loading to false despite error
     await waitFor(() => {
@@ -164,7 +164,7 @@ describe('TournamentContext', () => {
     
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.reject(new Error('Network error'))
-    ));
+    );
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -172,7 +172,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Should set loading to false despite error
     await waitFor(() => {
@@ -192,13 +192,13 @@ describe('TournamentContext', () => {
         ok: true,
         json: () => Promise.resolve({ data: [] })
       })
-    ));
+    );
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -219,7 +219,7 @@ describe('TournamentContext', () => {
         ok: true,
         json: () => Promise.resolve({ data: null })
       })
-    ));
+    );
 
     render(
       <TournamentProvider>
