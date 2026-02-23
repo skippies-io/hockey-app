@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { requestMagicLink, verifyMagicLink, requireAuth } from "./auth.mjs";
 
 function hashString(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -45,6 +46,54 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
   console.log("Admin Request:", method, path); // DEBUG
+
+  // Public authentication endpoints (no auth required)
+  if (path === "/auth/request-link") {
+    if (method !== "POST") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      const body = await readBody(req);
+      const { email } = body;
+      
+      if (!email) {
+        return sendJson(req, res, 400, { ok: false, error: "Email is required" });
+      }
+
+      await requestMagicLink(email);
+      return sendJson(req, res, 200, { ok: true, message: "Magic link sent to your email" });
+    } catch (err) {
+      console.error("Magic link request error:", err);
+      return sendJson(req, res, 400, { ok: false, error: err.message });
+    }
+  }
+
+  if (path === "/auth/verify") {
+    if (method !== "POST") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      const body = await readBody(req);
+      const { token } = body;
+      
+      if (!token) {
+        return sendJson(req, res, 400, { ok: false, error: "Token is required" });
+      }
+
+      const result = verifyMagicLink(token);
+      return sendJson(req, res, 200, { ok: true, ...result });
+    } catch (err) {
+      console.error("Magic link verification error:", err);
+      return sendJson(req, res, 401, { ok: false, error: err.message });
+    }
+  }
+
+  // All other admin routes require authentication
+  try {
+    requireAuth(req);
+  } catch (err) {
+    return sendJson(req, res, 401, { ok: false, error: "Unauthorised: " + err.message });
+  }
 
   if (path === "/tournament-wizard") {
     if (method !== "POST") {
