@@ -21,3 +21,13 @@ All agents must run the following locally before suggesting a PR-ready change:
 ```bash
 npm run verify
 ```
+
+This runs linting, tests, and build. **All must pass before opening a PR.**
+
+---
+
+## 3. Before writing tests
+
+Read **[AGENT-TESTING.md](./AGENT-TESTING.md)** for comprehensive test authoring guidelines.
+
+Key principle: **Proper cleanup is critical** — missing cleanup in test teardown causes memory bloat and OOM errors in CI.
