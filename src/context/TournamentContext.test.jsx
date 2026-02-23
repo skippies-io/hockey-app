@@ -2,7 +2,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TournamentProvider, useTournament } from './TournamentContext';
-/* global fetch */
+
+beforeEach(() => {
+  // Stub fetch for this test environment
+  vi.stubGlobal('fetch', vi.fn());
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 // Mock the api module - set up BEFORE tests run
 vi.mock('../lib/api', () => ({
@@ -45,7 +53,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -85,7 +93,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -117,7 +125,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: false,
         status: 500,
@@ -147,7 +155,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.reject(new Error('Network error'))
     );
 
@@ -172,7 +180,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: [] })
@@ -199,7 +207,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ data: null })
@@ -231,7 +239,7 @@ describe('TournamentContext', () => {
       return <div data-testid="active-tournament">{activeTournament?.name || 'none'}</div>;
     }
 
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -283,7 +291,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
@@ -324,7 +332,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON'))
@@ -351,7 +359,7 @@ describe('TournamentContext', () => {
     const { tournamentsEndpoint } = await import('../lib/api');
     tournamentsEndpoint.mockReturnValue('http://localhost/api/tournaments');
     
-    global.fetch = vi.fn(() =>
+    fetch = vi.fn(() =>
       Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
