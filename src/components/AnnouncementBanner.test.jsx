@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import React from 'react';
 import AnnouncementBanner from './AnnouncementBanner';
 
@@ -21,6 +21,14 @@ describe('AnnouncementBanner', () => {
     store = {};
     vi.stubGlobal('localStorage', mockLocalStorage);
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    store = {};
+    sessionStorage.clear();
   });
 
   it('renders nothing when no announcements are provided', () => {
