@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TournamentSwitcher from './TournamentSwitcher.jsx';
 
@@ -11,6 +11,15 @@ import { useTournament } from '../context/TournamentContext';
 describe('TournamentSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.unmock('../context/TournamentContext');
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('returns null when loading', () => {

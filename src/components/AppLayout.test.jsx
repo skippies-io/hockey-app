@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import AppLayout from './AppLayout';
 
@@ -17,6 +17,16 @@ vi.mock('../context/TournamentContext', () => ({
 describe('AppLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.unmock('../lib/api');
+    vi.unmock('../context/TournamentContext');
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('renders header with brand and children', async () => {

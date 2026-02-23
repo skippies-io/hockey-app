@@ -10,6 +10,10 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 // Mock the api module - set up BEFORE tests run
@@ -45,8 +49,11 @@ describe('TournamentContext', () => {
   });
 
   afterEach(() => {
-    localStorage.clear();
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('provides initial values with default tournament selection', async () => {
