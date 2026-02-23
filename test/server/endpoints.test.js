@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import process from 'node:process';
 
 // Use vi.hoisted to ensure the mock function is available before the mock factory runs
@@ -29,6 +29,12 @@ describe('API Endpoints (Mocked DB)', () => {
         vi.clearAllMocks();
         fixturesCache.clear();
         standingsCache.clear();
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.clearAllMocks();
+        vi.restoreAllMocks();
     });
 
     it('GET /api/announcements returns data on successful query', async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -30,6 +30,12 @@ import {
 } from '../../server/index.mjs';
 
 describe('server utility functions', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+  });
+
   it('getClientIp returns correct IP from x-forwarded-for', () => {
     const req = { headers: { 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }, socket: { remoteAddress: '9.9.9.9' } };
     expect(getClientIp(req)).toBe('1.2.3.4');

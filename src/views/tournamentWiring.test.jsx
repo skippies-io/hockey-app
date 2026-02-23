@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -56,6 +56,16 @@ beforeEach(() => {
       dispatchEvent: vi.fn(),
     }));
   }
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
+  vi.unmock("../lib/api");
+  vi.unmock("../context/TournamentContext");
+  localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("tournament wiring", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleAdminRequest } from '../../server/admin.mjs';
 
 describe('handleAdminRequest', () => {
@@ -25,6 +25,12 @@ describe('handleAdminRequest', () => {
             connect: vi.fn(async () => mockClient),
         };
         mockSendJson = vi.fn();
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.clearAllMocks();
+        vi.restoreAllMocks();
     });
 
     const setReqBody = (req, body) => {

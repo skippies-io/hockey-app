@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
@@ -64,6 +64,14 @@ function renderApp() {
 ------------------------------ */
 
 describe("App Smoke Test", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
   it("renders without crashing", async () => {
     renderApp();
 

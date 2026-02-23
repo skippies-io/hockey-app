@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const mockFetch = vi.fn();
 
@@ -25,6 +25,14 @@ describe("api helpers", () => {
         rows: [{ id: 1 }],
       })
     );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("appends tournamentId when provided", async () => {

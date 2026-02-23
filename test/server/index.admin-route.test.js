@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 vi.mock('../../server/admin.mjs', () => ({
   handleAdminRequest: vi.fn(async (req, res) => {
@@ -8,6 +8,13 @@ vi.mock('../../server/admin.mjs', () => ({
 }));
 
 describe('server requestHandler admin route', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.unmock('../../server/admin.mjs');
+  });
+
   it('routes /api/admin/announcements to handleAdminRequest', async () => {
     const { requestHandler } = await import('../../server/index.mjs');
     const { handleAdminRequest } = await import('../../server/admin.mjs');

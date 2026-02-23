@@ -1,9 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verifyJWT, requireAuth } from '../../server/auth.mjs';
 
 describe('auth.mjs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.JWT_SECRET;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
     delete process.env.JWT_SECRET;
   });
 
