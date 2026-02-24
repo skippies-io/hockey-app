@@ -57,7 +57,7 @@ function createEmailTransporter() {
  */
 async function sendMagicLinkEmail(email, token) {
   const transporter = createEmailTransporter();
-  const baseUrl = process.env.BASE_URL || "http://localhost:5173";
+  const baseUrl = process.env.BASE_URL || "https://localhost:5173";
   const magicLink = `${baseUrl}/admin/verify?token=${token}`;
 
   const mailOptions = {

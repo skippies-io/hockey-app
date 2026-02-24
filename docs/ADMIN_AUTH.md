@@ -100,7 +100,7 @@ JWT_SECRET="your-secret-key-change-in-production"
 ADMIN_EMAILS="leroybarnes@me.com"
 
 # Base URL for magic link (frontend URL)
-BASE_URL="http://localhost:5173"
+BASE_URL="https://localhost:5173"
 ```
 
 ### Gmail Setup
