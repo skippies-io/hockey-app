@@ -32,3 +32,43 @@ jobs:
           args: >
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+      - name: SonarCloud Quality Gate Details
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Reading SonarCloud report task..."
+          if [ ! -f .scannerwork/report-task.txt ]; then
+            echo "No .scannerwork/report-task.txt found"
+            exit 0
+          fi
+          cat .scannerwork/report-task.txt
+          ceTaskUrl=$(grep -E '^ceTaskUrl=' .scannerwork/report-task.txt | cut -d= -f2-)
+          serverUrl=$(grep -E '^serverUrl=' .scannerwork/report-task.txt | cut -d= -f2-)
+          if [ -z "$ceTaskUrl" ] || [ -z "$serverUrl" ]; then
+            echo "Missing ceTaskUrl or serverUrl in report-task.txt"
+            exit 0
+          fi
+          echo "Polling CE task: $ceTaskUrl"
+          for i in $(seq 1 30); do
+            taskJson=$(curl -sS -u "${SONAR_TOKEN}:" "$ceTaskUrl")
+            status=$(echo "$taskJson" | jq -r '.task.status')
+            if [ "$status" = "SUCCESS" ]; then
+              analysisId=$(echo "$taskJson" | jq -r '.task.analysisId')
+              break
+            fi
+            if [ "$status" = "FAILED" ] || [ "$status" = "CANCELED" ]; then
+              echo "CE task status: $status"
+              echo "$taskJson"
+              exit 0
+            fi
+            sleep 2
+          done
+          if [ -z "${analysisId:-}" ]; then
+            echo "No analysisId resolved"
+            exit 0
+          fi
+          echo "Fetching quality gate status..."
+          qgUrl="${serverUrl}/api/qualitygates/project_status?analysisId=${analysisId}"
+          curl -sS -u "${SONAR_TOKEN}:" "$qgUrl" | jq -r '.projectStatus'
