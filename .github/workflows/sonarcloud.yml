@@ -37,6 +37,7 @@ jobs:
         if: always()
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
         run: |
           set -euo pipefail
           echo "Reading SonarCloud report task..."
@@ -73,3 +74,12 @@ jobs:
           echo "Fetching quality gate status..."
           qgUrl="${serverUrl}/api/qualitygates/project_status?analysisId=${analysisId}"
           curl -sS -u "${SONAR_TOKEN}:" "$qgUrl" | jq -r '.projectStatus'
+          prNumber=$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$prNumber" ] && [ -n "${SONAR_PROJECT_KEY:-}" ]; then
+            echo "Fetching security hotspots for PR #${prNumber}..."
+            hotspotsUrl="${serverUrl}/api/hotspots/search?projectKey=${SONAR_PROJECT_KEY}&pullRequest=${prNumber}"
+            curl -sS -u "${SONAR_TOKEN}:" "$hotspotsUrl" | jq -r '
+              "hotspot_count=\(.paging.total)",
+              ( .hotspots[]? | [ .component, .rule, (.message // "") ] | @tsv )
+            '
+          fi
