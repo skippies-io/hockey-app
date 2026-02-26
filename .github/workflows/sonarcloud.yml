@@ -2,6 +2,7 @@ name: SonarCloud Code Analysis
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
 
@@ -32,3 +33,53 @@ jobs:
           args: >
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+      - name: SonarCloud Quality Gate Details
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          set -euo pipefail
+          echo "Reading SonarCloud report task..."
+          if [ ! -f .scannerwork/report-task.txt ]; then
+            echo "No .scannerwork/report-task.txt found"
+            exit 0
+          fi
+          cat .scannerwork/report-task.txt
+          ceTaskUrl=$(grep -E '^ceTaskUrl=' .scannerwork/report-task.txt | cut -d= -f2-)
+          serverUrl=$(grep -E '^serverUrl=' .scannerwork/report-task.txt | cut -d= -f2-)
+          if [ -z "$ceTaskUrl" ] || [ -z "$serverUrl" ]; then
+            echo "Missing ceTaskUrl or serverUrl in report-task.txt"
+            exit 0
+          fi
+          echo "Polling CE task: $ceTaskUrl"
+          for i in $(seq 1 30); do
+            taskJson=$(curl -sS -u "${SONAR_TOKEN}:" "$ceTaskUrl")
+            status=$(echo "$taskJson" | jq -r '.task.status')
+            if [ "$status" = "SUCCESS" ]; then
+              analysisId=$(echo "$taskJson" | jq -r '.task.analysisId')
+              break
+            fi
+            if [ "$status" = "FAILED" ] || [ "$status" = "CANCELED" ]; then
+              echo "CE task status: $status"
+              echo "$taskJson"
+              exit 0
+            fi
+            sleep 2
+          done
+          if [ -z "${analysisId:-}" ]; then
+            echo "No analysisId resolved"
+            exit 0
+          fi
+          echo "Fetching quality gate status..."
+          qgUrl="${serverUrl}/api/qualitygates/project_status?analysisId=${analysisId}"
+          curl -sS -u "${SONAR_TOKEN}:" "$qgUrl" | jq -r '.projectStatus'
+          prNumber=$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH")
+          if [ -n "$prNumber" ] && [ -n "${SONAR_PROJECT_KEY:-}" ]; then
+            echo "Fetching security hotspots for PR #${prNumber}..."
+            hotspotsUrl="${serverUrl}/api/hotspots/search?projectKey=${SONAR_PROJECT_KEY}&pullRequest=${prNumber}"
+            curl -sS -u "${SONAR_TOKEN}:" "$hotspotsUrl" | jq -r '
+              "hotspot_count=\(.paging.total)",
+              ( .hotspots[]? | [ .component, .rule, (.message // "") ] | @tsv )
+            '
+          fi
