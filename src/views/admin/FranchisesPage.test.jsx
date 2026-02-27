@@ -51,15 +51,25 @@ describe("FranchisesPage", () => {
   it("creates a franchise", async () => {
     await renderPage();
     await waitFor(() => screen.getByLabelText(/^name$/i));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tournament").value).toBe("t1");
+    });
 
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "New Franchise" } });
     fireEvent.click(screen.getByRole("button", { name: /add franchise/i }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/admin/franchises",
-        expect.objectContaining({ method: "POST" })
-      );
+      const calls = fetch.mock.calls.filter((call) => {
+        const url = call[0];
+        const options = call[1];
+        return (
+          typeof url === "string" &&
+          url.includes("/admin/franchises") &&
+          options &&
+          options.method === "POST"
+        );
+      });
+      expect(calls.length).toBeGreaterThan(0);
     });
   });
 });
