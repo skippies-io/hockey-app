@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
 import process from 'node:process';
 
 // Use vi.hoisted to ensure the mock function is available before the mock factory runs
@@ -25,6 +25,19 @@ process.env.DATABASE_URL = 'postgres://fake';
 import { requestHandler, fixturesCache, standingsCache, getFixturesCacheKey } from '../../server/index.mjs';
 
 describe('API Endpoints (Mocked DB)', () => {
+    let consoleLogSpy;
+    let consoleErrorSpy;
+
+    beforeAll(() => {
+        consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterAll(() => {
+        consoleLogSpy.mockRestore();
+        consoleErrorSpy.mockRestore();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         fixturesCache.clear();

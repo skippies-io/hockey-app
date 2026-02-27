@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -44,6 +44,19 @@ const loadServer = async (overrides = {}) => {
 };
 
 const originalFetch = global.fetch;
+
+let consoleLogSpy;
+let consoleErrorSpy;
+
+beforeAll(() => {
+  consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterAll(() => {
+  consoleLogSpy.mockRestore();
+  consoleErrorSpy.mockRestore();
+});
 
 afterEach(() => {
   mocks.query.mockReset();

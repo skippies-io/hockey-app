@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
 
+const IS_TEST = process.env.VITEST || process.env.NODE_ENV === "test";
+const logAdminError = (...args) => {
+  if (!IS_TEST) logAdminError(...args);
+};
+
 function hashString(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -44,7 +49,9 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   // Simple router for Admin API
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
-  console.log("Admin Request:", method, path); // DEBUG
+  if (!IS_TEST) {
+    console.log("Admin Request:", method, path); // DEBUG
+  }
 
   if (path === "/tournament-wizard") {
     if (method !== "POST") {
@@ -385,13 +392,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         return sendJson(req, res, 201, { ok: true, tournament_id: tournamentId });
       } catch (err) {
         await client.query("ROLLBACK");
-        console.error("Tournament wizard error:", err);
+        logAdminError("Tournament wizard error:", err);
         return sendJson(req, res, 500, { ok: false, error: "Failed to create tournament" });
       } finally {
         client.release();
       }
     } catch (err) {
-      console.error("Tournament wizard error:", err);
+      logAdminError("Tournament wizard error:", err);
       return sendJson(req, res, 500, { ok: false, error: "Failed to create tournament" });
     }
   }
@@ -414,7 +421,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -441,7 +448,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -463,24 +470,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
              vd.location_map_url,
              vd.website_url
            FROM venue_directory vd
-           UNION
-           SELECT
-             CONCAT(
-               REGEXP_REPLACE(LOWER(TRIM(v.name)), '[^a-z0-9]+', '-', 'g'),
-               '-',
-               SUBSTRING(MD5(TRIM(v.name)) FOR 12)
-             ) AS id,
-             TRIM(v.name) AS name,
-             NULL AS address,
-             NULL AS location_map_url,
-             NULL AS website_url
-           FROM venue v
-           WHERE v.name IS NOT NULL AND TRIM(v.name) <> ''
-           ORDER BY name ASC`
+           ORDER BY vd.name ASC`
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -510,7 +504,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -529,7 +523,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -557,7 +551,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -589,7 +583,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -650,7 +644,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -716,7 +710,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -738,7 +732,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -774,7 +768,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -791,7 +785,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -831,7 +825,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         if (String(err?.message || "").includes("unique")) {
           return sendJson(req, res, 409, { ok: false, error: "Venue name already exists" });
         }
@@ -851,7 +845,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -903,7 +897,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin PUT Error:", err);
+        logAdminError("Admin PUT Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -917,7 +911,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
-        console.error("Admin DELETE Error:", err);
+        logAdminError("Admin DELETE Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }

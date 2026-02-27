@@ -29,7 +29,9 @@ describe("TournamentWizard", () => {
 
   async function renderWizard() {
     const { default: TournamentWizard } = await import("./TournamentWizard");
-    return render(<TournamentWizard />);
+    const view = render(<TournamentWizard />);
+    await screen.findByText("Tournament Setup Wizard");
+    return view;
   }
 
   it("renders and navigates between steps", async () => {

@@ -1,0 +1,63 @@
+import React from "react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+globalThis.fetch = vi.fn();
+window.confirm = vi.fn(() => true);
+
+describe("VenuesPage", () => {
+  const mockVenues = [
+    { id: "v1", name: "Beaulieu College", address: "Main Rd", location_map_url: "", website_url: "" },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("VITE_API_BASE", "http://localhost:8787/api");
+    vi.resetModules();
+    fetch.mockImplementation((url, options = {}) => {
+      const method = options.method || "GET";
+      if (typeof url === "string" && url.includes("/admin/venues") && method === "GET") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockVenues }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/venues") && method === "POST") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockVenues[0] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/venues/") && method === "PUT") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockVenues[0] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/venues/") && method === "DELETE") {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, deleted: "v1" }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+  });
+
+  async function renderPage() {
+    const { default: VenuesPage } = await import("./VenuesPage");
+    return render(<VenuesPage />);
+  }
+
+  it("renders venues from the API", async () => {
+    await renderPage();
+    expect(screen.getByText(/loading/i)).toBeDefined();
+
+    await waitFor(() => {
+      expect(screen.getByText("Beaulieu College")).toBeDefined();
+    });
+  });
+
+  it("creates a venue", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByLabelText(/^name$/i));
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "New Venue" } });
+    fireEvent.click(screen.getByRole("button", { name: /add venue/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/venues",
+        expect.objectContaining({ method: "POST" })
+      );
+    });
+  });
+});

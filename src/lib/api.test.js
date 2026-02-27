@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 const mockFetch = vi.fn();
 
@@ -10,6 +10,8 @@ function mockOkJson(payload) {
 }
 
 describe("api helpers", () => {
+  let consoleErrorSpy;
+
   beforeEach(() => {
     vi.resetModules();
     vi.stubEnv("VITE_PROVIDER", "db");
@@ -25,6 +27,11 @@ describe("api helpers", () => {
         rows: [{ id: 1 }],
       })
     );
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it("appends tournamentId when provided", async () => {
