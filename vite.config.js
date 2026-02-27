@@ -37,7 +37,14 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: ['test/setup-env.js'],
-      ...(isCi ? { maxWorkers: 1, fileParallelism: false, pool: 'threads' } : {}),
+      ...(isCi
+        ? {
+            maxWorkers: 1,
+            fileParallelism: false,
+            pool: 'forks',
+            execArgv: ['--max-old-space-size=4096'],
+          }
+        : {}),
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],
