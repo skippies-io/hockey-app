@@ -7,7 +7,13 @@ window.confirm = vi.fn(() => true);
 
 describe("VenuesPage", () => {
   const mockVenues = [
-    { id: "v1", name: "Beaulieu College", address: "Main Rd", location_map_url: "", website_url: "" },
+    {
+      id: "v1",
+      name: "Beaulieu College",
+      address: "Main Rd",
+      location_map_url: "https://maps.example.com/venue",
+      website_url: "https://www.beaulieu.example.com",
+    },
   ];
 
   beforeEach(() => {
@@ -44,6 +50,18 @@ describe("VenuesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Beaulieu College")).toBeDefined();
     });
+
+    expect(screen.getByText("maps.example.com")).toBeDefined();
+    expect(screen.getByText("beaulieu.example.com")).toBeDefined();
+  });
+
+  it("shows validation error when name missing", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /add venue/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /add venue/i }));
+
+    expect(screen.getByText(/venue name is required/i)).toBeDefined();
   });
 
   it("creates a venue", async () => {

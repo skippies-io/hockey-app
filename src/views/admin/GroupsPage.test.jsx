@@ -57,4 +57,13 @@ describe("GroupsPage", () => {
       );
     });
   });
+
+  it("shows validation error when required fields missing", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /add group/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /add group/i }));
+
+    expect(screen.getByText(/group id and label are required/i)).toBeDefined();
+  });
 });

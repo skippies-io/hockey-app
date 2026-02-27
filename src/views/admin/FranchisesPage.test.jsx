@@ -72,4 +72,16 @@ describe("FranchisesPage", () => {
       expect(calls.length).toBeGreaterThan(0);
     });
   });
+
+  it("shows validation error when name missing", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /add franchise/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tournament").value).toBe("t1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add franchise/i }));
+
+    expect(screen.getByText(/franchise name is required/i)).toBeDefined();
+  });
 });

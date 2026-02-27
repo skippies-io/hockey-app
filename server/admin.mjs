@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 const IS_TEST = process.env.VITEST || process.env.NODE_ENV === "test";
 const logAdminError = (...args) => {
-  if (!IS_TEST) logAdminError(...args);
+  if (!IS_TEST) console.error(...args);
 };
 
 function hashString(value) {
@@ -44,8 +44,37 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
+function requirePool(pool, req, res, sendJson) {
+  if (!pool) {
+    sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    return false;
+  }
+  return true;
+}
 
+async function requireBody(req, res, sendJson) {
+  const body = await readBody(req);
+  if (!body) {
+    sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+    return null;
+  }
+  return body;
+}
+
+async function handleAdminDb(req, res, sendJson, action, onError) {
+  try {
+    return await action();
+  } catch (err) {
+    if (onError) {
+      const handled = onError(err);
+      if (handled) return handled;
+    }
+    logAdminError("Admin API Error:", err);
+    return sendJson(req, res, 500, { ok: false, error: err.message });
+  }
+}
+
+export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   // Simple router for Admin API
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
@@ -460,8 +489,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   if (path === "/venues") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         const result = await pool.query(
           `SELECT
              vd.id,
@@ -473,17 +502,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
            ORDER BY vd.name ASC`
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
         const name = normalizeSpaces(body?.name);
         const address = normalizeSpaces(body?.address) || null;
         const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
@@ -503,10 +529,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Venue already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -514,25 +537,22 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   if (path === "/groups") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         const result = await pool.query(
           `SELECT id, label, format
            FROM group_directory
            ORDER BY id ASC`
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
         const id = normalizeSpaces(body?.id);
         const label = normalizeSpaces(body?.label);
         const format = normalizeSpaces(body?.format) || null;
@@ -550,10 +570,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Group already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -561,8 +578,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 
   if (path === "/franchises") {
     if (method === "GET") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         const tournamentId = url.searchParams.get("tournamentId");
         const result = await pool.query(
           `SELECT
@@ -582,17 +599,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           [tournamentId ?? null]
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "POST") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
         const tournamentId = normalizeSpaces(body?.tournament_id);
         const nameRaw = normalizeSpaces(body?.name);
         if (!tournamentId || !nameRaw) {
@@ -643,10 +657,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 409, { ok: false, error: "Franchise already exists" });
         }
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -658,13 +669,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const tournamentId = url.searchParams.get("tournamentId");
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         if (!tournamentId) {
           return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
         }
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
         const nameRaw = normalizeSpaces(body?.name);
         if (!nameRaw) {
           return sendJson(req, res, 400, { ok: false, error: "name is required" });
@@ -709,15 +720,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         if (!tournamentId) {
           return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
         }
@@ -731,10 +739,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -745,10 +750,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const id = groupMatch[1];
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
         const label = normalizeSpaces(body?.label);
         const format = normalizeSpaces(body?.format) || null;
         if (!label) {
@@ -767,15 +772,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         const result = await pool.query(
           "DELETE FROM group_directory WHERE id = $1 RETURNING id",
           [id]
@@ -784,10 +786,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -798,44 +797,49 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     const id = venueMatch[1];
 
     if (method === "PUT") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-        const body = await readBody(req);
-        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
-        const name = normalizeSpaces(body?.name);
-        const address = normalizeSpaces(body?.address) || null;
-        const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
-        const websiteUrl = normalizeSpaces(body?.website_url) || null;
-        if (!name) {
-          return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
+      return handleAdminDb(
+        req,
+        res,
+        sendJson,
+        async () => {
+          if (!requirePool(pool, req, res, sendJson)) return null;
+          const body = await requireBody(req, res, sendJson);
+          if (!body) return null;
+          const name = normalizeSpaces(body?.name);
+          const address = normalizeSpaces(body?.address) || null;
+          const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
+          const websiteUrl = normalizeSpaces(body?.website_url) || null;
+          if (!name) {
+            return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
+          }
+          const result = await pool.query(
+            `UPDATE venue_directory
+             SET name = $1,
+                 address = $2,
+                 location_map_url = $3,
+                 website_url = $4,
+                 updated_at = NOW()
+             WHERE id = $5
+             RETURNING id, name, address, location_map_url, website_url`,
+            [name, address, locationMapUrl, websiteUrl, id]
+          );
+          if (result.rowCount === 0) {
+            return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+          }
+          return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+        },
+        (err) => {
+          if (String(err?.message || "").includes("unique")) {
+            return sendJson(req, res, 409, { ok: false, error: "Venue name already exists" });
+          }
+          return null;
         }
-        const result = await pool.query(
-          `UPDATE venue_directory
-           SET name = $1,
-               address = $2,
-               location_map_url = $3,
-               website_url = $4,
-               updated_at = NOW()
-           WHERE id = $5
-           RETURNING id, name, address, location_map_url, website_url`,
-          [name, address, locationMapUrl, websiteUrl, id]
-        );
-        if (result.rowCount === 0) {
-          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
-        }
-        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        if (String(err?.message || "").includes("unique")) {
-          return sendJson(req, res, 409, { ok: false, error: "Venue name already exists" });
-        }
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      );
     }
 
     if (method === "DELETE") {
-      try {
-        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
         const result = await pool.query(
           "DELETE FROM venue_directory WHERE id = $1 RETURNING id",
           [id]
@@ -844,10 +848,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
-      } catch (err) {
-        logAdminError("Admin API Error:", err);
-        return sendJson(req, res, 500, { ok: false, error: err.message });
-      }
+      });
     }
 
     return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
