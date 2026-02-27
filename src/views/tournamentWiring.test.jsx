@@ -62,8 +62,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
   vi.restoreAllMocks();
-  vi.unmock("../lib/api");
-  vi.unmock("../context/TournamentContext");
   localStorage.clear();
   sessionStorage.clear();
 });

@@ -46,7 +46,6 @@ describe("Feedback view", () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     vi.restoreAllMocks();
-    vi.unmock("../lib/api");
     localStorage.clear();
     sessionStorage.clear();
   });

@@ -17,7 +17,6 @@ describe('TournamentSwitcher', () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     vi.restoreAllMocks();
-    vi.unmock('../context/TournamentContext');
     localStorage.clear();
     sessionStorage.clear();
   });

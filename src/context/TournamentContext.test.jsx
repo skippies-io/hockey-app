@@ -137,7 +137,7 @@ describe('TournamentContext', () => {
         ok: false,
         status: 500,
       })
-    );
+    ));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -164,7 +164,7 @@ describe('TournamentContext', () => {
     
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.reject(new Error('Network error'))
-    );
+    ));
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -192,7 +192,7 @@ describe('TournamentContext', () => {
         ok: true,
         json: () => Promise.resolve({ data: [] })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
@@ -219,13 +219,13 @@ describe('TournamentContext', () => {
         ok: true,
         json: () => Promise.resolve({ data: null })
       })
-    );
+    ));
 
     render(
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -261,7 +261,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <CountingComponent />
       </TournamentProvider>
-    ));
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('active-tournament')).toHaveTextContent('Tournament 1');
@@ -281,7 +281,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Should immediately set loading to false when endpoint is null
     await waitFor(() => {
@@ -314,7 +314,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     // Wait for initial load
     await waitFor(() => {
@@ -352,7 +352,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');
@@ -383,7 +383,7 @@ describe('TournamentContext', () => {
       <TournamentProvider>
         <TestComponent />
       </TournamentProvider>
-    ));
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('loading')).toHaveTextContent('ready');

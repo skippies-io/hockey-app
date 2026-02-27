@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import process from 'node:process'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -19,6 +20,7 @@ function resolveBuildId(env) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), '');
   const buildId = resolveBuildId(env);
+  const isCi = Boolean(process.env.CI || process.env.GITHUB_ACTIONS);
   const basePath = (() => {
     const raw = env.VITE_BASE_PATH || '/hockey-app/';
     const withLeading = raw.startsWith('/') ? raw : `/${raw}`;
@@ -35,6 +37,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: 'jsdom',
       setupFiles: ['test/setup-env.js'],
+      ...(isCi ? { maxWorkers: 1, fileParallelism: false, pool: 'threads' } : {}),
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],

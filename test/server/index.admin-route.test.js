@@ -1,23 +1,26 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-
-vi.mock('../../server/admin.mjs', () => ({
-  handleAdminRequest: vi.fn(async (req, res) => {
-    if (res.writeHead) res.writeHead(200);
-    if (res.end) res.end();
-  })
-}));
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import * as adminModule from '../../server/admin.mjs';
 
 describe('server requestHandler admin route', () => {
+  let handleAdminRequestSpy;
+
+  beforeEach(() => {
+    handleAdminRequestSpy = vi.spyOn(adminModule, 'handleAdminRequest').mockImplementation(
+      async (req, res) => {
+        if (res.writeHead) res.writeHead(200);
+        if (res.end) res.end();
+      }
+    );
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     vi.restoreAllMocks();
-    vi.unmock('../../server/admin.mjs');
   });
 
   it('routes /api/admin/announcements to handleAdminRequest', async () => {
     const { requestHandler } = await import('../../server/index.mjs');
-    const { handleAdminRequest } = await import('../../server/admin.mjs');
 
     const req = {
       method: 'GET',
@@ -34,7 +37,7 @@ describe('server requestHandler admin route', () => {
 
     await requestHandler(req, res);
 
-    expect(handleAdminRequest).toHaveBeenCalledTimes(1);
+    expect(handleAdminRequestSpy).toHaveBeenCalledTimes(1);
     expect(res.end).toHaveBeenCalled();
   });
 });

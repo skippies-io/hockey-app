@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { handleAdminRequest } from '../../server/admin.mjs';
 
+vi.mock('../../server/auth.mjs', () => ({
+    requireAuth: vi.fn(() => ({ email: 'test@example.com' })),
+    verifyMagicLink: vi.fn(),
+    requestMagicLink: vi.fn(),
+}));
+
 describe('handleAdminRequest', () => {
     let mockReq;
     let mockRes;
