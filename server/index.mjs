@@ -38,14 +38,18 @@ const databaseHost = (() => {
   }
 })();
 
-console.log(
-  [
-    "Hockey API server starting",
-    `provider: ${PROVIDER_MODE}`,
-    `database host: ${databaseHost}`,
-    `tournament: ${TOURNAMENT_ID}`,
-  ].join("\n")
-);
+const IS_TEST = process.env.VITEST || process.env.NODE_ENV === "test";
+
+if (!IS_TEST) {
+  console.log(
+    [
+      "Hockey API server starting",
+      `provider: ${PROVIDER_MODE}`,
+      `database host: ${databaseHost}`,
+      `tournament: ${TOURNAMENT_ID}`,
+    ].join("\n")
+  );
+}
 
 // SSL Fix: For local dev with Supabase/Postgres, often we need rejectUnauthorized: false
 // The user explicitly requested this fix.
@@ -428,7 +432,9 @@ export const requestHandler = async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
-    console.log("Incoming Request:", req.method, url.pathname); // DEBUG
+    if (!IS_TEST) {
+      console.log("Incoming Request:", req.method, url.pathname); // DEBUG
+    }
     const isOptions = req.method === "OPTIONS";
     const isHealth = url.pathname === "/health";
 

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 
 import App from "./App";
@@ -64,6 +64,19 @@ function renderApp() {
 ------------------------------ */
 
 describe("App Smoke Test", () => {
+  let consoleLogSpy;
+  let consoleWarnSpy;
+
+  beforeEach(() => {
+    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+  });
+
   it("renders without crashing", async () => {
     renderApp();
 

@@ -14,7 +14,7 @@ vi.mock('../context/TournamentContext', () => ({
 }));
 
 describe('AppLayout', () => {
-  it('renders children', () => {
+  it('renders children', async () => {
     render(
       <BrowserRouter>
         <AppLayout>
@@ -22,6 +22,6 @@ describe('AppLayout', () => {
         </AppLayout>
       </BrowserRouter>
     );
-    expect(screen.getByText('Test Child')).toBeDefined();
+    expect(await screen.findByText('Test Child')).toBeDefined();
   });
 });

@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
 
+const IS_TEST = process.env.VITEST || process.env.NODE_ENV === "test";
+const logAdminError = (...args) => {
+  if (!IS_TEST) console.error(...args);
+};
+
 function hashString(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -39,12 +44,68 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
+function requirePool(pool, req, res, sendJson) {
+  if (!pool) {
+    sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    return false;
+  }
+  return true;
+}
 
+async function requireBody(req, res, sendJson) {
+  const body = await readBody(req);
+  if (!body) {
+    sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+    return null;
+  }
+  return body;
+}
+
+async function handleAdminDb(req, res, sendJson, action, onError) {
+  try {
+    return await action();
+  } catch (err) {
+    if (onError) {
+      const handled = onError(err);
+      if (handled) return handled;
+    }
+    logAdminError("Admin API Error:", err);
+    return sendJson(req, res, 500, { ok: false, error: err.message });
+  }
+}
+
+function buildUpdateQuery({ table, data, where, returning, extraSet }) {
+  const entries = Object.entries(data);
+  const assignments = entries.map(([key], idx) => `${key} = $${idx + 1}`);
+  if (extraSet) assignments.push(extraSet);
+  const values = entries.map(([, value]) => value);
+  const whereOffset = values.length;
+  const whereClause = where.columns
+    .map((col, idx) => `${col} = $${whereOffset + idx + 1}`)
+    .join(" AND ");
+  return {
+    sql: `UPDATE ${table} SET ${assignments.join(", ")} WHERE ${whereClause} RETURNING ${returning}`,
+    values: [...values, ...where.values],
+  };
+}
+
+function buildDeleteQuery({ table, where, returning = "id" }) {
+  const whereClause = where.columns
+    .map((col, idx) => `${col} = $${idx + 1}`)
+    .join(" AND ");
+  return {
+    sql: `DELETE FROM ${table} WHERE ${whereClause} RETURNING ${returning}`,
+    values: where.values,
+  };
+}
+
+export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   // Simple router for Admin API
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
-  console.log("Admin Request:", method, path); // DEBUG
+  if (!IS_TEST) {
+    console.log("Admin Request:", method, path); // DEBUG
+  }
 
   if (path === "/tournament-wizard") {
     if (method !== "POST") {
@@ -99,17 +160,50 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           [tournamentId, tournamentName, tournamentSeason]
         );
 
+        const venueNames = venues
+          .map((venue) => normalizeSpaces(venue?.name))
+          .filter(Boolean);
+        const venueDirectoryMap = new Map();
+        if (venueNames.length) {
+          const directoryResult = await client.query(
+            `SELECT name, address, location_map_url
+             FROM venue_directory
+             WHERE name = ANY($1)`,
+            [venueNames]
+          );
+          for (const row of directoryResult.rows) {
+            const key = normalizeSpaces(row.name).toLowerCase();
+            venueDirectoryMap.set(key, row);
+          }
+        }
+
         const venueMap = new Map();
         for (const venue of venues) {
           const name = normalizeSpaces(venue?.name);
           if (!name) continue;
+          const directoryEntry = venueDirectoryMap.get(name.toLowerCase());
+          if (!directoryEntry) {
+            await client.query("ROLLBACK");
+            return sendJson(req, res, 400, { ok: false, error: `Unknown venue: ${name}` });
+          }
           const id = slug(`${tournamentId}:${name}`);
           venueMap.set(name.toLowerCase(), { id, name });
           await client.query(
-            `INSERT INTO venue (tournament_id, id, name)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (tournament_id, id) DO UPDATE SET name = EXCLUDED.name`,
-            [tournamentId, id, name]
+            `INSERT INTO venue (tournament_id, id, name, address, location_map_url, website_url)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (tournament_id, id) DO UPDATE SET
+               name = EXCLUDED.name,
+               address = EXCLUDED.address,
+               location_map_url = EXCLUDED.location_map_url,
+               website_url = EXCLUDED.website_url`,
+            [
+              tournamentId,
+              id,
+              name,
+              directoryEntry.address || null,
+              directoryEntry.location_map_url || null,
+              directoryEntry.website_url || null,
+            ]
           );
         }
 
@@ -352,13 +446,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         return sendJson(req, res, 201, { ok: true, tournament_id: tournamentId });
       } catch (err) {
         await client.query("ROLLBACK");
-        console.error("Tournament wizard error:", err);
+        logAdminError("Tournament wizard error:", err);
         return sendJson(req, res, 500, { ok: false, error: "Failed to create tournament" });
       } finally {
         client.release();
       }
     } catch (err) {
-      console.error("Tournament wizard error:", err);
+      logAdminError("Tournament wizard error:", err);
       return sendJson(req, res, 500, { ok: false, error: "Failed to create tournament" });
     }
   }
@@ -381,7 +475,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         );
         return sendJson(req, res, 200, { ok: true, data: result.rows });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -408,7 +502,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin API Error:", err);
+        logAdminError("Admin API Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -419,21 +513,353 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   }
 
   if (path === "/venues") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    if (method === "GET") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const result = await pool.query(
+          `SELECT
+             vd.id,
+             vd.name,
+             vd.address,
+             vd.location_map_url,
+             vd.website_url
+           FROM venue_directory vd
+           ORDER BY vd.name ASC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      });
     }
-    try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-      const result = await pool.query(
-        `SELECT DISTINCT name
-         FROM venue
-         ORDER BY name ASC`
+
+    if (method === "POST") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
+        const name = normalizeSpaces(body?.name);
+        const address = normalizeSpaces(body?.address) || null;
+        const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
+        const websiteUrl = normalizeSpaces(body?.website_url) || null;
+        if (!name) {
+          return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
+        }
+        const id = slug(name);
+        const result = await pool.query(
+          `INSERT INTO venue_directory (id, name, address, location_map_url, website_url)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (name) DO NOTHING
+           RETURNING id, name, address, location_map_url, website_url`,
+          [id, name, address, locationMapUrl, websiteUrl]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 409, { ok: false, error: "Venue already exists" });
+        }
+        return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  if (path === "/groups") {
+    if (method === "GET") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const result = await pool.query(
+          `SELECT id, label, format
+           FROM group_directory
+           ORDER BY id ASC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      });
+    }
+
+    if (method === "POST") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
+        const id = normalizeSpaces(body?.id);
+        const label = normalizeSpaces(body?.label);
+        const format = normalizeSpaces(body?.format) || null;
+        if (!id || !label) {
+          return sendJson(req, res, 400, { ok: false, error: "Group id and label are required" });
+        }
+        const result = await pool.query(
+          `INSERT INTO group_directory (id, label, format)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (id) DO NOTHING
+           RETURNING id, label, format`,
+          [id, label, format]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 409, { ok: false, error: "Group already exists" });
+        }
+        return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  if (path === "/franchises") {
+    if (method === "GET") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const tournamentId = url.searchParams.get("tournamentId");
+        const result = await pool.query(
+          `SELECT
+             tournament_id,
+             id,
+             name,
+             logo_url,
+             manager_name,
+             manager_photo_url,
+             description,
+             contact_phone,
+             location_map_url,
+             contact_email
+           FROM franchise
+           WHERE ($1::text IS NULL OR tournament_id = $1)
+           ORDER BY tournament_id ASC, name ASC`,
+          [tournamentId ?? null]
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      });
+    }
+
+    if (method === "POST") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
+        const tournamentId = normalizeSpaces(body?.tournament_id);
+        const nameRaw = normalizeSpaces(body?.name);
+        if (!tournamentId || !nameRaw) {
+          return sendJson(req, res, 400, { ok: false, error: "tournament_id and name are required" });
+        }
+        const name = toTitleCase(nameRaw);
+        const id = slug(`${tournamentId}:${name}`);
+        const result = await pool.query(
+          `INSERT INTO franchise (
+             tournament_id,
+             id,
+             name,
+             logo_url,
+             manager_name,
+             manager_photo_url,
+             description,
+             contact_phone,
+             location_map_url,
+             contact_email
+           )
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (tournament_id, name) DO NOTHING
+           RETURNING
+             tournament_id,
+             id,
+             name,
+             logo_url,
+             manager_name,
+             manager_photo_url,
+             description,
+             contact_phone,
+             location_map_url,
+             contact_email`,
+          [
+            tournamentId,
+            id,
+            name,
+            body.logo_url || null,
+            body.manager_name || null,
+            body.manager_photo_url || null,
+            body.description || null,
+            body.contact_phone || null,
+            body.location_map_url || null,
+            body.contact_email || null,
+          ]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 409, { ok: false, error: "Franchise already exists" });
+        }
+        return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  const franchiseMatch = path.match(/^\/franchises\/([^/]+)/);
+  if (franchiseMatch) {
+    const id = franchiseMatch[1];
+    const tournamentId = url.searchParams.get("tournamentId");
+
+    if (method === "PUT") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        if (!tournamentId) {
+          return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+        }
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
+        const nameRaw = normalizeSpaces(body?.name);
+        if (!nameRaw) {
+          return sendJson(req, res, 400, { ok: false, error: "name is required" });
+        }
+        const name = toTitleCase(nameRaw);
+        const update = buildUpdateQuery({
+          table: "franchise",
+          data: {
+            name,
+            logo_url: body.logo_url || null,
+            manager_name: body.manager_name || null,
+            manager_photo_url: body.manager_photo_url || null,
+            description: body.description || null,
+            contact_phone: body.contact_phone || null,
+            location_map_url: body.location_map_url || null,
+            contact_email: body.contact_email || null,
+          },
+          where: { columns: ["tournament_id", "id"], values: [tournamentId, id] },
+          returning: "tournament_id, id, name, logo_url, manager_name, manager_photo_url, description, contact_phone, location_map_url, contact_email",
+        });
+        const result = await pool.query(update.sql, update.values);
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      });
+    }
+
+    if (method === "DELETE") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        if (!tournamentId) {
+          return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+        }
+        const del = buildDeleteQuery({
+          table: "franchise",
+          where: { columns: ["tournament_id", "id"], values: [tournamentId, id] },
+        });
+        const result = await pool.query(del.sql, del.values);
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, deleted: id });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  const groupMatch = path.match(/^\/groups\/([^/]+)/);
+  if (groupMatch) {
+    const id = groupMatch[1];
+
+    if (method === "PUT") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const body = await requireBody(req, res, sendJson);
+        if (!body) return null;
+        const label = normalizeSpaces(body?.label);
+        const format = normalizeSpaces(body?.format) || null;
+        if (!label) {
+          return sendJson(req, res, 400, { ok: false, error: "Group label is required" });
+        }
+        const update = buildUpdateQuery({
+          table: "group_directory",
+          data: { label, format },
+          where: { columns: ["id"], values: [id] },
+          returning: "id, label, format",
+          extraSet: "updated_at = NOW()",
+        });
+        const result = await pool.query(update.sql, update.values);
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Group not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      });
+    }
+
+    if (method === "DELETE") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const del = buildDeleteQuery({
+          table: "group_directory",
+          where: { columns: ["id"], values: [id] },
+        });
+        const result = await pool.query(del.sql, del.values);
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Group not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, deleted: id });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  const venueMatch = path.match(/^\/venues\/([^/]+)/);
+  if (venueMatch) {
+    const id = venueMatch[1];
+
+    if (method === "PUT") {
+      return handleAdminDb(
+        req,
+        res,
+        sendJson,
+        async () => {
+          if (!requirePool(pool, req, res, sendJson)) return null;
+          const body = await requireBody(req, res, sendJson);
+          if (!body) return null;
+          const name = normalizeSpaces(body?.name);
+          const address = normalizeSpaces(body?.address) || null;
+          const locationMapUrl = normalizeSpaces(body?.location_map_url) || null;
+          const websiteUrl = normalizeSpaces(body?.website_url) || null;
+          if (!name) {
+            return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
+          }
+          const update = buildUpdateQuery({
+            table: "venue_directory",
+            data: {
+              name,
+              address,
+              location_map_url: locationMapUrl,
+              website_url: websiteUrl,
+            },
+            where: { columns: ["id"], values: [id] },
+            returning: "id, name, address, location_map_url, website_url",
+            extraSet: "updated_at = NOW()",
+          });
+          const result = await pool.query(update.sql, update.values);
+          if (result.rowCount === 0) {
+            return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+          }
+          return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+        },
+        (err) => {
+          if (String(err?.message || "").includes("unique")) {
+            return sendJson(req, res, 409, { ok: false, error: "Venue name already exists" });
+          }
+          return null;
+        }
       );
-      return sendJson(req, res, 200, { ok: true, data: result.rows });
-    } catch (err) {
-      console.error("Admin API Error:", err);
-      return sendJson(req, res, 500, { ok: false, error: err.message });
     }
+
+    if (method === "DELETE") {
+      return handleAdminDb(req, res, sendJson, async () => {
+        if (!requirePool(pool, req, res, sendJson)) return null;
+        const del = buildDeleteQuery({
+          table: "venue_directory",
+          where: { columns: ["id"], values: [id] },
+        });
+        const result = await pool.query(del.sql, del.values);
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, deleted: id });
+      });
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
   }
 
   // Handle /announcements/:id
@@ -480,7 +906,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
-        console.error("Admin PUT Error:", err);
+        logAdminError("Admin PUT Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
@@ -494,7 +920,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         }
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
-        console.error("Admin DELETE Error:", err);
+        logAdminError("Admin DELETE Error:", err);
         return sendJson(req, res, 500, { ok: false, error: err.message });
       }
     }
