@@ -73,6 +73,9 @@ describe("GroupsPage", () => {
       );
     });
 
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /delete/i })).toBeDefined();
+    });
     fireEvent.click(screen.getByRole("button", { name: /delete/i }));
 
     await waitFor(() => {
