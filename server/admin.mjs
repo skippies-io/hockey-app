@@ -74,6 +74,31 @@ async function handleAdminDb(req, res, sendJson, action, onError) {
   }
 }
 
+function buildUpdateQuery({ table, data, where, returning, extraSet }) {
+  const entries = Object.entries(data);
+  const assignments = entries.map(([key], idx) => `${key} = $${idx + 1}`);
+  if (extraSet) assignments.push(extraSet);
+  const values = entries.map(([, value]) => value);
+  const whereOffset = values.length;
+  const whereClause = where.columns
+    .map((col, idx) => `${col} = $${whereOffset + idx + 1}`)
+    .join(" AND ");
+  return {
+    sql: `UPDATE ${table} SET ${assignments.join(", ")} WHERE ${whereClause} RETURNING ${returning}`,
+    values: [...values, ...where.values],
+  };
+}
+
+function buildDeleteQuery({ table, where, returning = "id" }) {
+  const whereClause = where.columns
+    .map((col, idx) => `${col} = $${idx + 1}`)
+    .join(" AND ");
+  return {
+    sql: `DELETE FROM ${table} WHERE ${whereClause} RETURNING ${returning}`,
+    values: where.values,
+  };
+}
+
 export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
   // Simple router for Admin API
   const method = req.method;
@@ -681,41 +706,22 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           return sendJson(req, res, 400, { ok: false, error: "name is required" });
         }
         const name = toTitleCase(nameRaw);
-        const result = await pool.query(
-          `UPDATE franchise
-           SET name = $1,
-               logo_url = $2,
-               manager_name = $3,
-               manager_photo_url = $4,
-               description = $5,
-               contact_phone = $6,
-               location_map_url = $7,
-               contact_email = $8
-           WHERE tournament_id = $9 AND id = $10
-           RETURNING
-             tournament_id,
-             id,
-             name,
-             logo_url,
-             manager_name,
-             manager_photo_url,
-             description,
-             contact_phone,
-             location_map_url,
-             contact_email`,
-          [
+        const update = buildUpdateQuery({
+          table: "franchise",
+          data: {
             name,
-            body.logo_url || null,
-            body.manager_name || null,
-            body.manager_photo_url || null,
-            body.description || null,
-            body.contact_phone || null,
-            body.location_map_url || null,
-            body.contact_email || null,
-            tournamentId,
-            id,
-          ]
-        );
+            logo_url: body.logo_url || null,
+            manager_name: body.manager_name || null,
+            manager_photo_url: body.manager_photo_url || null,
+            description: body.description || null,
+            contact_phone: body.contact_phone || null,
+            location_map_url: body.location_map_url || null,
+            contact_email: body.contact_email || null,
+          },
+          where: { columns: ["tournament_id", "id"], values: [tournamentId, id] },
+          returning: "tournament_id, id, name, logo_url, manager_name, manager_photo_url, description, contact_phone, location_map_url, contact_email",
+        });
+        const result = await pool.query(update.sql, update.values);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
@@ -729,12 +735,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         if (!tournamentId) {
           return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
         }
-        const result = await pool.query(
-          `DELETE FROM franchise
-           WHERE tournament_id = $1 AND id = $2
-           RETURNING id`,
-          [tournamentId, id]
-        );
+        const del = buildDeleteQuery({
+          table: "franchise",
+          where: { columns: ["tournament_id", "id"], values: [tournamentId, id] },
+        });
+        const result = await pool.query(del.sql, del.values);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
         }
@@ -759,15 +764,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
         if (!label) {
           return sendJson(req, res, 400, { ok: false, error: "Group label is required" });
         }
-        const result = await pool.query(
-          `UPDATE group_directory
-           SET label = $1,
-               format = $2,
-               updated_at = NOW()
-           WHERE id = $3
-           RETURNING id, label, format`,
-          [label, format, id]
-        );
+        const update = buildUpdateQuery({
+          table: "group_directory",
+          data: { label, format },
+          where: { columns: ["id"], values: [id] },
+          returning: "id, label, format",
+          extraSet: "updated_at = NOW()",
+        });
+        const result = await pool.query(update.sql, update.values);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
@@ -778,10 +782,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     if (method === "DELETE") {
       return handleAdminDb(req, res, sendJson, async () => {
         if (!requirePool(pool, req, res, sendJson)) return null;
-        const result = await pool.query(
-          "DELETE FROM group_directory WHERE id = $1 RETURNING id",
-          [id]
-        );
+        const del = buildDeleteQuery({
+          table: "group_directory",
+          where: { columns: ["id"], values: [id] },
+        });
+        const result = await pool.query(del.sql, del.values);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Group not found" });
         }
@@ -812,17 +817,19 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
           if (!name) {
             return sendJson(req, res, 400, { ok: false, error: "Venue name is required" });
           }
-          const result = await pool.query(
-            `UPDATE venue_directory
-             SET name = $1,
-                 address = $2,
-                 location_map_url = $3,
-                 website_url = $4,
-                 updated_at = NOW()
-             WHERE id = $5
-             RETURNING id, name, address, location_map_url, website_url`,
-            [name, address, locationMapUrl, websiteUrl, id]
-          );
+          const update = buildUpdateQuery({
+            table: "venue_directory",
+            data: {
+              name,
+              address,
+              location_map_url: locationMapUrl,
+              website_url: websiteUrl,
+            },
+            where: { columns: ["id"], values: [id] },
+            returning: "id, name, address, location_map_url, website_url",
+            extraSet: "updated_at = NOW()",
+          });
+          const result = await pool.query(update.sql, update.values);
           if (result.rowCount === 0) {
             return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
           }
@@ -840,10 +847,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     if (method === "DELETE") {
       return handleAdminDb(req, res, sendJson, async () => {
         if (!requirePool(pool, req, res, sendJson)) return null;
-        const result = await pool.query(
-          "DELETE FROM venue_directory WHERE id = $1 RETURNING id",
-          [id]
-        );
+        const del = buildDeleteQuery({
+          table: "venue_directory",
+          where: { columns: ["id"], values: [id] },
+        });
+        const result = await pool.query(del.sql, del.values);
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
         }

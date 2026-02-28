@@ -14,6 +14,13 @@ describe("VenuesPage", () => {
       location_map_url: "https://maps.example.com/venue",
       website_url: "https://www.beaulieu.example.com",
     },
+    {
+      id: "v2",
+      name: "East Arena",
+      address: "",
+      location_map_url: "",
+      website_url: "",
+    },
   ];
 
   beforeEach(() => {
@@ -75,6 +82,33 @@ describe("VenuesPage", () => {
       expect(fetch).toHaveBeenCalledWith(
         "http://localhost:8787/api/admin/venues",
         expect.objectContaining({ method: "POST" })
+      );
+    });
+  });
+
+  it("edits and deletes a venue", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText("Beaulieu College"));
+
+    fireEvent.click(screen.getAllByRole("button", { name: /edit/i })[0]);
+    fireEvent.change(screen.getAllByDisplayValue("Beaulieu College")[0], {
+      target: { value: "Beaulieu Updated" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/venues/v1",
+        expect.objectContaining({ method: "PUT" })
+      );
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /delete/i })[0]);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/venues/v1",
+        expect.objectContaining({ method: "DELETE" })
       );
     });
   });

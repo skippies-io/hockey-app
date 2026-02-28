@@ -68,6 +68,21 @@ describe("DirectoryPage", () => {
     });
   });
 
+  it("shows error when list request fails", async () => {
+    globalThis.fetch = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        json: () => Promise.resolve({ ok: false, error: "Load failed" }),
+      })
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/load failed/i)).toBeDefined();
+    });
+  });
+
   it("validates create form", async () => {
     renderPage();
     await waitFor(() => screen.getByRole("button", { name: /add item/i }));

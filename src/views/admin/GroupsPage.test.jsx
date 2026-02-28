@@ -58,6 +58,31 @@ describe("GroupsPage", () => {
     });
   });
 
+  it("edits and deletes a group", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText("U11 Boys"));
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    fireEvent.change(screen.getByDisplayValue("U11 Boys"), { target: { value: "U11 Girls" } });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/groups/U11B",
+        expect.objectContaining({ method: "PUT" })
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/groups/U11B",
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+  });
+
   it("shows validation error when required fields missing", async () => {
     await renderPage();
     await waitFor(() => screen.getByRole("button", { name: /add group/i }));

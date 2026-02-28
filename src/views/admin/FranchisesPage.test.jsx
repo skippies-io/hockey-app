@@ -73,6 +73,36 @@ describe("FranchisesPage", () => {
     });
   });
 
+  it("edits and deletes a franchise", async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText("Purple Panthers"));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Tournament").value).toBe("t1");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    fireEvent.change(screen.getByDisplayValue("Purple Panthers"), {
+      target: { value: "Purple Panthers Updated" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/franchises/f1?tournamentId=t1",
+        expect.objectContaining({ method: "PUT" })
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "http://localhost:8787/api/admin/franchises/f1?tournamentId=t1",
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+  });
+
   it("shows validation error when name missing", async () => {
     await renderPage();
     await waitFor(() => screen.getByRole("button", { name: /add franchise/i }));
