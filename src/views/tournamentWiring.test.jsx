@@ -7,6 +7,7 @@ import Standings from "./Standings";
 import Franchises from "./Franchises";
 import Team from "./Team";
 import TeamProfile from "./TeamProfile";
+import { TeamsPage } from "../App";
 
 const apiMocks = vi.hoisted(() => ({
   getFixturesRows: vi.fn(),
@@ -76,6 +77,16 @@ describe("tournament wiring", () => {
         ageLabel="U9"
         ageGroups={[{ id: "U9", label: "U9" }]}
       />
+    );
+
+    await waitFor(() =>
+      expect(apiMocks.getStandingsRows).toHaveBeenCalledWith("t-123", "U9")
+    );
+  });
+
+  it("TeamsPage passes tournamentId to getStandingsRows", async () => {
+    renderWithRouter(
+      <TeamsPage ageId="U9" ageGroups={[{ id: "U9", label: "U9" }]} />
     );
 
     await waitFor(() =>
