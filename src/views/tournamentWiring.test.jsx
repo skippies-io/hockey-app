@@ -162,4 +162,48 @@ describe("tournament wiring", () => {
 
     expect(await findByText(/Error:/i)).toBeTruthy();
   });
+
+  it("TeamsPage renders real teams and filters placeholder names", async () => {
+    apiMocks.getStandingsRows.mockResolvedValueOnce([
+      { Team: "1st Place", Pool: "A" },
+      { Team: "Winner SF1", Pool: "A" },
+      { Team: "Alpha", Pool: "A" },
+      { Team: "Alpha", Pool: "" },
+    ]);
+
+    const { findByText, queryByText, getAllByText } = renderWithRouter(
+      <TeamsPage ageId="U9" ageGroups={[{ id: "U9", label: "U9" }]} />
+    );
+
+    expect(await findByText("Alpha")).toBeTruthy();
+    // Deduped
+    expect(getAllByText("Alpha")).toHaveLength(1);
+    // Placeholders filtered
+    expect(queryByText("1st Place")).toBeNull();
+    expect(queryByText("Winner SF1")).toBeNull();
+  });
+
+  it("TeamsPage (all ages) fetches each age bucket and renders both sections", async () => {
+    apiMocks.getStandingsRows
+      .mockResolvedValueOnce([{ Team: "U9-Alpha", Pool: "A" }])
+      .mockResolvedValueOnce([{ Team: "U10-Bravo", Pool: "B" }]);
+
+    const { findByText } = renderWithRouter(
+      <TeamsPage
+        ageId="all"
+        ageGroups={[
+          { id: "U9", label: "U9" },
+          { id: "U10", label: "U10" },
+        ]}
+      />
+    );
+
+    expect(await findByText(/Teams — U9/i)).toBeTruthy();
+    expect(await findByText(/Teams — U10/i)).toBeTruthy();
+    expect(await findByText("U9-Alpha")).toBeTruthy();
+    expect(await findByText("U10-Bravo")).toBeTruthy();
+
+    expect(apiMocks.getStandingsRows).toHaveBeenCalledWith("t-123", "U9");
+    expect(apiMocks.getStandingsRows).toHaveBeenCalledWith("t-123", "U10");
+  });
 });
