@@ -52,6 +52,21 @@ function isRealTeamName(name) {
   return true;
 }
 
+// Helpers extracted to avoid >4-level function nesting (S2004)
+function fetchGroupRows(tournamentId, groupId) {
+  return getStandingsRows(tournamentId, groupId).catch((e) => ({ __error: e }));
+}
+
+function compileAgeBucket(id, bucket, ageLabelMap) {
+  const entries = Array.from(bucket.values());
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    ageId: id,
+    ageLabel: ageLabelMap.get(id) || id || "Unknown age",
+    teams: entries,
+  };
+}
+
 export function TeamsPage({ ageId, ageGroups = [] }) {
   const [teams, setTeams] = useState([]); // [{ ageId, ageLabel, teams: [{ name, pool }] }]
   const [loading, setLoading] = useState(true);
@@ -103,9 +118,7 @@ export function TeamsPage({ ageId, ageGroups = [] }) {
           : [{ id: ageId }];
 
         const results = await Promise.all(
-          ageList.map((g) =>
-            getStandingsRows(tournamentId, g.id).catch((e) => ({ __error: e }))
-          )
+          ageList.map((g) => fetchGroupRows(tournamentId, g.id))
         );
 
         if (!alive) return;
@@ -141,15 +154,7 @@ export function TeamsPage({ ageId, ageGroups = [] }) {
         }
 
         const compiled = Array.from(ageBuckets.entries()).map(
-          ([id, bucket]) => {
-            const entries = Array.from(bucket.values());
-            entries.sort((a, b) => a.name.localeCompare(b.name));
-            return {
-              ageId: id,
-              ageLabel: ageLabelMap.get(id) || id || "Unknown age",
-              teams: entries,
-            };
-          }
+          ([id, bucket]) => compileAgeBucket(id, bucket, ageLabelMap)
         );
 
         compiled.sort((a, b) => {
