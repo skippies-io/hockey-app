@@ -135,4 +135,28 @@ describe('server utility functions', () => {
     expect(res.writeHead).toHaveBeenCalledWith(200);
   });
 
+  it('announcements query filters out expired records', async () => {
+    const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+    mocks.query.mockResolvedValueOnce({ rows: [] });
+
+    const req = { method: 'GET', url: '/api/announcements', headers: { host: 'localhost' }, on: vi.fn() };
+    await requestHandler(req, res);
+
+    expect(mocks.query).toHaveBeenCalled();
+    const [sql] = mocks.query.mock.calls[mocks.query.mock.calls.length - 1];
+    expect(sql).toMatch(/expires_at IS NULL OR expires_at > NOW\(\)/i);
+  });
+
+  it('announcements query with tournamentId filters out expired records', async () => {
+    const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+    mocks.query.mockResolvedValueOnce({ rows: [] });
+
+    const req = { method: 'GET', url: '/api/announcements?tournamentId=t1', headers: { host: 'localhost' }, on: vi.fn() };
+    await requestHandler(req, res);
+
+    expect(mocks.query).toHaveBeenCalled();
+    const [sql] = mocks.query.mock.calls[mocks.query.mock.calls.length - 1];
+    expect(sql).toMatch(/expires_at IS NULL OR expires_at > NOW\(\)/i);
+  });
+
 });

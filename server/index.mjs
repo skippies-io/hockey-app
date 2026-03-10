@@ -520,7 +520,8 @@ export const requestHandler = async (req, res) => {
       const tournamentId = url.searchParams.get("tournamentId"); // Optional
 
       let query = `SELECT * FROM announcements
-                   WHERE is_published = true`;
+                   WHERE is_published = true
+                   AND (expires_at IS NULL OR expires_at > NOW())`;
       let params = [];
 
       if (tournamentId) {
