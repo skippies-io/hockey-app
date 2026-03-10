@@ -1,6 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-/* eslint-disable react-hooks/exhaustive-deps */
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { tournamentsEndpoint } from '../lib/api';
 
@@ -53,14 +52,18 @@ export function TournamentProvider({ children }) {
   }, [activeTournamentId]);
 
   // Derived state: the full object for the active tournament
-  const activeTournament = availableTournaments.find(t => t.id === activeTournamentId) || null;
+  const activeTournament = useMemo(
+    () => availableTournaments.find(t => t.id === activeTournamentId) ?? null,
+    [availableTournaments, activeTournamentId]
+  );
 
-  // Console log for verification
-  // Console log for verification - REMOVED
-
+  const contextValue = useMemo(
+    () => ({ activeTournamentId, setActiveTournamentId, availableTournaments, loading, activeTournament }),
+    [activeTournamentId, availableTournaments, loading, activeTournament]
+  );
 
   return (
-    <TournamentContext.Provider value={{ activeTournamentId, setActiveTournamentId, availableTournaments, loading, activeTournament }}>
+    <TournamentContext.Provider value={contextValue}>
       {children}
     </TournamentContext.Provider>
   );
