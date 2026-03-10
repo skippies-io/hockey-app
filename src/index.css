@@ -18,6 +18,22 @@ body {
   box-sizing: border-box;
 }
 
+/* ===== Focus-visible (keyboard navigation) =====
+ * Suppress the browser default outline for mouse/touch users while
+ * keeping a clear indicator for keyboard and assistive-technology users.
+ * The :focus-visible outline uses the strong accent token (#1d4ed8) which
+ * meets WCAG AA contrast (≥3:1) against all surface colours in the design.
+ */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--hj-color-accent-strong, #1d4ed8);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 .app-title {
   margin: 0;
   font-size: 20px;

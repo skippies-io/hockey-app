@@ -17,6 +17,7 @@ import InstallPrompt from "./components/InstallPrompt";
 import Standings from "./views/Standings";
 import { FALLBACK_GROUPS } from "./config";
 import { getGroups, getStandingsRows } from "./lib/api";
+import { useTournament } from "./context/TournamentContext";
 import { useFollows, makeTeamFollowKey } from "./lib/follows";
 import { teamProfilePath } from "./lib/routes";
 import { useShowFollowedPreference } from "./lib/preferences";
@@ -51,12 +52,29 @@ function isRealTeamName(name) {
   return true;
 }
 
-function TeamsPage({ ageId, ageGroups = [] }) {
+// Helpers extracted to avoid >4-level function nesting (S2004)
+function fetchGroupRows(tournamentId, groupId) {
+  return getStandingsRows(tournamentId, groupId).catch((e) => ({ __error: e }));
+}
+
+function compileAgeBucket(id, bucket, ageLabelMap) {
+  const entries = Array.from(bucket.values());
+  entries.sort((a, b) => a.name.localeCompare(b.name));
+  return {
+    ageId: id,
+    ageLabel: ageLabelMap.get(id) || id || "Unknown age",
+    teams: entries,
+  };
+}
+
+export function TeamsPage({ ageId, ageGroups = [] }) {
   const [teams, setTeams] = useState([]); // [{ ageId, ageLabel, teams: [{ name, pool }] }]
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("teams");
+  const { activeTournament } = useTournament();
+  const tournamentId = activeTournament?.id;
 
   const isAllAges = ageId === "all";
   const ageLabelMap = useMemo(() => {
@@ -89,14 +107,18 @@ function TeamsPage({ ageId, ageGroups = [] }) {
       setErr(null);
 
       try {
+        if (!tournamentId) {
+          setTeams([]);
+          setLoading(false);
+          return;
+        }
+
         const ageList = isAllAges
           ? (ageGroups || []).filter((g) => g.id && g.id !== "all")
           : [{ id: ageId }];
 
         const results = await Promise.all(
-          ageList.map((g) =>
-            getStandingsRows(g.id).catch((e) => ({ __error: e }))
-          )
+          ageList.map((g) => fetchGroupRows(tournamentId, g.id))
         );
 
         if (!alive) return;
@@ -132,15 +154,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
         }
 
         const compiled = Array.from(ageBuckets.entries()).map(
-          ([id, bucket]) => {
-            const entries = Array.from(bucket.values());
-            entries.sort((a, b) => a.name.localeCompare(b.name));
-            return {
-              ageId: id,
-              ageLabel: ageLabelMap.get(id) || id || "Unknown age",
-              teams: entries,
-            };
-          }
+          ([id, bucket]) => compileAgeBucket(id, bucket, ageLabelMap)
         );
 
         compiled.sort((a, b) => {
@@ -161,7 +175,7 @@ function TeamsPage({ ageId, ageGroups = [] }) {
     return () => {
       alive = false;
     };
-  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges]);
+  }, [ageId, ageGroups, ageLabelMap, ageOrder, deriveAgeId, isAllAges, tournamentId]);
 
   const toggleFavorite = (teamName, teamAgeId) => {
     toggleFollow(makeTeamFollowKey(teamAgeId, teamName));
