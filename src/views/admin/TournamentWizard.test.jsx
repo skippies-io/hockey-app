@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { computeFormErrors } from "./tournamentWizardUtils";
@@ -29,7 +29,11 @@ describe("TournamentWizard", () => {
 
   async function renderWizard() {
     const { default: TournamentWizard } = await import("./TournamentWizard");
-    return render(<TournamentWizard />);
+    let result;
+    await act(async () => {
+      result = render(<TournamentWizard />);
+    });
+    return result;
   }
 
   it("renders and navigates between steps", async () => {

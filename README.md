@@ -1,15 +1,45 @@
-# React + Vite
+# hockey-app
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Production PWA for hockey tournaments: fixtures, standings, teams, and announcements.
 
-Currently, two official plugins are available:
+- **Frontend:** React + Vite (static UI)
+- **API:** Node server (`server/index.mjs`)
+- **Data providers:**
+  - **db** (Supabase/Postgres)
+  - **apps** (Google Apps Script upstream)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Quickstart (local)
 
-## Expanding the ESLint configuration
+```sh
+npm ci
+npm run verify
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Run UI + DB API together
+
+```sh
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/hockey"
+export TOURNAMENT_ID="hj-indoor-allstars-2025"
+export VITE_PROVIDER="db"
+npm run dev:full
+```
+
+### Run UI + Apps Script provider
+
+```sh
+export APPS_SCRIPT_BASE_URL="https://<your-apps-script-endpoint>"
+export TOURNAMENT_ID="hj-indoor-allstars-2025"
+export VITE_PROVIDER="apps"
+npm run dev:full
+```
+
+## Docs
+
+- Deployment protocol (GitHub Pages): `docs/operations/deployment.md`
+- Production runbook: `docs/production-runbook.md`
+- Release hygiene checklist: `docs/release-hygiene-checklist.md`
+
+---
 
 ## Security Posture
 

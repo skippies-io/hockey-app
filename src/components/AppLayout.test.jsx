@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppLayout from './AppLayout';
@@ -14,14 +14,16 @@ vi.mock('../context/TournamentContext', () => ({
 }));
 
 describe('AppLayout', () => {
-  it('renders children', () => {
-    render(
-      <BrowserRouter>
-        <AppLayout>
-          <div>Test Child</div>
-        </AppLayout>
-      </BrowserRouter>
-    );
+  it('renders children', async () => {
+    await act(async () => {
+      render(
+        <BrowserRouter>
+          <AppLayout>
+            <div>Test Child</div>
+          </AppLayout>
+        </BrowserRouter>
+      );
+    });
     expect(screen.getByText('Test Child')).toBeDefined();
   });
 });

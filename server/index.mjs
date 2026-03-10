@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import { Pool } from "pg";
 
 import { handleAdminRequest } from "./admin.mjs";
+import { handleMagicLinkRequest, handleVerifyRequest } from "./auth-routes.mjs";
+import { verifySession } from "./auth.mjs";
 
 const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
@@ -159,7 +161,7 @@ export function applyCors(req, res) {
   res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function mapFixtureRow(row) {
@@ -482,22 +484,50 @@ export const requestHandler = async (req, res) => {
       );
       return;
     }
-    // Admin Routes
-    if (url.pathname === "/api/admin/announcements") {
+
+    // Auth routes (public — no session required)
+    if (url.pathname === "/api/auth/magic-link") {
       applyCors(req, res);
       if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
         return;
       }
-      await handleAdminRequest(req, res, { url, pool, sendJson });
+      if (req.method !== "POST") {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      await handleMagicLinkRequest(req, res, { pool, sendJson });
       return;
     }
+    if (url.pathname === "/api/auth/verify") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "POST") {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      await handleVerifyRequest(req, res, { pool, sendJson });
+      return;
+    }
+
+    // Admin routes — require a valid session Bearer token
     if (url.pathname.startsWith("/api/admin")) {
       applyCors(req, res);
       if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
+        return;
+      }
+      const authHeader = req.headers["authorization"] || "";
+      const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+      const adminEmail = await verifySession(pool, bearerToken);
+      if (!adminEmail) {
+        sendJson(req, res, 401, { ok: false, error: "Unauthorized" });
         return;
       }
       await handleAdminRequest(req, res, { url, pool, sendJson });
@@ -520,7 +550,8 @@ export const requestHandler = async (req, res) => {
       const tournamentId = url.searchParams.get("tournamentId"); // Optional
 
       let query = `SELECT * FROM announcements
-                   WHERE is_published = true`;
+                   WHERE is_published = true
+                   AND (expires_at IS NULL OR expires_at > NOW())`;
       let params = [];
 
       if (tournamentId) {
