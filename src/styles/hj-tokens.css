@@ -44,9 +44,11 @@
 
   --hj-color-warning: #f59e0b;
   --hj-color-warning-soft: #ffedd5;
+  --hj-color-warning-ink: #92400e; /* amber-800 — 6.2:1 on warning-soft */
 
   --hj-color-info: #3b82f6;
   --hj-color-info-soft: #dbeafe;
+  --hj-color-info-ink: #1e40af; /* blue-800 — 7.2:1 on info-soft */
 
   /* ===== Spacing scale ===== */
   --hj-space-0: 0;
@@ -1135,7 +1137,7 @@ select {
 
 
 .fixture-status--live {
-  color: var(--hj-color-info);
+  color: var(--hj-color-info-ink);
   border-color: var(--hj-color-info);
   background: var(--hj-color-info-soft);
 }
@@ -1149,31 +1151,31 @@ select {
 }
 
 .fixture-status--warn {
-  color: var(--hj-color-warning);
+  color: var(--hj-color-warning-ink);
   border-color: var(--hj-color-warning);
   background: var(--hj-color-warning-soft);
 }
 
 .fixture-status--win {
-  color: var(--hj-color-success);
+  color: var(--hj-color-success-ink);
   border-color: var(--hj-color-success);
   background: var(--hj-color-success-soft);
 }
 
 .fixture-status--draw {
-  color: var(--hj-color-warning);
+  color: var(--hj-color-warning-ink);
   border-color: var(--hj-color-warning);
   background: var(--hj-color-warning-soft);
 }
 
 .fixture-status--loss {
-  color: var(--hj-color-danger);
+  color: var(--hj-color-danger-ink);
   border-color: var(--hj-color-danger);
   background: var(--hj-color-danger-soft);
 }
 
 .fixture-status--danger {
-  color: var(--hj-color-danger);
+  color: var(--hj-color-danger-ink);
   border-color: var(--hj-color-danger);
   background: var(--hj-color-danger-soft);
 }
