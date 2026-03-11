@@ -20,7 +20,7 @@ describe('AdminLayout', () => {
     renderWithRoute(['/admin']);
 
     expect(screen.getByRole('navigation', { name: 'Admin Navigation' })).toBeTruthy();
-    expect(screen.getByText('Admin Console Loaded')).toBeTruthy();
+    expect(screen.getByText('Admin Console')).toBeTruthy();
 
     ['Dashboard', 'Tournaments', 'Announcements', 'Teams', 'Fixtures'].forEach((label) => {
       expect(screen.getByRole('link', { name: label })).toBeTruthy();

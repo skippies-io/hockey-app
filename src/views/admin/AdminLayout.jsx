@@ -1,7 +1,15 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { clearAdminSession, getAdminEmail } from '../../lib/adminAuth';
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const email = getAdminEmail();
+
+  const logout = () => {
+    clearAdminSession();
+    navigate('/admin/login', { replace: true });
+  };
   const sidebarStyle = {
     width: '250px',
     backgroundColor: 'var(--hj-color-surface-2)',
@@ -40,19 +48,48 @@ export default function AdminLayout() {
     <div style={{ display: 'flex' }}>
       <nav style={sidebarStyle} aria-label="Admin Navigation">
         <h2 style={{ 
-          marginBottom: 'var(--hj-space-6)', 
+          marginBottom: 'var(--hj-space-3)', 
           color: 'var(--hj-color-text-primary)',
           fontSize: 'var(--hj-font-size-lg)',
           fontWeight: 'var(--hj-font-weight-bold)'
         }}>
-          Admin Console Loaded
+          Admin Console
         </h2>
+
+        {email && (
+          <div style={{
+            marginBottom: 'var(--hj-space-4)',
+            color: 'var(--hj-color-text-secondary)',
+            fontSize: 'var(--hj-font-size-sm)',
+            wordBreak: 'break-word',
+          }}>
+            Signed in as<br />{email}
+          </div>
+        )}
         
         <NavLink to="/admin" end style={linkStyle}>Dashboard</NavLink>
         <NavLink to="/admin/tournaments" style={linkStyle}>Tournaments</NavLink>
         <NavLink to="/admin/announcements" style={linkStyle}>Announcements</NavLink>
         <NavLink to="/admin/teams" style={linkStyle}>Teams</NavLink>
         <NavLink to="/admin/fixtures" style={linkStyle}>Fixtures</NavLink>
+
+        <div style={{ marginTop: 'auto' }}>
+          <button
+            type="button"
+            onClick={logout}
+            style={{
+              width: '100%',
+              padding: 'var(--hj-space-2) var(--hj-space-3)',
+              borderRadius: 'var(--hj-radius-md)',
+              border: '1px solid var(--hj-color-border-subtle)',
+              background: 'transparent',
+              color: 'var(--hj-color-text-secondary)',
+              cursor: 'pointer',
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </nav>
 
       <main style={contentStyle}>
