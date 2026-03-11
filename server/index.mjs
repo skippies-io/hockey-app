@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { handleAdminRequest } from "./admin.mjs";
 import { handleMagicLinkRequest, handleVerifyRequest } from "./auth-routes.mjs";
 import { verifySession } from "./auth.mjs";
+import { applySecurityHeaders, safeErrorMessage } from "./security.mjs";
 
 const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
@@ -427,6 +428,9 @@ async function handleDbGet(req, res, query, params = [], cache = {}) {
 }
 
 export const requestHandler = async (req, res) => {
+  // Always apply basic security headers
+  applySecurityHeaders(res);
+
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -788,8 +792,11 @@ export const requestHandler = async (req, res) => {
       { head: isHead }
     );
   } catch (err) {
+    // Log server-side details, return sanitised errors to clients
     console.error(err);
-    sendJson(req, res, 500, { ok: false, error: "Server error" });
+    const status = err?.statusCode || 500;
+    const msg = safeErrorMessage(err);
+    sendJson(req, res, status, { ok: false, error: msg });
   }
 };
 
