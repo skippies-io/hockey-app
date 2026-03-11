@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { readBodyLimited } from "./security.mjs";
 
 function hashString(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -505,16 +506,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
 }
 
 function readBody(req) {
-  return new Promise((resolve, reject) => {
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on("error", reject);
+  return readBodyLimited(req).then((raw) => {
+    try {
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      throw e;
+    }
   });
 }
