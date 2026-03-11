@@ -30,6 +30,9 @@ import { useFilterSlot } from "./components/filterSlotContext";
 import DebugInfo from "./components/DebugInfo";
 
 import AdminLayout from "./views/admin/AdminLayout";
+import AdminRoute from "./views/admin/AdminRoute";
+import AdminLogin from "./views/admin/AdminLogin";
+import AdminLoginCallback from "./views/admin/AdminLoginCallback";
 import AnnouncementsPage from "./views/admin/AnnouncementsPage";
 import TournamentWizard from "./views/admin/TournamentWizard";
 
@@ -498,11 +501,30 @@ export default function App() {
       <DebugInfo />
       <Routes>
         {/* Admin Section */}
-        <Route path="admin" element={<AdminLayout />}>
-          <Route index element={<div style={{ padding: '2rem' }}><h1>Admin Dashboard</h1><p>Welcome to the Hockey Admin Console.</p></div>} />
-          <Route path="tournaments" element={<TournamentWizard />} />
-          <Route path="announcements" element={<AnnouncementsPage />} />
-          <Route path="*" element={<div style={{ padding: '2rem' }}>Page under construction</div>} />
+        <Route path="admin">
+          <Route path="login" element={<AdminLogin />} />
+          <Route path="login/callback" element={<AdminLoginCallback />} />
+
+          {/* Protected admin routes */}
+          <Route element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route
+                index
+                element={
+                  <div style={{ padding: '2rem' }}>
+                    <h1>Admin Dashboard</h1>
+                    <p>Welcome to the Hockey Admin Console.</p>
+                  </div>
+                }
+              />
+              <Route path="tournaments" element={<TournamentWizard />} />
+              <Route path="announcements" element={<AnnouncementsPage />} />
+              <Route
+                path="*"
+                element={<div style={{ padding: '2rem' }}>Page under construction</div>}
+              />
+            </Route>
+          </Route>
         </Route>
 
         {/* Public App Section */}
