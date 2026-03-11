@@ -43,6 +43,17 @@ describe("adminAuth", () => {
     expect(opts.method).toBe("POST");
   });
 
+  it("requestMagicLink throws on error response", async () => {
+    const mod = await import("./adminAuth.js");
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ ok: false, error: "nope" }),
+    });
+
+    await expect(mod.requestMagicLink("a@b.com")).rejects.toThrow("nope");
+  });
+
   it("verifyMagicToken posts to /auth/verify", async () => {
     const mod = await import("./adminAuth.js");
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
@@ -58,14 +69,29 @@ describe("adminAuth", () => {
     expect(opts.method).toBe("POST");
   });
 
+  it("verifyMagicToken throws when json.ok === false", async () => {
+    const mod = await import("./adminAuth.js");
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 401,
+      json: async () => ({ ok: false, error: "bad_token" }),
+    });
+
+    await expect(mod.verifyMagicToken("magic")).rejects.toThrow("bad_token");
+  });
+
   it("adminFetch sets Authorization header", async () => {
     const mod = await import("./adminAuth.js");
     mod.setAdminSession({ token: "sess", email: "e", expiresAt: "x" });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
-    await mod.adminFetch("/api/admin/announcements");
+    await mod.adminFetch("/api/admin/announcements", {
+      headers: { "X-Test": "1" },
+    });
+
     const [, opts] = globalThis.fetch.mock.calls[0];
     expect(opts.headers.get("Authorization")).toBe("Bearer sess");
+    expect(opts.headers.get("X-Test")).toBe("1");
   });
 });
