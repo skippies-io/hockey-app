@@ -46,12 +46,12 @@ export default function AdminLoginCallback() {
     <div className="page-stack" style={{ maxWidth: 520 }}>
       <Card>
         <h1 style={{ marginTop: 0 }}>Signing you in…</h1>
-        {!err ? (
+        {err ? (
+          <p style={{ color: "var(--hj-color-danger, #b91c1c)" }}>{err}</p>
+        ) : (
           <p style={{ color: "var(--hj-color-text-secondary)" }}>
             Verifying your sign-in link.
           </p>
-        ) : (
-          <p style={{ color: "var(--hj-color-danger, #b91c1c)" }}>{err}</p>
         )}
       </Card>
     </div>

@@ -32,8 +32,8 @@ export default function AdminLogin() {
     try {
       await requestMagicLink(trimmed);
       setSent(true);
-    } catch (e2) {
-      setErr(e2?.message || String(e2));
+    } catch (error_) {
+      setErr(error_?.message || String(error_));
     } finally {
       setBusy(false);
     }
