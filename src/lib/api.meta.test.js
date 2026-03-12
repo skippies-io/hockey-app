@@ -1,3 +1,6 @@
+/* eslint-env node */
+/* global process */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // We need a stable API_BASE and to mock fetch.
