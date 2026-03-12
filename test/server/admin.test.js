@@ -653,7 +653,7 @@ describe('handleAdminRequest', () => {
 
         expect(mockPool.query).toHaveBeenCalledWith(
             expect.stringContaining('WHERE tournament_id = $1'),
-            ['t1']
+            ['t1', 50]
         );
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));
     });

@@ -519,13 +519,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         where = "WHERE tournament_id = $1";
         params.push(tournamentId);
       }
+      params.push(limit);
 
       const result = await pool.query(
         `SELECT id, created_at, actor_email, action, tournament_id, entity_type, entity_id, meta
          FROM audit_log
          ${where}
          ORDER BY created_at DESC
-         LIMIT ${limit}`,
+         LIMIT $${params.length}`,
         params
       );
 
