@@ -35,6 +35,7 @@ import AdminLogin from "./views/admin/AdminLogin";
 import AdminLoginCallback from "./views/admin/AdminLoginCallback";
 import AnnouncementsPage from "./views/admin/AnnouncementsPage";
 import TournamentWizard from "./views/admin/TournamentWizard";
+import FixturesPage from "./views/admin/FixturesPage";
 
 // Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
 function isRealTeamName(name) {
@@ -519,6 +520,7 @@ export default function App() {
               />
               <Route path="tournaments" element={<TournamentWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
+              <Route path="fixtures" element={<FixturesPage />} />
               <Route
                 path="*"
                 element={<div style={{ padding: '2rem' }}>Page under construction</div>}

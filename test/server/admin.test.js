@@ -507,4 +507,129 @@ describe('handleAdminRequest', () => {
             expect.objectContaining({ error: expect.stringContaining('Method not allowed') })
         );
     });
+
+    it('GET /fixtures returns 400 when missing tournamentId', async () => {
+        const url = new URL('http://localhost/api/admin/fixtures?groupId=U11B');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('tournamentId') })
+        );
+    });
+
+    it('GET /fixtures returns fixtures list', async () => {
+        const url = new URL('http://localhost/api/admin/fixtures?tournamentId=t1&groupId=U11B');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ fixture_id: 'fx1', team1: 'A', team2: 'B' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockPool.query).toHaveBeenCalled();
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.any(Array) })
+        );
+    });
+
+    it('GET /fixtures returns 400 when missing groupId', async () => {
+        const url = new URL('http://localhost/api/admin/fixtures?tournamentId=t1');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.any(Object));
+    });
+
+    it('GET /fixtures returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/fixtures?tournamentId=t1&groupId=U11B');
+        mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('PUT /results upserts a result', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: 2, score2: 1 }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ 1: 1 }] }) // fixture exists
+            .mockResolvedValueOnce({ rows: [{ tournament_id: 't1', fixture_id: 'fx1', score1: 2, score2: 1 }] }); // upsert
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { fixturesCache: new Map(), standingsCache: new Map() } });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('SELECT 1 FROM fixture'),
+            ['t1', 'fx1']
+        );
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('INSERT INTO result'),
+            expect.any(Array)
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('PUT /results returns 400 on invalid score type', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: 'abc', score2: 1 }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.any(Object));
+    });
+
+    it('PUT /results returns 400 on out-of-range score', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: 100, score2: 1 }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.any(Object));
+    });
+
+    it('PUT /results returns 404 when fixture not found', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx-missing', score1: 1, score2: 1 }));
+
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 404, expect.any(Object));
+    });
+
+    it('PUT /results returns 500 on upsert DB error', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: 1, score2: 1 }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ 1: 1 }] }) // fixture exists
+            .mockRejectedValueOnce(new Error('UPSERT FAIL'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
+    });
+
+    it('PUT /results returns 200 when clearing scores (null)', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: null, score2: null }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ 1: 1 }] })
+            .mockResolvedValueOnce({ rows: [{ tournament_id: 't1', fixture_id: 'fx1', score1: null, score2: null }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.any(Object));
+    });
 });
