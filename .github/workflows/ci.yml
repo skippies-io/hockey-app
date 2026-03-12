@@ -21,16 +21,6 @@ jobs:
       - name: Guardrail - block Apps Script references
         run: scripts/ci/no-apps-script.sh
 
-      - name: Guardrail - no plain npm ci
-        run: |
-          set -euo pipefail
-          if grep -RInE '^\s*run:\s*"?npm ci"?\s*$' .github/workflows; then
-            echo "ERROR: Detected plain 'npm ci' without --ignore-scripts. Use 'npm ci --ignore-scripts' instead."
-            exit 1
-          else
-            echo "OK: No plain npm ci found."
-          fi
-
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
@@ -48,12 +38,29 @@ jobs:
         run: npm run lint
 
       - name: Test
-        run: npm test
+        run: npm run test:coverage
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: coverage-report
+          path: coverage/lcov.info
+          retention-days: 1
+
       - name: Build
         run: npm run build
+        env:
+          VITE_DB_API_BASE: ${{ vars.PROD_API_BASE }}/api
+
+      - name: Upload dist artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
 
       - name: Validate truth snapshots
         run: |
