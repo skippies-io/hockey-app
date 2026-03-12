@@ -79,6 +79,8 @@ async function writeAuditLog(pool, entry) {
 
 export async function handleAdminRequest(req, res, { url, pool, sendJson, caches, actorEmail } = {}) {
 
+  const logAudit = (action, data) => writeAuditLog(pool, { actor_email: actorEmail || "unknown", action, ...data });
+
   // Simple router for Admin API
   const method = req.method;
   const path = url.pathname.replace("/api/admin", "");
@@ -388,9 +390,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
 
         await client.query("COMMIT");
 
-        await writeAuditLog(pool, {
-          actor_email: actorEmail || "unknown",
-          action: "tournament.create",
+        await logAudit("tournament.create", {
           tournament_id: tournamentId,
           entity_type: "tournament",
           entity_id: tournamentId,
@@ -460,9 +460,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         );
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
 
-        await writeAuditLog(pool, {
-          actor_email: actorEmail || "unknown",
-          action: "announcement.create",
+        await logAudit("announcement.create", {
           tournament_id: safeTournamentId,
           entity_type: "announcement",
           entity_id: String(result.rows[0]?.id ?? ""),
@@ -643,9 +641,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         // ignore cache invalidation failures
       }
 
-      await writeAuditLog(pool, {
-        actor_email: actorEmail || "unknown",
-        action: "result.upsert",
+      await logAudit("result.upsert", {
         tournament_id: tournamentId,
         entity_type: "result",
         entity_id: fixtureId,
@@ -702,9 +698,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           return sendJson(req, res, 404, { ok: false, error: "Announcement not found" });
         }
 
-        await writeAuditLog(pool, {
-          actor_email: actorEmail || "unknown",
-          action: "announcement.update",
+        await logAudit("announcement.update", {
           tournament_id: safeTournamentId,
           entity_type: "announcement",
           entity_id: String(id),
@@ -731,9 +725,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           return sendJson(req, res, 404, { ok: false, error: "Not found" });
         }
 
-        await writeAuditLog(pool, {
-          actor_email: actorEmail || "unknown",
-          action: "announcement.delete",
+        await logAudit("announcement.delete", {
           tournament_id: null,
           entity_type: "announcement",
           entity_id: String(id),
