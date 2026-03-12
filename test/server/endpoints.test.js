@@ -95,6 +95,38 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(responseBody.last_sync_at).toBeTruthy();
     });
 
+    it('GET /api/meta returns 500 when DB query fails', async () => {
+        mocks.query.mockRejectedValueOnce(new Error('DB fail'));
+
+        const req = {
+            method: 'GET',
+            url: '/api/meta',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(500);
+        const responseBody = JSON.parse(res.end.mock.calls[0][0]);
+        expect(responseBody.ok).toBe(false);
+    });
+
+    it('GET /api/meta returns 405 for non-GET methods', async () => {
+        const req = {
+            method: 'POST',
+            url: '/api/meta',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(405);
+    });
+
     it('GET /api/tournaments returns data', async () => {
         mocks.query.mockResolvedValueOnce({
             rows: [

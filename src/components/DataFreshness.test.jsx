@@ -40,4 +40,16 @@ describe('DataFreshness', () => {
 
     expect(await screen.findByLabelText('Data freshness')).toBeDefined();
   });
+
+  it('marks data as stale when older than threshold', async () => {
+    // 16 minutes ago (stale threshold is 15min)
+    getCachedLastSyncAtMock.mockReturnValue(new Date(Date.now() - 16 * 60_000).toISOString());
+    getMetaMock.mockRejectedValueOnce(new Error('offline'));
+
+    const { default: DataFreshness } = await import('./DataFreshness');
+    render(<DataFreshness />);
+
+    const node = await screen.findByLabelText('Data freshness');
+    expect(node.textContent).toMatch(/stale/i);
+  });
 });
