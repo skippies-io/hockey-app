@@ -489,6 +489,54 @@ export const requestHandler = async (req, res) => {
       return;
     }
 
+    // Meta / freshness
+    if (url.pathname === "/api/meta") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+
+      if (PROVIDER_MODE !== "db") {
+        sendJson(req, res, 501, { ok: false, error: "Not implemented for Apps Script provider" });
+        return;
+      }
+      if (!pool) {
+        sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+        return;
+      }
+
+      try {
+        const r = await pool.query(
+          `SELECT MAX(ingested_at) AS last_sync_at
+           FROM (
+             SELECT ingested_at FROM tournament
+             UNION ALL SELECT ingested_at FROM groups
+             UNION ALL SELECT ingested_at FROM team
+             UNION ALL SELECT ingested_at FROM fixture
+             UNION ALL SELECT ingested_at FROM result
+           ) t`
+        );
+        const lastSyncAt = r?.rows?.[0]?.last_sync_at || null;
+        sendJson(
+          req,
+          res,
+          200,
+          { ok: true, last_sync_at: lastSyncAt },
+          { head: isHead, cache: { maxAge: 60, swr: 300 } }
+        );
+      } catch (e) {
+        console.error(e);
+        sendJson(req, res, 500, { ok: false, error: "DB Error" });
+      }
+      return;
+    }
+
     // Auth routes (public — no session required)
     if (url.pathname === "/api/auth/magic-link") {
       applyCors(req, res);

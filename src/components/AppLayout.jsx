@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FilterSlotContext } from "./filterSlotContext";
 import TournamentSwitcher from "./TournamentSwitcher";
 import AnnouncementBanner from "./AnnouncementBanner";
+import DataFreshness from "./DataFreshness";
 import { getAnnouncements } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 
@@ -75,6 +76,7 @@ export default function AppLayout({
               </div>
               <div className="header-actions">
                 <TournamentSwitcher />
+                <DataFreshness />
               </div>
             </div>
 
