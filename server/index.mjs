@@ -534,7 +534,12 @@ export const requestHandler = async (req, res) => {
         sendJson(req, res, 401, { ok: false, error: "Unauthorized" });
         return;
       }
-      await handleAdminRequest(req, res, { url, pool, sendJson });
+      await handleAdminRequest(req, res, {
+        url,
+        pool,
+        sendJson,
+        caches: { fixturesCache, standingsCache },
+      });
       return;
     }
 

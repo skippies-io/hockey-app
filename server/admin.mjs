@@ -40,7 +40,22 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
+function parseScore(value) {
+  if (value === "" || value == null) return null;
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isInteger(n)) return n;
+  }
+  return NaN;
+}
+
+function isValidScore(value) {
+  if (value === null) return true;
+  return Number.isInteger(value) && value >= 0 && value <= 99;
+}
+
+export async function handleAdminRequest(req, res, { url, pool, sendJson, caches } = {}) {
 
   // Simple router for Admin API
   const method = req.method;
@@ -434,6 +449,119 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson }) {
     } catch (err) {
       console.error("Admin API Error:", err);
       return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  if (path === "/fixtures") {
+    if (method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+      const groupId = normalizeSpaces(url.searchParams.get("groupId"));
+      if (!tournamentId) {
+        return sendJson(req, res, 400, { ok: false, error: "Missing tournamentId" });
+      }
+      if (!groupId) {
+        return sendJson(req, res, 400, { ok: false, error: "Missing groupId" });
+      }
+
+      const result = await pool.query(
+        `SELECT
+           f.id AS fixture_id,
+           f.group_id,
+           to_char(f.date, 'YYYY-MM-DD') AS date,
+           f.time,
+           f.pool,
+           f.venue,
+           f.round,
+           t1.name AS team1,
+           t2.name AS team2,
+           r.score1,
+           r.score2,
+           r.updated_at AS result_updated_at
+         FROM fixture f
+         JOIN team t1
+           ON t1.tournament_id = f.tournament_id
+          AND t1.id = f.team1_id
+         JOIN team t2
+           ON t2.tournament_id = f.tournament_id
+          AND t2.id = f.team2_id
+         LEFT JOIN result r
+           ON r.tournament_id = f.tournament_id
+          AND r.fixture_id = f.id
+         WHERE f.tournament_id = $1
+           AND f.group_id = $2
+         ORDER BY f.date, f.time, f.fixture_key`,
+        [tournamentId, groupId]
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+    } catch (err) {
+      console.error("Admin fixtures error:", err);
+      return sendJson(req, res, 500, { ok: false, error: "Failed to load fixtures" });
+    }
+  }
+
+  if (path === "/results") {
+    if (method !== "PUT" && method !== "POST") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const body = await readBody(req);
+      if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+
+      const tournamentId = normalizeSpaces(body.tournament_id || body.tournamentId);
+      const fixtureId = normalizeSpaces(body.fixture_id || body.fixtureId);
+      const score1 = parseScore(body.score1);
+      const score2 = parseScore(body.score2);
+
+      if (!tournamentId) {
+        return sendJson(req, res, 400, { ok: false, error: "tournament_id is required" });
+      }
+      if (!fixtureId) {
+        return sendJson(req, res, 400, { ok: false, error: "fixture_id is required" });
+      }
+      if (!isValidScore(score1) || !isValidScore(score2)) {
+        return sendJson(req, res, 400, { ok: false, error: "Scores must be integers between 0 and 99 (or blank to clear)" });
+      }
+
+      // Ensure fixture exists for tournament
+      const exists = await pool.query(
+        `SELECT 1 FROM fixture WHERE tournament_id = $1 AND id = $2`,
+        [tournamentId, fixtureId]
+      );
+      if (!exists || exists.rowCount === 0) {
+        return sendJson(req, res, 404, { ok: false, error: "Fixture not found" });
+      }
+
+      const upsert = await pool.query(
+        `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, updated_at, source)
+         VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+         ON CONFLICT (tournament_id, fixture_id)
+         DO UPDATE SET
+           score1 = EXCLUDED.score1,
+           score2 = EXCLUDED.score2,
+           status = EXCLUDED.status,
+           updated_at = NOW(),
+           source = EXCLUDED.source
+         RETURNING tournament_id, fixture_id, score1, score2, status, updated_at`,
+        [tournamentId, fixtureId, score1, score2, "Final", "admin"]
+      );
+
+      // Invalidate caches for fixtures/standings (best-effort)
+      try {
+        caches?.fixturesCache?.clear?.();
+        caches?.standingsCache?.clear?.();
+      } catch {
+        // ignore cache invalidation failures
+      }
+
+      return sendJson(req, res, 200, { ok: true, data: upsert.rows?.[0] || null });
+    } catch (err) {
+      console.error("Admin results error:", err);
+      return sendJson(req, res, 500, { ok: false, error: "Failed to save result" });
     }
   }
 
