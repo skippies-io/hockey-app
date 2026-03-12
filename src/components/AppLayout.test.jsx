@@ -6,6 +6,8 @@ import AppLayout from './AppLayout';
 // Mock the api
 vi.mock('../lib/api', () => ({
   getAnnouncements: vi.fn(() => Promise.resolve([])),
+  getMeta: vi.fn(() => Promise.resolve({ ok: true, last_sync_at: new Date().toISOString() })),
+  getCachedLastSyncAt: vi.fn(() => ''),
 }));
 
 // Mock the context

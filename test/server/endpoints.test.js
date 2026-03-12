@@ -75,6 +75,26 @@ describe('API Endpoints (Mocked DB)', () => {
         );
     });
 
+    it('GET /api/meta returns last_sync_at', async () => {
+        mocks.query.mockResolvedValueOnce({ rows: [{ last_sync_at: '2026-03-12T00:00:00.000Z' }] });
+
+        const req = {
+            method: 'GET',
+            url: '/api/meta',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining('MAX(ingested_at)'));
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const responseBody = JSON.parse(res.end.mock.calls[0][0]);
+        expect(responseBody.ok).toBe(true);
+        expect(responseBody.last_sync_at).toBeTruthy();
+    });
+
     it('GET /api/tournaments returns data', async () => {
         mocks.query.mockResolvedValueOnce({
             rows: [

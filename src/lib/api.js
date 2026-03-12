@@ -156,6 +156,31 @@ export async function getFranchises(tournamentId) {
   return j.rows || [];
 }
 
+export async function getMeta() {
+  if (!API_BASE) throw new Error('Missing API base');
+  const root = API_BASE.replace(/\/api$/, '');
+  const url = `${root}/api/meta`;
+  const j = await fetchJSON(url, { revalidate: true, retry: true });
+
+  // Persist for offline display
+  if (j && j.last_sync_at) {
+    try {
+      localStorage.setItem('hj:last_sync_at', String(j.last_sync_at));
+    } catch {
+      // ignore
+    }
+  }
+  return j;
+}
+
+export function getCachedLastSyncAt() {
+  try {
+    return localStorage.getItem('hj:last_sync_at') || '';
+  } catch {
+    return '';
+  }
+}
+
 export async function getAnnouncements(tournamentId) {
   const t = tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : "";
   const url = `${API_BASE}/announcements${t}`;
