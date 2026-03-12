@@ -55,7 +55,29 @@ function isValidScore(value) {
   return Number.isInteger(value) && value >= 0 && value <= 99;
 }
 
-export async function handleAdminRequest(req, res, { url, pool, sendJson, caches } = {}) {
+async function writeAuditLog(pool, entry) {
+  if (!pool) return;
+  if (!entry?.actor_email || !entry?.action) return;
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (actor_email, action, tournament_id, entity_type, entity_id, meta)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        entry.actor_email,
+        entry.action,
+        entry.tournament_id || null,
+        entry.entity_type || null,
+        entry.entity_id || null,
+        entry.meta ? JSON.stringify(entry.meta) : null,
+      ]
+    );
+  } catch (e) {
+    console.error("Audit log write failed:", e);
+  }
+}
+
+export async function handleAdminRequest(req, res, { url, pool, sendJson, caches, actorEmail } = {}) {
 
   // Simple router for Admin API
   const method = req.method;
@@ -365,6 +387,21 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         }
 
         await client.query("COMMIT");
+
+        await writeAuditLog(pool, {
+          actor_email: actorEmail || "unknown",
+          action: "tournament.create",
+          tournament_id: tournamentId,
+          entity_type: "tournament",
+          entity_id: tournamentId,
+          meta: {
+            name: tournamentName,
+            groups: Array.isArray(groups) ? groups.length : 0,
+            teams: Array.isArray(teams) ? teams.length : 0,
+            fixtures: Array.isArray(fixtures) ? fixtures.length : 0,
+          },
+        });
+
         return sendJson(req, res, 201, { ok: true, tournament_id: tournamentId });
       } catch (err) {
         await client.query("ROLLBACK");
@@ -422,6 +459,20 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           [safeTournamentId, title, content, severity || 'info', !!is_published]
         );
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
+
+        await writeAuditLog(pool, {
+          actor_email: actorEmail || "unknown",
+          action: "announcement.create",
+          tournament_id: safeTournamentId,
+          entity_type: "announcement",
+          entity_id: String(result.rows[0]?.id ?? ""),
+          meta: {
+            title,
+            severity: severity || "info",
+            is_published: !!is_published,
+          },
+        });
+
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
         console.error("Admin API Error:", err);
@@ -449,6 +500,39 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     } catch (err) {
       console.error("Admin API Error:", err);
       return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  if (path === "/audit-log") {
+    if (method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+      const limitRaw = normalizeSpaces(url.searchParams.get("limit"));
+      const limit = Math.min(Math.max(Number(limitRaw || 50) || 50, 1), 200);
+
+      const params = [];
+      let where = "";
+      if (tournamentId) {
+        where = "WHERE tournament_id = $1";
+        params.push(tournamentId);
+      }
+
+      const result = await pool.query(
+        `SELECT id, created_at, actor_email, action, tournament_id, entity_type, entity_id, meta
+         FROM audit_log
+         ${where}
+         ORDER BY created_at DESC
+         LIMIT ${limit}`,
+        params
+      );
+
+      return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+    } catch (err) {
+      console.error("Admin audit-log error:", err);
+      return sendJson(req, res, 500, { ok: false, error: "Failed to load audit log" });
     }
   }
 
@@ -558,6 +642,15 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         // ignore cache invalidation failures
       }
 
+      await writeAuditLog(pool, {
+        actor_email: actorEmail || "unknown",
+        action: "result.upsert",
+        tournament_id: tournamentId,
+        entity_type: "result",
+        entity_id: fixtureId,
+        meta: { score1, score2 },
+      });
+
       return sendJson(req, res, 200, { ok: true, data: upsert.rows?.[0] || null });
     } catch (err) {
       console.error("Admin results error:", err);
@@ -607,6 +700,21 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         if (!result || !result.rows || result.rows.length === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Announcement not found" });
         }
+
+        await writeAuditLog(pool, {
+          actor_email: actorEmail || "unknown",
+          action: "announcement.update",
+          tournament_id: safeTournamentId,
+          entity_type: "announcement",
+          entity_id: String(id),
+          meta: {
+            title,
+            severity,
+            is_published: !!is_published,
+            refresh_date: !!body.refresh_date,
+          },
+        });
+
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
         console.error("Admin PUT Error:", err);
@@ -621,6 +729,15 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Not found" });
         }
+
+        await writeAuditLog(pool, {
+          actor_email: actorEmail || "unknown",
+          action: "announcement.delete",
+          tournament_id: null,
+          entity_type: "announcement",
+          entity_id: String(id),
+        });
+
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
         console.error("Admin DELETE Error:", err);

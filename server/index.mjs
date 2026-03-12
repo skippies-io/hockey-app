@@ -587,6 +587,7 @@ export const requestHandler = async (req, res) => {
         pool,
         sendJson,
         caches: { fixturesCache, standingsCache },
+        actorEmail: adminEmail,
       });
       return;
     }
