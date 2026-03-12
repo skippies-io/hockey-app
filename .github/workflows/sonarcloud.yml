@@ -1,23 +1,58 @@
 name: SonarCloud Code Analysis
 
 on:
+  pull_request:
   workflow_run:
     workflows: ["CI"]
+    branches: [main]
     types: [completed]
 
 jobs:
   sonarcloud:
     name: SonarCloud Code Analysis
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
+      # PR path: standard checkout of the PR branch
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+
+      # workflow_run path: checkout the exact commit CI tested
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        if: github.event_name == 'workflow_run'
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
+      # PR path: install and run tests to generate coverage
+      - name: Setup Node
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (no lifecycle scripts)
+        if: github.event_name == 'pull_request'
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild required native deps
+        if: github.event_name == 'pull_request'
+        run: npm rebuild esbuild
+
+      - name: Test (coverage)
+        if: github.event_name == 'pull_request'
+        run: npm run test:coverage
+
+      # workflow_run path: reuse coverage artifact from CI
       - name: Download coverage artifact
+        if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: coverage-report
@@ -26,16 +61,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Sonar context
+        if: github.event_name == 'workflow_run'
         run: |
-          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
           echo "sonar.scm.revision=${{ github.event.workflow_run.head_sha }}" >> sonar-project.properties
-          if [ -n "$PR_NUMBER" ]; then
-            echo "sonar.pullrequest.key=$PR_NUMBER" >> sonar-project.properties
-            echo "sonar.pullrequest.branch=${{ github.event.workflow_run.pull_requests[0].head.ref }}" >> sonar-project.properties
-            echo "sonar.pullrequest.base=${{ github.event.workflow_run.pull_requests[0].base.ref }}" >> sonar-project.properties
-          else
-            echo "sonar.branch.name=${{ github.event.workflow_run.head_branch }}" >> sonar-project.properties
-          fi
+          echo "sonar.branch.name=${{ github.event.workflow_run.head_branch }}" >> sonar-project.properties
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8
