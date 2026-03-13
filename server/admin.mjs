@@ -55,7 +55,42 @@ function isValidScore(value) {
   return Number.isInteger(value) && value >= 0 && value <= 99;
 }
 
+function requireGetWithDb(method, pool, req, res, sendJson) {
+  if (method !== "GET") {
+    sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return false;
+  }
+  if (!pool) {
+    sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    return false;
+  }
+  return true;
+}
+
+async function writeAuditLog(pool, entry) {
+  if (!pool) return;
+  if (!entry?.actor_email || !entry?.action) return;
+
+  try {
+    await pool.query(
+      `INSERT INTO audit_log (actor_email, action, tournament_id, entity_type, entity_id, meta)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        entry.actor_email,
+        entry.action,
+        entry.tournament_id || null,
+        entry.entity_type || null,
+        entry.entity_id || null,
+        entry.meta ? JSON.stringify(entry.meta) : null,
+      ]
+    );
+  } catch (e) {
+    console.error("Audit log write failed:", e);
+  }
+}
+
 export async function handleAdminRequest(req, res, { url, pool, sendJson, caches } = {}) {
+  const logAudit = (action, data) => writeAuditLog(pool, { actor_email: caches?.actorEmail || "unknown", action, ...data });
 
   // Simple router for Admin API
   const method = req.method;
@@ -365,6 +400,19 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         }
 
         await client.query("COMMIT");
+
+        await logAudit("tournament.create", {
+          tournament_id: tournamentId,
+          entity_type: "tournament",
+          entity_id: tournamentId,
+          meta: {
+            name: tournamentName,
+            groups: Array.isArray(groups) ? groups.length : 0,
+            teams: Array.isArray(teams) ? teams.length : 0,
+            fixtures: Array.isArray(fixtures) ? fixtures.length : 0,
+          },
+        });
+
         return sendJson(req, res, 201, { ok: true, tournament_id: tournamentId });
       } catch (err) {
         await client.query("ROLLBACK");
@@ -422,6 +470,18 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           [safeTournamentId, title, content, severity || 'info', !!is_published]
         );
         if (result.rows.length === 0) throw new Error("Insert failed to return data");
+
+        await logAudit("announcement.create", {
+          tournament_id: safeTournamentId,
+          entity_type: "announcement",
+          entity_id: String(result.rows[0]?.id ?? ""),
+          meta: {
+            title,
+            severity: severity || "info",
+            is_published: !!is_published,
+          },
+        });
+
         return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
       } catch (err) {
         console.error("Admin API Error:", err);
@@ -435,11 +495,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   if (path === "/venues") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    }
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
       const result = await pool.query(
         `SELECT DISTINCT name
          FROM venue
@@ -452,12 +509,32 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
   }
 
-  if (path === "/fixtures") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    }
+  if (path === "/audit-log") {
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId")) || null;
+      const limitRaw = normalizeSpaces(url.searchParams.get("limit"));
+      const limit = Math.min(Math.max(Number(limitRaw || 50) || 50, 1), 200);
+
+      const result = await pool.query(
+        `SELECT id, created_at, actor_email, action, tournament_id, entity_type, entity_id, meta
+         FROM audit_log
+         WHERE ($1::text IS NULL OR tournament_id = $1)
+         ORDER BY created_at DESC
+         LIMIT $2`,
+        [tournamentId, limit]
+      );
+
+      return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+    } catch (err) {
+      console.error("Admin audit-log error:", err);
+      return sendJson(req, res, 500, { ok: false, error: "Failed to load audit log" });
+    }
+  }
+
+  if (path === "/fixtures") {
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
+    try {
       const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
       const groupId = normalizeSpaces(url.searchParams.get("groupId"));
       if (!tournamentId) {
@@ -558,6 +635,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         // ignore cache invalidation failures
       }
 
+      await logAudit("result.upsert", {
+        tournament_id: tournamentId,
+        entity_type: "result",
+        entity_id: fixtureId,
+        meta: { score1, score2 },
+      });
+
       return sendJson(req, res, 200, { ok: true, data: upsert.rows?.[0] || null });
     } catch (err) {
       console.error("Admin results error:", err);
@@ -607,6 +691,19 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         if (!result || !result.rows || result.rows.length === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Announcement not found" });
         }
+
+        await logAudit("announcement.update", {
+          tournament_id: safeTournamentId,
+          entity_type: "announcement",
+          entity_id: String(id),
+          meta: {
+            title,
+            severity,
+            is_published: !!is_published,
+            refresh_date: !!body.refresh_date,
+          },
+        });
+
         return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
       } catch (err) {
         console.error("Admin PUT Error:", err);
@@ -621,6 +718,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         if (result.rowCount === 0) {
           return sendJson(req, res, 404, { ok: false, error: "Not found" });
         }
+
+        await logAudit("announcement.delete", {
+          tournament_id: null,
+          entity_type: "announcement",
+          entity_id: String(id),
+        });
+
         return sendJson(req, res, 200, { ok: true, deleted: id });
       } catch (err) {
         console.error("Admin DELETE Error:", err);

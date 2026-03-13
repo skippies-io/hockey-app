@@ -632,4 +632,71 @@ describe('handleAdminRequest', () => {
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.any(Object));
     });
+
+    // --- /audit-log endpoint ---
+
+    it('GET /audit-log returns audit entries', async () => {
+        const url = new URL('http://localhost/api/admin/audit-log');
+        const rows = [{ id: 1, actor_email: 'a@b.com', action: 'announcement.create' }];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true, data: rows }));
+    });
+
+    it('GET /audit-log filters by tournamentId', async () => {
+        const url = new URL('http://localhost/api/admin/audit-log?tournamentId=t1');
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('$1::text IS NULL OR tournament_id = $1'),
+            ['t1', 50]
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));
+    });
+
+    it('POST /audit-log returns 405', async () => {
+        const url = new URL('http://localhost/api/admin/audit-log');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /audit-log returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/audit-log');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /audit-log returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/audit-log');
+        mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({ ok: false }));
+    });
+
+    // --- writeAuditLog error path ---
+
+    it('audit log write failure does not block main response', async () => {
+        const url = new URL('http://localhost/api/admin/announcements');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ title: 'T', body: 'B' }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rows: [{ id: 5, title: 'T' }] })  // INSERT INTO announcements
+            .mockRejectedValueOnce(new Error('audit DB down'));           // INSERT INTO audit_log
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'x@y.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
+    });
 });
