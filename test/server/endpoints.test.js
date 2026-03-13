@@ -146,7 +146,7 @@ describe('API Endpoints (Mocked DB)', () => {
         await requestHandler(req, res);
 
         expect(mocks.query).toHaveBeenCalledWith(
-            expect.stringContaining('SELECT id, name FROM tournament'),
+            expect.stringContaining('SELECT id, name, season FROM tournament'),
             []
         );
         expect(res.writeHead).toHaveBeenCalledWith(200);
