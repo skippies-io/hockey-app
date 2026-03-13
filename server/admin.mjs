@@ -55,6 +55,18 @@ function isValidScore(value) {
   return Number.isInteger(value) && value >= 0 && value <= 99;
 }
 
+function requireGetWithDb(method, pool, req, res, sendJson) {
+  if (method !== "GET") {
+    sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    return false;
+  }
+  if (!pool) {
+    sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    return false;
+  }
+  return true;
+}
+
 async function writeAuditLog(pool, entry) {
   if (!pool) return;
   if (!entry?.actor_email || !entry?.action) return;
@@ -484,11 +496,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   if (path === "/venues") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    }
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
       const result = await pool.query(
         `SELECT DISTINCT name
          FROM venue
@@ -502,11 +511,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   if (path === "/audit-log") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    }
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
       const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId")) || null;
       const limitRaw = normalizeSpaces(url.searchParams.get("limit"));
       const limit = Math.min(Math.max(Number(limitRaw || 50) || 50, 1), 200);
@@ -528,11 +534,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   if (path === "/fixtures") {
-    if (method !== "GET") {
-      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    }
+    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
-      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
       const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
       const groupId = normalizeSpaces(url.searchParams.get("groupId"));
       if (!tournamentId) {
