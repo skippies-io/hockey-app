@@ -89,9 +89,8 @@ async function writeAuditLog(pool, entry) {
   }
 }
 
-export async function handleAdminRequest(req, res, { url, pool, sendJson, caches, actorEmail } = {}) {
-
-  const logAudit = (action, data) => writeAuditLog(pool, { actor_email: actorEmail || "unknown", action, ...data });
+export async function handleAdminRequest(req, res, { url, pool, sendJson, caches } = {}) {
+  const logAudit = (action, data) => writeAuditLog(pool, { actor_email: caches?.actorEmail || "unknown", action, ...data });
 
   // Simple router for Admin API
   const method = req.method;

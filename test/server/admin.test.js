@@ -695,7 +695,7 @@ describe('handleAdminRequest', () => {
             .mockResolvedValueOnce({ rows: [{ id: 5, title: 'T' }] })  // INSERT INTO announcements
             .mockRejectedValueOnce(new Error('audit DB down'));           // INSERT INTO audit_log
 
-        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, actorEmail: 'x@y.com' });
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'x@y.com' } });
 
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
     });
