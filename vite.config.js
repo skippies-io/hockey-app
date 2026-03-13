@@ -34,7 +34,15 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'jsdom',
+      environmentMatchGlobs: [
+        ['test/server/**', 'node'],
+      ],
       setupFiles: ['test/setup-env.js'],
+      pool: 'forks',
+      forks: {
+        maxForks: 3,
+      },
+      testTimeout: 10_000,
       coverage: {
         provider: 'v8',
         reporter: ['text', 'lcov'],
