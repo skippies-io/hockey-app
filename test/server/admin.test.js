@@ -652,7 +652,7 @@ describe('handleAdminRequest', () => {
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
 
         expect(mockPool.query).toHaveBeenCalledWith(
-            expect.stringContaining('WHERE tournament_id = $1'),
+            expect.stringContaining('$1::text IS NULL OR tournament_id = $1'),
             ['t1', 50]
         );
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));

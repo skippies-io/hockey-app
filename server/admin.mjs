@@ -507,25 +507,17 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
     try {
       if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-      const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+      const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId")) || null;
       const limitRaw = normalizeSpaces(url.searchParams.get("limit"));
       const limit = Math.min(Math.max(Number(limitRaw || 50) || 50, 1), 200);
-
-      const params = [];
-      let where = "";
-      if (tournamentId) {
-        where = "WHERE tournament_id = $1";
-        params.push(tournamentId);
-      }
-      params.push(limit);
 
       const result = await pool.query(
         `SELECT id, created_at, actor_email, action, tournament_id, entity_type, entity_id, meta
          FROM audit_log
-         ${where}
+         WHERE ($1::text IS NULL OR tournament_id = $1)
          ORDER BY created_at DESC
-         LIMIT $${params.length}`,
-        params
+         LIMIT $2`,
+        [tournamentId, limit]
       );
 
       return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
