@@ -4,16 +4,19 @@ import crypto from "node:crypto";
 const MAGIC_TTL_MINUTES = Number(process.env.MAGIC_LINK_TTL_MINUTES) || 15;
 const SESSION_TTL_HOURS = Number(process.env.ADMIN_SESSION_TTL_HOURS) || 8;
 
-// Allowlist is a comma-separated list of lower-cased emails.
-// The env var overrides the default; add emails with ADMIN_ALLOWLIST="a@b.com,c@d.com".
-const ALLOWLIST_RAW = process.env.ADMIN_ALLOWLIST || "leroybarnes@me.com";
-export const ADMIN_ALLOWLIST = ALLOWLIST_RAW
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-
-export function isAllowedEmail(email) {
-  return ADMIN_ALLOWLIST.includes(String(email || "").trim().toLowerCase());
+/**
+ * Check whether an email is on the DB-managed admin allowlist.
+ * Returns false (rather than throwing) if the pool is unavailable.
+ */
+export async function isAllowedEmail(pool, email) {
+  if (!pool || !email) return false;
+  const normalized = String(email).trim().toLowerCase();
+  if (!normalized) return false;
+  const result = await pool.query(
+    "SELECT 1 FROM admin_allowlist WHERE email = $1",
+    [normalized]
+  );
+  return result.rows.length > 0;
 }
 
 export function generateToken() {

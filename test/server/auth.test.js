@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Unit tests for server/auth.mjs
 // ---------------------------------------------------------------------------
 import {
-  ADMIN_ALLOWLIST,
   isAllowedEmail,
   generateToken,
   hashToken,
@@ -15,21 +14,28 @@ import {
 } from '../../server/auth.mjs';
 
 describe('auth helpers', () => {
-  it('ADMIN_ALLOWLIST includes the default address', () => {
-    expect(ADMIN_ALLOWLIST).toContain('leroybarnes@me.com');
+  it('isAllowedEmail returns true when DB row exists (case-insensitive)', async () => {
+    const pool = { query: vi.fn().mockResolvedValue({ rows: [{}] }) };
+    expect(await isAllowedEmail(pool, 'LeroyBarnes@me.com')).toBe(true);
+    const [sql, params] = pool.query.mock.calls[0];
+    expect(sql).toMatch(/admin_allowlist/);
+    expect(params[0]).toBe('leroybarnes@me.com');
   });
 
-  it('isAllowedEmail returns true for an allowed address (case-insensitive)', () => {
-    expect(isAllowedEmail('LeroyBarnes@me.com')).toBe(true);
+  it('isAllowedEmail returns false when DB has no matching row', async () => {
+    const pool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+    expect(await isAllowedEmail(pool, 'hacker@evil.com')).toBe(false);
   });
 
-  it('isAllowedEmail returns false for an unknown address', () => {
-    expect(isAllowedEmail('hacker@evil.com')).toBe(false);
+  it('isAllowedEmail returns false for empty/null input without hitting DB', async () => {
+    const pool = { query: vi.fn() };
+    expect(await isAllowedEmail(pool, '')).toBe(false);
+    expect(await isAllowedEmail(pool, null)).toBe(false);
+    expect(pool.query).not.toHaveBeenCalled();
   });
 
-  it('isAllowedEmail returns false for empty/null input', () => {
-    expect(isAllowedEmail('')).toBe(false);
-    expect(isAllowedEmail(null)).toBe(false);
+  it('isAllowedEmail returns false when pool is null', async () => {
+    expect(await isAllowedEmail(null, 'leroybarnes@me.com')).toBe(false);
   });
 
   it('generateToken returns a 64-character hex string', () => {
@@ -194,7 +200,11 @@ describe('handleMagicLinkRequest', () => {
   });
 
   it('returns 200 generic message for an allowed email', async () => {
-    const pool = makePool(); // issueMagicToken insert succeeds
+    const pool = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [{}] })  // isAllowedEmail SELECT
+        .mockResolvedValueOnce({ rows: [] }),    // issueMagicToken INSERT
+    };
     const { req, res, sendJson } = makeReqRes('POST', { email: 'leroybarnes@me.com' });
 
     // sendMagicLink will log (no SMTP configured in tests) — no mock needed.
@@ -207,7 +217,7 @@ describe('handleMagicLinkRequest', () => {
   });
 
   it('returns the same 200 generic message for an unknown email (no enumeration)', async () => {
-    const pool = makePool();
+    const pool = { query: vi.fn().mockResolvedValue({ rows: [] }) };
     const { req, res, sendJson } = makeReqRes('POST', { email: 'nobody@nowhere.com' });
     await handleMagicLinkRequest(req, res, { pool, sendJson });
 
@@ -215,12 +225,18 @@ describe('handleMagicLinkRequest', () => {
       req, res, 200,
       expect.objectContaining({ ok: true, message: expect.any(String) })
     );
-    // The DB must NOT be touched for an unknown email.
-    expect(pool.query).not.toHaveBeenCalled();
+    // Allowlist is checked but no token is inserted for an unknown email.
+    expect(pool.query).toHaveBeenCalledOnce();
+    const [sql] = pool.query.mock.calls[0];
+    expect(sql).toMatch(/admin_allowlist/);
   });
 
   it('still returns 200 even when issueMagicToken throws', async () => {
-    const pool = { query: vi.fn().mockRejectedValue(new Error('DB down')) };
+    const pool = {
+      query: vi.fn()
+        .mockResolvedValueOnce({ rows: [{}] })          // isAllowedEmail SELECT
+        .mockRejectedValueOnce(new Error('DB down')),   // issueMagicToken INSERT
+    };
     const { req, res, sendJson } = makeReqRes('POST', { email: 'leroybarnes@me.com' });
     await handleMagicLinkRequest(req, res, { pool, sendJson });
     expect(sendJson).toHaveBeenCalledWith(req, res, 200, expect.objectContaining({ ok: true }));

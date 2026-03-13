@@ -699,4 +699,66 @@ describe('handleAdminRequest', () => {
 
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
     });
+
+    // --- /allowlist endpoint ---
+
+    it('GET /allowlist returns the list of allowed emails', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist');
+        const rows = [{ email: 'leroybarnes@me.com', note: 'Initial test account', added_at: new Date() }];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true, data: rows }));
+    });
+
+    it('POST /allowlist adds an email', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ email: 'newadmin@example.com', note: 'New admin' }));
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true, email: 'newadmin@example.com' }));
+    });
+
+    it('POST /allowlist returns 400 when email is missing', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ note: 'No email provided' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({ ok: false }));
+    });
+
+    it('DELETE /allowlist/:email removes an email', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist/leroybarnes%40me.com');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rows: [{ email: 'leroybarnes@me.com' }], rowCount: 1 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true, deleted: 'leroybarnes@me.com' }));
+    });
+
+    it('DELETE /allowlist/:email returns 404 when email not found', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist/nobody%40nowhere.com');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 404, expect.objectContaining({ ok: false }));
+    });
+
+    it('PUT /allowlist returns 405', async () => {
+        const url = new URL('http://localhost/api/admin/allowlist');
+        mockReq.method = 'PUT';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
+    });
 });
