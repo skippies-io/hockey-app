@@ -33,7 +33,7 @@ export async function handleMagicLinkRequest(req, res, { pool, sendJson }) {
     }
 
     // Issue + send only for allowlisted addresses; always return the same response.
-    if (isAllowedEmail(email)) {
+    if (await isAllowedEmail(pool, email)) {
       try {
         const { token } = await issueMagicToken(pool, email);
         await sendMagicLink(email, token);

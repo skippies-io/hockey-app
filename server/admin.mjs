@@ -733,6 +733,61 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
   }
 
+  if (path === "/allowlist") {
+    if (method === "GET") {
+      if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
+      try {
+        const result = await pool.query(
+          `SELECT email, note, added_at FROM admin_allowlist ORDER BY added_at ASC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      } catch (err) {
+        console.error("Admin allowlist GET error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to load allowlist" });
+      }
+    }
+    if (method === "POST") {
+      try {
+        if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+        const body = await readBody(req);
+        const email = normalizeSpaces(body?.email).toLowerCase();
+        if (!email) return sendJson(req, res, 400, { ok: false, error: "email is required" });
+        const note = normalizeSpaces(body?.note) || null;
+        await pool.query(
+          `INSERT INTO admin_allowlist (email, note) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET note = EXCLUDED.note`,
+          [email, note]
+        );
+        return sendJson(req, res, 201, { ok: true, email });
+      } catch (err) {
+        console.error("Admin allowlist POST error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to update allowlist" });
+      }
+    }
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  const allowlistMatch = path.match(/^\/allowlist\/([^/]+)$/);
+  if (allowlistMatch) {
+    if (method !== "DELETE") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const email = decodeURIComponent(allowlistMatch[1]).toLowerCase();
+      const result = await pool.query(
+        `DELETE FROM admin_allowlist WHERE email = $1 RETURNING email`,
+        [email]
+      );
+      if (result.rowCount === 0) {
+        return sendJson(req, res, 404, { ok: false, error: "Email not found in allowlist" });
+      }
+      return sendJson(req, res, 200, { ok: true, deleted: email });
+    } catch (err) {
+      console.error("Admin allowlist DELETE error:", err);
+      return sendJson(req, res, 500, { ok: false, error: "Failed to update allowlist" });
+    }
+  }
+
   // Fallback for unknown admin routes
   return sendJson(req, res, 404, { ok: false, error: "Admin route not found" });
 }
