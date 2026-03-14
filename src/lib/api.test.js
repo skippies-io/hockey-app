@@ -243,4 +243,20 @@ describe("api helpers", () => {
     await new Promise(r => setTimeout(r, 20));
     // Should not throw, just log/ignore
   });
+
+  it("getTournaments returns data array from /api/tournaments", async () => {
+    const { getTournaments } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ ok: true, data: [{ id: "t1", name: "Winter Cup" }] })
+    );
+    const result = await getTournaments();
+    expect(result).toEqual([{ id: "t1", name: "Winter Cup" }]);
+  });
+
+  it("getTournaments returns empty array when data is absent", async () => {
+    const { getTournaments } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ ok: true }));
+    const result = await getTournaments();
+    expect(result).toEqual([]);
+  });
 });
