@@ -1,0 +1,1074 @@
+openapi: 3.1.0
+info:
+  title: Hockey for Juniors API
+  version: "2.1"
+  description: |
+    REST API powering the Hockey for Juniors (HJ) tournament app.
+
+    **Base URL (production):** `https://p01--hj-api--wlt9xynp45bk.code.run`
+
+    **Auth:** Admin endpoints require a Bearer session token obtained via the
+    `/api/auth/magic-link` → `/api/auth/verify` flow. Pass it as
+    `Authorization: Bearer <token>` on all `/api/admin/*` requests.
+
+    **Rate limiting:** 120 requests per 60-second window per IP.
+    Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`,
+    and `X-RateLimit-Reset` headers.
+
+servers:
+  - url: https://p01--hj-api--wlt9xynp45bk.code.run
+    description: Production (Northflank)
+  - url: http://localhost:8787
+    description: Local development
+
+tags:
+  - name: Public
+    description: Public read-only endpoints (no authentication required)
+  - name: Auth
+    description: Magic-link authentication flow
+  - name: Admin
+    description: Admin CRUD endpoints (Bearer token required)
+
+# ─────────────────────────────────────────────────────────
+# Reusable components
+# ─────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    OkEnvelope:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        data:
+          description: Payload (varies by endpoint)
+
+    ErrorEnvelope:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+
+    Tournament:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          example: hj-indoor-allstars-2025
+        name:
+          type: string
+          example: HJ Indoor All-Stars 2025
+
+    Group:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          example: U12
+        label:
+          type: string
+          example: U12 Boys
+
+    FixtureRow:
+      type: object
+      properties:
+        Date:
+          type: string
+          format: date
+          example: "2026-01-08"
+        Time:
+          type: string
+          example: "10:00"
+        Team1:
+          type: string
+          example: Purple Panthers Amber
+        Team2:
+          type: string
+          example: Knights Orange
+        Score1:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 3
+        Score2:
+          oneOf:
+            - type: integer
+            - type: string
+          example: 1
+        Pool:
+          type: string
+          example: A
+        Venue:
+          type: string
+          example: Beaulieu College
+        Round:
+          type: string
+          example: Round 1
+        Status:
+          type: string
+          example: Final
+        Age:
+          type: string
+          example: U12
+        ageId:
+          type: string
+          example: U12
+
+    StandingsRow:
+      type: object
+      properties:
+        Team:
+          type: string
+          example: Purple Panthers Amber
+        Rank:
+          type: integer
+          example: 1
+        Points:
+          type: integer
+          example: 9
+        GF:
+          type: integer
+        GA:
+          type: integer
+        GD:
+          type: integer
+        GP:
+          type: integer
+        W:
+          type: integer
+        D:
+          type: integer
+        L:
+          type: integer
+        Pool:
+          type: string
+        Age:
+          type: string
+        ageId:
+          type: string
+
+    Announcement:
+      type: object
+      required: [id, title, body, severity]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, alert, success]
+        tournament_id:
+          type: string
+          nullable: true
+        is_published:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Venue:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Beaulieu College
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid Bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ServerError:
+      description: Internal server / database error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+# ─────────────────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────────────────
+paths:
+
+  /health:
+    get:
+      tags: [Public]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  service:
+                    type: string
+                    example: hj-api
+
+  /version:
+    get:
+      tags: [Public]
+      summary: Build version info
+      operationId: getVersion
+      responses:
+        "200":
+          description: Git SHA and provider mode
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  sha:
+                    type: string
+                    example: a1b2c3d
+                  provider:
+                    type: string
+                    enum: [db, apps]
+
+  /api/meta:
+    get:
+      tags: [Public]
+      summary: Data freshness — last ingest timestamp
+      operationId: getMeta
+      responses:
+        "200":
+          description: Timestamp of the most recent data ingest
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  last_sync_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/tournaments:
+    get:
+      tags: [Public]
+      summary: List all tournaments
+      operationId: getTournaments
+      responses:
+        "200":
+          description: Array of tournaments ordered by creation date (newest first)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Tournament"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/announcements:
+    get:
+      tags: [Public]
+      summary: List published, non-expired announcements
+      operationId: getAnnouncements
+      parameters:
+        - name: tournamentId
+          in: query
+          required: false
+          description: |
+            Filter to global + tournament-specific announcements.
+            Omit to receive global-only announcements.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active announcements
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Announcement"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api:
+    get:
+      tags: [Public]
+      summary: Fixtures, standings, or groups data
+      operationId: getSheetData
+      description: |
+        Multiplex endpoint — the `sheet` parameter selects the dataset.
+
+        | sheet value    | Returns                         | Extra params   |
+        |----------------|---------------------------------|----------------|
+        | `Fixtures`     | Fixtures for one age group      | `age` required |
+        | `Standings`    | Standings for one age group     | `age` required |
+        | `Fixtures_All` | All fixtures across age groups  | —              |
+        | `Standings_All`| All standings across age groups | —              |
+        | _(omit sheet)_ | Pass `groups=1` to get groups   | —              |
+
+      parameters:
+        - name: sheet
+          in: query
+          description: Dataset selector (`Fixtures`, `Standings`, `Fixtures_All`, `Standings_All`)
+          schema:
+            type: string
+            enum: [Fixtures, Standings, Fixtures_All, Standings_All]
+        - name: age
+          in: query
+          description: Age group ID (required when sheet is `Fixtures` or `Standings`)
+          schema:
+            type: string
+            example: U12
+        - name: tournamentId
+          in: query
+          description: Override the default tournament. Defaults to the server's `TOURNAMENT_ID` env var.
+          schema:
+            type: string
+        - name: groups
+          in: query
+          description: Set to `1` to retrieve age groups for the tournament (ignores `sheet`)
+          schema:
+            type: string
+            enum: ["1"]
+      responses:
+        "200":
+          description: Fixture rows, standings rows, or groups list
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - description: Fixtures / Fixtures_All response
+                    type: object
+                    properties:
+                      rows:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/FixtureRow"
+                  - description: Standings / Standings_All response
+                    type: object
+                    properties:
+                      rows:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/StandingsRow"
+                  - description: Groups response (when groups=1)
+                    type: object
+                    properties:
+                      groups:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Group"
+        "400":
+          description: Missing or invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/auth/magic-link:
+    post:
+      tags: [Auth]
+      summary: Request a magic sign-in link
+      operationId: requestMagicLink
+      description: |
+        Always returns 200 regardless of whether the email is on the allowlist,
+        to prevent user enumeration. If the email is allowlisted, an email is sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@example.com
+      responses:
+        "200":
+          description: Generic confirmation (email may or may not have been sent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "If that email is registered, you'll receive a sign-in link shortly."
+        "400":
+          description: Missing email field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/verify:
+    post:
+      tags: [Auth]
+      summary: Verify magic token and obtain session Bearer token
+      operationId: verifyMagicToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: 64-character hex token from the magic link URL
+      responses:
+        "200":
+          description: Session token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    description: Bearer token to use for admin requests (8-hour TTL)
+                  expiresAt:
+                    type: string
+                    format: date-time
+        "400":
+          description: Missing token field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Token invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/admin/announcements:
+    get:
+      tags: [Admin]
+      summary: List all announcements (admin)
+      operationId: adminListAnnouncements
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: All announcements including unpublished
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Announcement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      tags: [Admin]
+      summary: Create an announcement
+      operationId: adminCreateAnnouncement
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title:
+                  type: string
+                body:
+                  type: string
+                severity:
+                  type: string
+                  enum: [info, warning, alert, success]
+                  default: info
+                tournament_id:
+                  type: string
+                  nullable: true
+                  description: Omit or set to `"general"` for a global announcement
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        "201":
+          description: Announcement created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Announcement"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/announcements/{id}:
+    put:
+      tags: [Admin]
+      summary: Update an announcement
+      operationId: adminUpdateAnnouncement
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title:
+                  type: string
+                body:
+                  type: string
+                severity:
+                  type: string
+                  enum: [info, warning, alert, success]
+                refresh_date:
+                  type: boolean
+                  description: If true, resets `created_at` to now (re-surfaces the announcement)
+      responses:
+        "200":
+          description: Announcement updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkEnvelope"
+        "400":
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    delete:
+      tags: [Admin]
+      summary: Delete an announcement
+      operationId: adminDeleteAnnouncement
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Announcement deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  deleted:
+                    type: string
+                    description: ID of the deleted announcement
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/fixtures:
+    get:
+      tags: [Admin]
+      summary: List fixtures for a group (admin)
+      operationId: adminGetFixtures
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Fixture list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/FixtureRow"
+        "400":
+          description: Missing tournamentId or groupId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/results:
+    put:
+      tags: [Admin]
+      summary: Upsert a fixture result
+      operationId: adminUpsertResult
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tournament_id, fixture_id]
+              properties:
+                tournament_id:
+                  type: string
+                fixture_id:
+                  type: string
+                score1:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 99
+                score2:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 99
+      responses:
+        "200":
+          description: Result saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkEnvelope"
+        "400":
+          description: Invalid score values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Fixture not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/venues:
+    get:
+      tags: [Admin]
+      summary: List venues
+      operationId: adminGetVenues
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Venue list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Venue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/tournament-wizard:
+    post:
+      tags: [Admin]
+      summary: Create a complete tournament (wizard)
+      operationId: adminCreateTournament
+      security:
+        - BearerAuth: []
+      description: |
+        Creates a tournament with all associated venues, groups, teams, and
+        fixtures in a single database transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tournament, venues, groups, franchises, teams, fixtures]
+              properties:
+                tournament:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    season:
+                      type: string
+                venues:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                groups:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, label]
+                    properties:
+                      id:
+                        type: string
+                      label:
+                        type: string
+                      format:
+                        type: string
+                franchises:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                teams:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      group_id:
+                        type: string
+                      name:
+                        type: string
+                      franchise_name:
+                        type: string
+                      is_placeholder:
+                        type: boolean
+                fixtures:
+                  type: array
+                  items:
+                    type: object
+                    required: [group_id, date, pool, team1, team2]
+                    properties:
+                      group_id:
+                        type: string
+                      date:
+                        type: string
+                        format: date
+                      time:
+                        type: string
+                      venue:
+                        type: string
+                      round:
+                        type: string
+                      pool:
+                        type: string
+                      team1:
+                        type: string
+                      team2:
+                        type: string
+      responses:
+        "201":
+          description: Tournament created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  tournament_id:
+                    type: string
+        "400":
+          description: Validation error (missing fields, duplicate fixtures, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/audit-log:
+    get:
+      tags: [Admin]
+      summary: List audit log entries
+      operationId: adminGetAuditLog
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit log entries (most recent 50)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            actor_email:
+                              type: string
+                            action:
+                              type: string
+                            tournament_id:
+                              type: string
+                              nullable: true
+                            detail:
+                              type: string
+                              nullable: true
+                            created_at:
+                              type: string
+                              format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/allowlist:
+    get:
+      tags: [Admin]
+      summary: List allowlisted admin emails
+      operationId: adminGetAllowlist
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Allowlist entries
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkEnvelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                            note:
+                              type: string
+                            added_at:
+                              type: string
+                              format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      tags: [Admin]
+      summary: Add an email to the allowlist
+      operationId: adminAddAllowlist
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                note:
+                  type: string
+      responses:
+        "201":
+          description: Email added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  email:
+                    type: string
+        "400":
+          description: Missing email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/admin/allowlist/{email}:
+    delete:
+      tags: [Admin]
+      summary: Remove an email from the allowlist
+      operationId: adminDeleteAllowlist
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+          description: URL-encoded email address
+      responses:
+        "200":
+          description: Email removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  deleted:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
