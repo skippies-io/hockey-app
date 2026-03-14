@@ -58,6 +58,7 @@ export default function AppLayout({
   return (
     <FilterSlotContext.Provider value={filterContext}>
       <div className="app-shell min-h-screen bg-gray-50 flex flex-col">
+        <a href="#main-content" className="skip-nav">Skip to main content</a>
         <div className="app-shell-inner flex flex-col flex-1">
           <header className="app-header">
             <div className="app-header-top">
@@ -102,9 +103,14 @@ export default function AppLayout({
                   </div>
                 )}
                 <div className="app-nav-row">
-                  <nav className="pills">
+                  <nav className="pills" aria-label="Main navigation">
                     {navLinks.map((link) => (
-                      <Link key={link.key} className={`pill ${currentTab === link.key ? "is-active" : ""}`} to={link.to}>
+                      <Link
+                        key={link.key}
+                        className={`pill ${currentTab === link.key ? "is-active" : ""}`}
+                        to={link.to}
+                        aria-current={currentTab === link.key ? "page" : undefined}
+                      >
                         {link.label}
                       </Link>
                     ))}
@@ -134,7 +140,7 @@ export default function AppLayout({
             )}
           </div>
 
-          <main className="app-main flex-1" style={{ paddingTop: hasAnnouncements ? '4px' : '12px' }}>
+          <main id="main-content" className="app-main flex-1" style={{ paddingTop: hasAnnouncements ? '4px' : '12px' }}>
             {children}
           </main>
 

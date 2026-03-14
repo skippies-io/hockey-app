@@ -105,6 +105,7 @@ export default function FixtureCard({
         role={expandable ? "button" : undefined}
         tabIndex={expandable ? 0 : undefined}
         aria-expanded={expandable ? isExpanded : undefined}
+        aria-label={expandable ? `${homeName} vs ${awayName} — tap to ${isExpanded ? 'collapse' : 'expand'} details` : undefined}
         onClick={expandable ? toggleExpand : undefined}
         onKeyDown={expandable ? onKeyToggle : undefined}
       >

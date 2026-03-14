@@ -10,11 +10,15 @@ export default function TournamentSwitcher() {
 
   return (
     <div className="tournament-switcher" style={{ display: 'flex', alignItems: 'center', gap: 'var(--hj-space-2)' }}>
-      <span style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-ink-muted)', fontWeight: 'var(--hj-font-weight-medium)' }}>
+      <label
+        htmlFor="tournament-switcher-select"
+        style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-ink-muted)', fontWeight: 'var(--hj-font-weight-medium)' }}
+      >
         Select Tournament:
-      </span>
-      <select 
-        value={activeTournamentId || ""} 
+      </label>
+      <select
+        id="tournament-switcher-select"
+        value={activeTournamentId || ""}
         onChange={(e) => setActiveTournamentId(e.target.value)}
         className="hj-input tournament-select"
         style={{ 

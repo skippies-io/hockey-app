@@ -18,6 +18,24 @@ body {
   box-sizing: border-box;
 }
 
+/* Skip navigation link — visually hidden until focused */
+.skip-nav {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: var(--hj-space-2) var(--hj-space-4);
+  background: var(--hj-color-brand);
+  color: var(--hj-color-ink);
+  font-weight: var(--hj-font-weight-semibold);
+  text-decoration: none;
+  border-radius: 0 0 var(--hj-radius-sm) 0;
+  transition: top var(--hj-duration-fast);
+}
+.skip-nav:focus {
+  top: 0;
+}
+
 /* ===== Focus-visible (keyboard navigation) =====
  * Suppress the browser default outline for mouse/touch users while
  * keeping a clear indicator for keyboard and assistive-technology users.
