@@ -26,6 +26,7 @@ import AppLayout from "./components/AppLayout";
 import TeamProfile from "./views/TeamProfile";
 import Overview from "./views/Overview";
 import Franchises from "./views/Franchises";
+import Tournaments from "./views/Tournaments";
 import { useFilterSlot } from "./components/filterSlotContext";
 import DebugInfo from "./components/DebugInfo";
 
@@ -542,6 +543,7 @@ export default function App() {
           />
           <Route path="feedback" element={<Feedback />} />
           <Route path="franchises" element={<Franchises />} />
+          <Route path="tournaments" element={<Tournaments />} />
           <Route path=":ageId/team/:teamId" element={<TeamProfile />} />
           <Route
             path=":ageId/*"

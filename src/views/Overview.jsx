@@ -64,11 +64,22 @@ export default function Overview({ groups = [] }) {
       <div className="page-section">
           <h2 className="hj-section-header-title">Explore</h2>
           <div className="cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-              <div 
-                className="hj-card" 
-                role="button" 
+              <div
+                className="hj-card"
+                role="button"
                 tabIndex="0"
-                onClick={() => navigate('/franchises')} 
+                onClick={() => navigate('/tournaments')}
+                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/tournaments'); }}
+                style={{ cursor: 'pointer' }}
+              >
+                  <h3 className="font-bold mb-2">Tournaments</h3>
+                  <p className="text-sm text-gray-500">Browse all tournaments.</p>
+              </div>
+              <div
+                className="hj-card"
+                role="button"
+                tabIndex="0"
+                onClick={() => navigate('/franchises')}
                 onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/franchises'); }}
                 style={{ cursor: 'pointer' }}
               >

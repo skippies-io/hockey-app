@@ -181,6 +181,12 @@ export function getCachedLastSyncAt() {
   }
 }
 
+export async function getTournaments() {
+  const url = tournamentsEndpoint();
+  const j = await fetchJSON(url, { retry: true });
+  return j.data || [];
+}
+
 export async function getAnnouncements(tournamentId) {
   const t = tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : "";
   const url = `${API_BASE}/announcements${t}`;
