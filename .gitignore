@@ -45,3 +45,7 @@ coverage/
 
 # local env files
 .env*.local
+
+# Playwright
+playwright-report/
+test-results/
