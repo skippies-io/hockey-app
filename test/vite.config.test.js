@@ -27,3 +27,37 @@ describe("vite config base path", () => {
     });
   });
 });
+
+describe("vite config manualChunks", () => {
+  async function getManualChunks() {
+    delete process.env.VITE_BASE_PATH;
+    const mod = await loadConfig();
+    const result = mod({ mode: "production" });
+    return result.build.rollupOptions.output.manualChunks;
+  }
+
+  it("returns undefined for non-node_modules paths", async () => {
+    const fn = await getManualChunks();
+    expect(fn("/Users/dev/src/components/App.jsx")).toBeUndefined();
+  });
+
+  it("assigns react-dom to vendor-react chunk", async () => {
+    const fn = await getManualChunks();
+    expect(fn("/node_modules/react-dom/index.js")).toBe("vendor-react");
+  });
+
+  it("assigns react-router to vendor-router chunk", async () => {
+    const fn = await getManualChunks();
+    expect(fn("/node_modules/react-router/index.js")).toBe("vendor-router");
+  });
+
+  it("assigns react (not react-dom/react-router) to vendor-react chunk", async () => {
+    const fn = await getManualChunks();
+    expect(fn("/node_modules/react/index.js")).toBe("vendor-react");
+  });
+
+  it("returns undefined for other node_modules", async () => {
+    const fn = await getManualChunks();
+    expect(fn("/node_modules/lodash/lodash.js")).toBeUndefined();
+  });
+});

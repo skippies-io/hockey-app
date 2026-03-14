@@ -78,6 +78,12 @@ describe('AnnouncementBanner', () => {
     expect(warning.style.backgroundColor).toBe('var(--hj-color-warning-soft)');
     expect(success.style.backgroundColor).toBe('var(--hj-color-success-soft)');
   });
+  it('falls back to info styles for unknown severity', () => {
+    render(<AnnouncementBanner announcements={[{ id: '1', title: 'X', body: 'b', severity: 'unknown' }]} />);
+    const banner = screen.getByText('X').closest('[role="alert"]');
+    expect(banner.style.backgroundColor).toBe('var(--hj-color-info-soft)');
+  });
+
   it('is resilient to corrupted localStorage', () => {
     localStorage.setItem('hj_dismissed_announcements', 'invalid-json');
     render(<AnnouncementBanner announcements={mockAnnouncements} />);
