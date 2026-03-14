@@ -34,44 +34,47 @@ export default function AnnouncementBanner({ announcements }) {
     setVisible(visible.filter(a => a.id !== id));
   }
 
-  // Standard CSS mapping for severities
+  // Severity → design token mapping
+  const SEVERITY_TOKENS = {
+    info:    { bg: 'var(--hj-color-info-soft)',    text: 'var(--hj-color-info-ink)',    border: 'var(--hj-color-info-soft)' },
+    alert:   { bg: 'var(--hj-color-danger-soft)',  text: 'var(--hj-color-danger-ink)',  border: 'var(--hj-color-danger-soft)' },
+    warning: { bg: 'var(--hj-color-warning-soft)', text: 'var(--hj-color-warning-ink)', border: 'var(--hj-color-warning-soft)' },
+    success: { bg: 'var(--hj-color-success-soft)', text: 'var(--hj-color-success-ink)', border: 'var(--hj-color-success-soft)' },
+  };
+
   const styles = {
-    container: { display: 'flex', flexDirection: 'column', width: '100%', gap: '4px' },
+    container: { display: 'flex', flexDirection: 'column', width: '100%', gap: 'var(--hj-space-1)' },
     banner: (severity) => {
-      let colors = { bg: '#eff6ff', text: '#1e40af', border: '#dbeafe' };
-      if (severity === 'alert') colors = { bg: '#fef2f2', text: '#991b1b', border: '#fee2e2' };
-      if (severity === 'warning') colors = { bg: '#fff7ed', text: '#9a3412', border: '#ffedd5' };
-      if (severity === 'success') colors = { bg: '#ecfdf5', text: '#065f46', border: '#d1fae5' };
-      
+      const colors = SEVERITY_TOKENS[severity] ?? SEVERITY_TOKENS.info;
       return {
         display: 'flex',
-        alignItems: 'flex-start', // allow multi-line alignment
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
-        padding: '10px 16px',
+        padding: '10px var(--hj-space-4)',
         fontSize: '13px',
         borderRadius: '8px',
         border: `1px solid ${colors.border}`,
         backgroundColor: colors.bg,
         color: colors.text,
-        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-        minHeight: '40px', // Ensure minimum touch target
+        boxShadow: 'var(--hj-shadow-sm)',
+        minHeight: 'var(--hj-space-8)',
       };
     },
-    title: { fontWeight: '800', marginRight: '8px', flexShrink: 0 },
-    body: { flex: 1, opacity: 0.9, wordBreak: 'break-word', lineHeight: '1.4' },
-    closeBtn: { 
-      background: 'none', 
-      border: 'none', 
-      cursor: 'pointer', 
-      fontSize: '20px', 
-      lineHeight: '1', 
-      padding: '0 4px', 
-      color: 'inherit', 
-      opacity: 0.5, 
+    title: { fontWeight: '800', marginRight: 'var(--hj-space-2)', flexShrink: 0 },
+    body: { flex: 1, opacity: 0.9, wordBreak: 'break-word', lineHeight: 'var(--hj-line-height-default)' },
+    closeBtn: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: 'var(--hj-font-size-lg)',
+      lineHeight: '1',
+      padding: 'var(--hj-space-0) var(--hj-space-1)',
+      color: 'inherit',
+      opacity: 0.5,
       fontWeight: 'bold',
       marginTop: '-2px', // optical alignment
-      marginLeft: '8px'
-    }
+      marginLeft: 'var(--hj-space-2)',
+    },
   };
 
   return (

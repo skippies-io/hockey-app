@@ -49,6 +49,18 @@ export default defineConfig(({ mode }) => {
         reportsDirectory: 'coverage',
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (!id.includes('node_modules')) return;
+            if (id.includes('react-dom')) return 'vendor-react';
+            if (id.includes('react-router')) return 'vendor-router';
+            if (id.includes('react')) return 'vendor-react';
+          },
+        },
+      },
+    },
     server: {
       hmr: { path: basePath },
       allowedHosts: true,      // ← allow all external tunneling hosts

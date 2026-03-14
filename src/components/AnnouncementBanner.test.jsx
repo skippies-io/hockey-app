@@ -73,11 +73,17 @@ describe('AnnouncementBanner', () => {
     const warning = screen.getByText('Warning').closest('[role="alert"]');
     const success = screen.getByText('Success').closest('[role="alert"]');
 
-    expect(info.style.backgroundColor).toBe('rgb(239, 246, 255)');
-    expect(alert.style.backgroundColor).toBe('rgb(254, 242, 242)');
-    expect(warning.style.backgroundColor).toBe('rgb(255, 247, 237)');
-    expect(success.style.backgroundColor).toBe('rgb(236, 253, 245)');
+    expect(info.style.backgroundColor).toBe('var(--hj-color-info-soft)');
+    expect(alert.style.backgroundColor).toBe('var(--hj-color-danger-soft)');
+    expect(warning.style.backgroundColor).toBe('var(--hj-color-warning-soft)');
+    expect(success.style.backgroundColor).toBe('var(--hj-color-success-soft)');
   });
+  it('falls back to info styles for unknown severity', () => {
+    render(<AnnouncementBanner announcements={[{ id: '1', title: 'X', body: 'b', severity: 'unknown' }]} />);
+    const banner = screen.getByText('X').closest('[role="alert"]');
+    expect(banner.style.backgroundColor).toBe('var(--hj-color-info-soft)');
+  });
+
   it('is resilient to corrupted localStorage', () => {
     localStorage.setItem('hj_dismissed_announcements', 'invalid-json');
     render(<AnnouncementBanner announcements={mockAnnouncements} />);
