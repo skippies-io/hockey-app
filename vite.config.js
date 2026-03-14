@@ -34,6 +34,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'jsdom',
+      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
       environmentMatchGlobs: [
         ['test/server/**', 'node'],
       ],
