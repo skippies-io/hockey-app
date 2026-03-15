@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DigestPage from "./DigestPage";
@@ -201,6 +201,17 @@ describe("DigestPage – revoke", () => {
       expect.objectContaining({ method: "DELETE" })
     );
   });
+
+  it("shows alert when revoke fetch rejects", async () => {
+    const alertSpy = vi.spyOn(globalThis, "alert").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({ ok: true, json: async () => SAMPLE_LINKS })
+      .mockRejectedValueOnce(new Error("Delete failed"));
+    renderPage();
+    await screen.findByText("Active");
+    fireEvent.click(screen.getByRole("button", { name: /Revoke share link link-1/i }));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining("Delete failed")));
+  });
 });
 
 // ── Create form ────────────────────────────────────────────────────────────
@@ -265,6 +276,42 @@ describe("DigestPage – create form", () => {
     fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
 
     expect(await screen.findByText("Server down")).toBeTruthy();
+  });
+
+  it("updates age_id field on change", async () => {
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    const ageInput = screen.getByLabelText(/Age Group/i);
+    fireEvent.change(ageInput, { target: { value: "U12" } });
+    expect(ageInput.value).toBe("U12");
+  });
+
+  it("updates label field on change", async () => {
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    const labelInput = screen.getByLabelText(/Label/i);
+    fireEvent.change(labelInput, { target: { value: "Parent View" } });
+    expect(labelInput.value).toBe("Parent View");
+  });
+
+  it("clicking share URL input selects the text", async () => {
+    const fakeToken = "d".repeat(64);
+    mockFetch([
+      EMPTY_LIST,
+      { ok: true, token: fakeToken, expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() },
+      EMPTY_LIST,
+    ]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    fireEvent.change(screen.getByLabelText(/Tournament ID/i), { target: { value: "t-1" } });
+    fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
+    await screen.findByText(/Copy it now/i);
+    const urlInput = screen.getByLabelText("Share URL");
+    const selectSpy = vi.spyOn(urlInput, "select");
+    fireEvent.click(urlInput);
+    expect(selectSpy).toHaveBeenCalled();
   });
 
   it("clears form fields after successful create", async () => {
