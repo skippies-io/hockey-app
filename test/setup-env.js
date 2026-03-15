@@ -1,3 +1,5 @@
+import { afterEach } from 'vitest';
+
 process.env.VITEST = '1';
 process.env.NODE_ENV = 'test';
 
@@ -19,3 +21,14 @@ if (typeof localStorage !== 'undefined' && typeof localStorage.clear !== 'functi
     configurable: true,
   });
 }
+
+// Clear browser storage APIs after each test to prevent cross-test state bleed.
+// Runs in jsdom environments only; node-environment tests skip gracefully.
+afterEach(() => {
+  if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
+    localStorage.clear();
+  }
+  if (typeof sessionStorage !== 'undefined' && typeof sessionStorage.clear === 'function') {
+    sessionStorage.clear();
+  }
+});
