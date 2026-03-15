@@ -3,6 +3,21 @@ import { getCachedLastSyncAt, getMeta } from '../lib/api';
 
 const STALE_WARN_MS = 15 * 60 * 1000; // 15 minutes
 
+function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const setOnline = () => setIsOnline(true);
+    const setOffline = () => setIsOnline(false);
+    window.addEventListener('online', setOnline);
+    window.addEventListener('offline', setOffline);
+    return () => {
+      window.removeEventListener('online', setOnline);
+      window.removeEventListener('offline', setOffline);
+    };
+  }, []);
+  return isOnline;
+}
+
 function formatRelative(msAgo) {
   if (msAgo < 60_000) return 'just now';
   const mins = Math.round(msAgo / 60_000);
@@ -12,6 +27,7 @@ function formatRelative(msAgo) {
 }
 
 export default function DataFreshness() {
+  const isOnline = useOnlineStatus();
   const [lastSyncAt, setLastSyncAt] = useState(() => getCachedLastSyncAt());
   const [err, setErr] = useState('');
 
@@ -40,22 +56,25 @@ export default function DataFreshness() {
     return { ok: true, date: d };
   }, [lastSyncAt]);
 
-  if (!parsed.ok) return null;
+  if (!parsed.ok && isOnline) return null;
 
-  const ageMs = Date.now() - parsed.date.getTime();
-  const stale = ageMs > STALE_WARN_MS;
+  const ageMs = parsed.ok ? Date.now() - parsed.date.getTime() : null;
+  const stale = ageMs !== null && ageMs > STALE_WARN_MS;
+  const danger = !isOnline || stale;
 
   return (
     <div
       style={{
         marginTop: '6px',
         fontSize: '12px',
-        color: stale ? 'var(--hj-color-danger, #b91c1c)' : 'var(--hj-color-text-secondary, #555)',
+        color: danger ? 'var(--hj-color-danger, #b91c1c)' : 'var(--hj-color-text-secondary, #555)',
       }}
       aria-label="Data freshness"
-      title={err ? `Freshness fetch error: ${err}` : parsed.date.toISOString()}
+      title={err ? `Freshness fetch error: ${err}` : (parsed.ok ? parsed.date.toISOString() : '')}
     >
-      Last updated {formatRelative(ageMs)}
+      {!isOnline && 'Offline'}
+      {!isOnline && parsed.ok && ' • '}
+      {parsed.ok && `Last updated ${formatRelative(ageMs)}`}
       {stale ? ' (stale)' : ''}
     </div>
   );
