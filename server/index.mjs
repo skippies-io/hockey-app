@@ -6,6 +6,7 @@ import { handleAdminRequest } from "./admin.mjs";
 import { handleMagicLinkRequest, handleVerifyRequest } from "./auth-routes.mjs";
 import { verifySession } from "./auth.mjs";
 import { applySecurityHeaders, safeErrorMessage } from "./security.mjs";
+import { generateICS } from "./ics.mjs";
 
 const PORT = Number(process.env.PORT) || 8787;
 const API_PATH = "/api";
@@ -689,6 +690,41 @@ export const requestHandler = async (req, res) => {
 
       const query = `SELECT id, name, season FROM tournament ORDER BY created_at DESC`;
       await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
+      return;
+    }
+
+    // ICS Calendar Export
+    if (url.pathname === "/api/fixtures.ics") {
+      applyCors(req, res);
+      if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+      if (req.method !== "GET" && !isHead) {
+        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+        return;
+      }
+      if (PROVIDER_MODE !== "db" || !pool) {
+        sendJson(req, res, 501, { ok: false, error: "Not implemented" });
+        return;
+      }
+      const icsAgeId = url.searchParams.get("age") || "";
+      const icsTournamentId = url.searchParams.get("tournamentId") || TOURNAMENT_ID;
+      try {
+        const payload = icsAgeId && icsAgeId !== "all"
+          ? await getFixturesPayload(icsAgeId, icsTournamentId)
+          : await getFixturesAllPayload(icsTournamentId);
+        const calName = icsAgeId && icsAgeId !== "all"
+          ? `Hockey Fixtures – ${icsAgeId}`
+          : "Hockey Fixtures";
+        const icsContent = generateICS(payload.rows, calName);
+        res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+        res.setHeader("Content-Disposition", 'attachment; filename="fixtures.ics"');
+        res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
+        res.writeHead(200);
+        if (isHead) { res.end(); return; }
+        res.end(icsContent);
+      } catch (e) {
+        console.error(e);
+        sendJson(req, res, 500, { ok: false, error: safeErrorMessage(e) });
+      }
       return;
     }
 

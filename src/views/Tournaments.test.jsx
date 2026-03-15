@@ -76,6 +76,19 @@ describe('Tournaments view', () => {
     await waitFor(() => expect(screen.getByText(/error loading tournaments/i)).toBeTruthy());
   });
 
+  it('loading state has role=status', () => {
+    getTournaments.mockReturnValue(new Promise(() => {}));
+    renderTournaments();
+    expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('error state has role=alert', async () => {
+    getTournaments.mockRejectedValue(new Error('Network error'));
+    renderTournaments();
+    await screen.findByText(/error loading tournaments/i);
+    expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
   it('renders "Tournament Directory" heading on success', async () => {
     getTournaments.mockResolvedValue([{ id: 't1', name: 'Cup', season: '2025' }]);
     renderTournaments();
