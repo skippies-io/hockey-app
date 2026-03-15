@@ -515,6 +515,121 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(res.writeHead).toHaveBeenCalledWith(204);
     });
 
+    it('GET /api/fixtures.ics returns ICS content for a specific age group', async () => {
+        mocks.query.mockResolvedValueOnce({
+            rows: [{
+                date: '2026-03-15', time: '10:00',
+                team1: 'Tigers', team2: 'Lions',
+                score1: null, score2: null,
+                result_status: null, alert_message: null,
+                pool: 'A', venue: 'Pitch 1', round: 'Round 1', age: 'U12',
+            }],
+        });
+
+        const req = {
+            method: 'GET',
+            url: '/api/fixtures.ics?age=U12&tournamentId=t1',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/calendar; charset=utf-8');
+        expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="fixtures.ics"');
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const body = res.end.mock.calls[0][0];
+        expect(body).toContain('BEGIN:VCALENDAR');
+        expect(body).toContain('Tigers vs Lions');
+    });
+
+    it('GET /api/fixtures.ics returns all fixtures when age=all', async () => {
+        mocks.query.mockResolvedValueOnce({
+            rows: [
+                { date: '2026-03-15', time: '09:00', team1: 'A', team2: 'B', score1: null, score2: null, result_status: null, alert_message: null, pool: '', venue: '', round: '', age: 'U12' },
+                { date: '2026-03-15', time: '11:00', team1: 'C', team2: 'D', score1: null, score2: null, result_status: null, alert_message: null, pool: '', venue: '', round: '', age: 'U14' },
+            ],
+        });
+
+        const req = {
+            method: 'GET',
+            url: '/api/fixtures.ics?age=all&tournamentId=t1',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const body = res.end.mock.calls[0][0];
+        expect(body.split('BEGIN:VEVENT').length - 1).toBe(2);
+    });
+
+    it('GET /api/fixtures.ics returns all fixtures when no age param', async () => {
+        mocks.query.mockResolvedValueOnce({ rows: [] });
+
+        const req = {
+            method: 'GET',
+            url: '/api/fixtures.ics',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const body = res.end.mock.calls[0][0];
+        expect(body).toContain('BEGIN:VCALENDAR');
+    });
+
+    it('POST /api/fixtures.ics returns 405', async () => {
+        const req = {
+            method: 'POST',
+            url: '/api/fixtures.ics',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(405);
+    });
+
+    it('GET /api/fixtures.ics returns 500 on DB error', async () => {
+        mocks.query.mockRejectedValueOnce(new Error('DB down'));
+
+        const req = {
+            method: 'GET',
+            url: '/api/fixtures.ics?age=U12',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(500);
+    });
+
+    it('OPTIONS /api/fixtures.ics returns 204 for CORS preflight', async () => {
+        const req = {
+            method: 'OPTIONS',
+            url: '/api/fixtures.ics',
+            headers: { host: 'localhost', origin: 'http://localhost:5173' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'http://localhost:5173');
+        expect(res.writeHead).toHaveBeenCalledWith(204);
+    });
+
     it('POST /api/tournaments returns 405 Method Not Allowed', async () => {
         const req = {
             method: 'POST',

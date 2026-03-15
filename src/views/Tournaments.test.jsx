@@ -96,9 +96,9 @@ describe('Tournaments view', () => {
 
   it('error card has role=alert', async () => {
     getTournaments.mockRejectedValue(new Error('Network error'));
-    const { container } = renderTournaments();
-    await waitFor(() => container.querySelector('[role="alert"]'));
-    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    renderTournaments();
+    await screen.findByText(/error loading tournaments/i);
+    expect(screen.getByRole('alert')).toBeTruthy();
   });
 
   it('renders "Tournament Directory" heading on success', async () => {

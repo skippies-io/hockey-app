@@ -276,9 +276,9 @@ export default function TeamProfile() {
               {ageId ? "Team not specified." : "Age group not specified."}
             </div>
           ) : err ? (
-            <div className="text-red-600">Error: {err}</div>
+            <div role="alert" className="text-red-600">Error: {err}</div>
           ) : loadingData ? (
-            <div>Loading team…</div>
+            <div role="status">Loading team…</div>
           ) : (
             <>
               <div className="hj-team-hero-top hj-team-hero__stack">

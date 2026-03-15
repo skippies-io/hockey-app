@@ -38,7 +38,7 @@ export default function Franchises() {
     return (
       <div className="page-stack">
         <PageHeading title="Franchises" />
-        <Card>Loading franchises...</Card>
+        <Card role="status">Loading franchises...</Card>
       </div>
     );
   }
@@ -47,7 +47,7 @@ export default function Franchises() {
     return (
         <div className="page-stack">
            <PageHeading title="Franchises" />
-           <Card className="text-red-600">Error loading franchises.</Card>
+           <Card role="alert" className="text-red-600">Error loading franchises.</Card>
          </div>
     );
   }
