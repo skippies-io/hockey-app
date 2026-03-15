@@ -141,4 +141,16 @@ describe("DigestShare – valid token", () => {
     renderShare();
     expect(await screen.findByText(/U12 Digest/i)).toBeTruthy();
   });
+
+  it("shows standings error when getStandingsRows rejects", async () => {
+    apiMocks.getStandingsRows.mockRejectedValue(new Error("Standings unavailable"));
+    renderShare();
+    expect(await screen.findByText(/Standings unavailable/i)).toBeTruthy();
+  });
+
+  it("shows fixtures error when getFixturesRows rejects", async () => {
+    apiMocks.getFixturesRows.mockRejectedValue(new Error("Fixtures unavailable"));
+    renderShare();
+    expect(await screen.findByText(/Fixtures unavailable/i)).toBeTruthy();
+  });
 });
