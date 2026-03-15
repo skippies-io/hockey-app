@@ -38,10 +38,22 @@ export default defineConfig(({ mode }) => {
       environmentMatchGlobs: [
         ['test/server/**', 'node'],
       ],
+      // Server tests (Node env, mocked pg) run in lighter vmThreads pool.
+      // Front-end tests keep forks for jsdom isolation.
+      poolMatchGlobs: [
+        ['test/server/**', 'vmThreads'],
+      ],
       setupFiles: ['test/setup-env.js'],
+      clearMocks: true,
+      restoreMocks: true,
       pool: 'forks',
       forks: {
-        maxForks: 3,
+        minForks: 1,
+        maxForks: 2,
+      },
+      vmThreads: {
+        minThreads: 1,
+        maxThreads: 2,
       },
       testTimeout: 10_000,
       coverage: {
