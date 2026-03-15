@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getGroups } from '../../lib/api';
 import { adminFetch } from '../../lib/adminAuth';
 import { useTournament } from '../../context/TournamentContext';
+import { isOverdue } from '../../lib/fixtureOverdue';
 
 function normaliseScoreInput(value) {
   if (value === '' || value == null) return '';
@@ -23,6 +24,11 @@ export default function FixturesPage() {
   const groupOptions = useMemo(
     () => (groups || []).filter((g) => g?.id && g.id !== 'all'),
     [groups]
+  );
+
+  const overdueCount = useMemo(
+    () => fixtures.filter((f) => isOverdue(f)).length,
+    [fixtures]
   );
 
   useEffect(() => {
@@ -143,6 +149,16 @@ export default function FixturesPage() {
         </div>
       )}
 
+      {overdueCount > 0 && (
+        <div
+          role="alert"
+          aria-label="Overdue fixtures"
+          style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid #b45309', background: '#fef3c7', color: '#92400e' }}
+        >
+          ⚠ {overdueCount} fixture{overdueCount > 1 ? 's' : ''} overdue — score{overdueCount > 1 ? 's' : ''} missing
+        </div>
+      )}
+
       <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <label>
           Group:{' '}
@@ -187,13 +203,26 @@ export default function FixturesPage() {
             {fixtures.map((row) => {
               const status = saveState[row.fixture_id] || '';
               const disabled = status === 'saving' || !tournamentId;
+              const overdue = isOverdue(row);
 
               return (
-                <tr key={row.fixture_id}>
+                <tr
+                  key={row.fixture_id}
+                  data-overdue={overdue ? 'true' : undefined}
+                  style={overdue ? { background: '#fef9c3' } : undefined}
+                >
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>{row.date}</td>
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>{row.time}</td>
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>
                     {row.team1} vs {row.team2}
+                    {overdue && (
+                      <span
+                        aria-label="Overdue"
+                        style={{ marginLeft: '0.5rem', fontSize: '11px', color: '#92400e', fontWeight: 600 }}
+                      >
+                        OVERDUE
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>
                     <input
