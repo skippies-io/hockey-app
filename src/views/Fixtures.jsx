@@ -5,7 +5,7 @@ import Card from "../components/Card";
 import FixtureCard from "../components/FixtureCard";
 import { useFilterSlot } from "../components/filterSlotContext";
 import FilterBar from "../components/FilterBar";
-import { getFixturesRows } from "../lib/api";
+import { getFixturesRows, getFixturesIcsUrl } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 import { useFollows, makeTeamFollowKey } from "../lib/follows";
 import { useShowFollowedPreference } from "../lib/preferences";
@@ -260,9 +260,21 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
     </label>
   );
 
+  const icsUrl = tournamentId ? getFixturesIcsUrl(tournamentId, scopedAgeId) : '';
+  const icsLink = icsUrl ? (
+    <a
+      href={icsUrl}
+      download="fixtures.ics"
+      className="btn-secondary fixtures-ics-link"
+      aria-label="Export fixtures to calendar"
+    >
+      Export .ics
+    </a>
+  ) : null;
+
   const filterBar = (
     <FilterBar
-      rightSlot={dateSelector}
+      rightSlot={<>{dateSelector}{icsLink}</>}
       showFavourites={onlyFollowing}
       onToggleFavourites={setOnlyFollowing}
       favouritesCount={followCount}
