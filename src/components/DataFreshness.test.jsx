@@ -52,4 +52,63 @@ describe('DataFreshness', () => {
     const node = await screen.findByLabelText('Data freshness');
     expect(node.textContent).toMatch(/stale/i);
   });
+
+  it('shows "Offline" badge when navigator.onLine is false', async () => {
+    vi.stubGlobal('navigator', { onLine: false });
+    getCachedLastSyncAtMock.mockReturnValue(new Date(Date.now() - 2 * 60_000).toISOString());
+    getMetaMock.mockResolvedValueOnce({ ok: true, last_sync_at: new Date().toISOString() });
+
+    const { default: DataFreshness } = await import('./DataFreshness');
+    render(<DataFreshness />);
+
+    const node = await screen.findByLabelText('Data freshness');
+    expect(node.textContent).toMatch(/offline/i);
+    vi.unstubAllGlobals();
+  });
+
+  it('shows "Offline" without updated-at when no cached data', async () => {
+    vi.stubGlobal('navigator', { onLine: false });
+    getCachedLastSyncAtMock.mockReturnValue('');
+    getMetaMock.mockRejectedValueOnce(new Error('offline'));
+
+    const { default: DataFreshness } = await import('./DataFreshness');
+    render(<DataFreshness />);
+
+    const node = await screen.findByLabelText('Data freshness');
+    expect(node.textContent).toMatch(/offline/i);
+    expect(node.textContent).not.toMatch(/last updated/i);
+    vi.unstubAllGlobals();
+  });
+
+  it('shows "Offline • Last updated X" when offline with cached sync time', async () => {
+    vi.stubGlobal('navigator', { onLine: false });
+    getCachedLastSyncAtMock.mockReturnValue(new Date(Date.now() - 5 * 60_000).toISOString());
+    getMetaMock.mockRejectedValueOnce(new Error('offline'));
+
+    const { default: DataFreshness } = await import('./DataFreshness');
+    render(<DataFreshness />);
+
+    const node = await screen.findByLabelText('Data freshness');
+    expect(node.textContent).toMatch(/offline/i);
+    expect(node.textContent).toMatch(/last updated/i);
+    vi.unstubAllGlobals();
+  });
+
+  it('responds to window offline event', async () => {
+    vi.stubGlobal('navigator', { onLine: true });
+    getCachedLastSyncAtMock.mockReturnValue(new Date(Date.now() - 2 * 60_000).toISOString());
+    getMetaMock.mockResolvedValueOnce({ ok: true, last_sync_at: new Date().toISOString() });
+
+    const { default: DataFreshness } = await import('./DataFreshness');
+    render(<DataFreshness />);
+
+    const node = await screen.findByLabelText('Data freshness');
+    expect(node.textContent).not.toMatch(/offline/i);
+
+    window.dispatchEvent(new Event('offline'));
+    await waitFor(() => {
+      expect(node.textContent).toMatch(/offline/i);
+    });
+    vi.unstubAllGlobals();
+  });
 });
