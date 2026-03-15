@@ -536,10 +536,51 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {
       const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+      const fixtureId = normalizeSpaces(url.searchParams.get("fixtureId"));
       const groupId = normalizeSpaces(url.searchParams.get("groupId"));
       if (!tournamentId) {
         return sendJson(req, res, 400, { ok: false, error: "Missing tournamentId" });
       }
+
+      // Single-fixture lookup (used by Tech Desk)
+      if (fixtureId) {
+        const row = await pool.query(
+          `SELECT
+             f.id AS fixture_id,
+             f.group_id,
+             to_char(f.date, 'YYYY-MM-DD') AS date,
+             f.time,
+             f.pool,
+             f.venue,
+             f.round,
+             t1.name AS team1,
+             t2.name AS team2,
+             r.score1,
+             r.score2,
+             COALESCE(r.match_events, '[]'::jsonb) AS match_events,
+             COALESCE(r.is_signed_off, false) AS is_signed_off,
+             r.coach_signature,
+             r.updated_at AS result_updated_at
+           FROM fixture f
+           JOIN team t1
+             ON t1.tournament_id = f.tournament_id
+            AND t1.id = f.team1_id
+           JOIN team t2
+             ON t2.tournament_id = f.tournament_id
+            AND t2.id = f.team2_id
+           LEFT JOIN result r
+             ON r.tournament_id = f.tournament_id
+            AND r.fixture_id = f.id
+           WHERE f.tournament_id = $1
+             AND f.id = $2`,
+          [tournamentId, fixtureId]
+        );
+        if (!row || row.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Fixture not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, data: row.rows[0] });
+      }
+
       if (!groupId) {
         return sendJson(req, res, 400, { ok: false, error: "Missing groupId" });
       }
@@ -593,6 +634,10 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
       const fixtureId = normalizeSpaces(body.fixture_id || body.fixtureId);
       const score1 = parseScore(body.score1);
       const score2 = parseScore(body.score2);
+      const matchEvents = Array.isArray(body.match_events) ? body.match_events : undefined;
+      const isSignedOff = body.is_signed_off === true;
+      const coachSignature = body.coach_signature && typeof body.coach_signature === 'object'
+        ? body.coach_signature : undefined;
 
       if (!tournamentId) {
         return sendJson(req, res, 400, { ok: false, error: "tournament_id is required" });
@@ -614,17 +659,27 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
       }
 
       const upsert = await pool.query(
-        `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, updated_at, source)
-         VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+        `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, updated_at, source,
+           match_events, is_signed_off, coach_signature)
+         VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9)
          ON CONFLICT (tournament_id, fixture_id)
          DO UPDATE SET
            score1 = EXCLUDED.score1,
            score2 = EXCLUDED.score2,
            status = EXCLUDED.status,
            updated_at = NOW(),
-           source = EXCLUDED.source
-         RETURNING tournament_id, fixture_id, score1, score2, status, updated_at`,
-        [tournamentId, fixtureId, score1, score2, "Final", "admin"]
+           source = EXCLUDED.source,
+           match_events = COALESCE(EXCLUDED.match_events, result.match_events),
+           is_signed_off = CASE WHEN EXCLUDED.is_signed_off THEN true ELSE result.is_signed_off END,
+           coach_signature = COALESCE(EXCLUDED.coach_signature, result.coach_signature)
+         RETURNING tournament_id, fixture_id, score1, score2, status, updated_at,
+           match_events, is_signed_off, coach_signature`,
+        [
+          tournamentId, fixtureId, score1, score2, "Final", "tech-desk",
+          matchEvents ? JSON.stringify(matchEvents) : null,
+          isSignedOff,
+          coachSignature ? JSON.stringify(coachSignature) : null,
+        ]
       );
 
       // Invalidate caches for fixtures/standings (best-effort)
@@ -639,7 +694,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         tournament_id: tournamentId,
         entity_type: "result",
         entity_id: fixtureId,
-        meta: { score1, score2 },
+        meta: { score1, score2, is_signed_off: isSignedOff },
       });
 
       return sendJson(req, res, 200, { ok: true, data: upsert.rows?.[0] || null });
