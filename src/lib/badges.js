@@ -1,7 +1,8 @@
 // src/lib/badges.js
+// All colours are WCAG 2.1 AA compliant with white text (≥4.5:1 contrast ratio).
 const PALETTE = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
-  "#8b5cf6", "#06b6d4", "#84cc16", "#f97316",
+  "#1d4ed8", "#047857", "#b45309", "#b91c1c",
+  "#6d28d9", "#0e7490", "#4d7c0f", "#c2410c",
 ];
 
 export function colorFromName(name = "") {

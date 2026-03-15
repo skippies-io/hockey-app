@@ -275,7 +275,7 @@ select {
 
 .btn-primary {
   background: var(--hj-color-brand);
-  color: #fff;
+  color: #052e16;
   border-color: var(--hj-color-brand);
   box-shadow: var(--hj-shadow-sm);
 }
