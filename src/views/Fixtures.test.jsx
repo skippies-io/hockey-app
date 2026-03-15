@@ -5,7 +5,10 @@ import { MemoryRouter, Routes, Route } from "react-router-dom";
 import Fixtures from "./Fixtures";
 
 // --- mocks ---
-const apiMocks = vi.hoisted(() => ({ getFixturesRows: vi.fn() }));
+const apiMocks = vi.hoisted(() => ({
+  getFixturesRows: vi.fn(),
+  getFixturesIcsUrl: vi.fn(() => '/api/fixtures.ics?age=U12'),
+}));
 const tournamentMocks = vi.hoisted(() => ({ useTournament: vi.fn() }));
 
 vi.mock("../lib/api", () => apiMocks);

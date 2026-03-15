@@ -13,6 +13,7 @@ const apiMocks = vi.hoisted(() => ({
   getFixturesRows: vi.fn(),
   getStandingsRows: vi.fn(),
   getFranchises: vi.fn(),
+  getFixturesIcsUrl: vi.fn(() => ''),
 }));
 
 const tournamentMocks = vi.hoisted(() => ({
