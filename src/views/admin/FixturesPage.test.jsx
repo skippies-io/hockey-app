@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { isOverdue } from '../../lib/fixtureOverdue';
 
 vi.mock('../../context/TournamentContext', () => ({
   useTournament: () => ({ activeTournament: { id: 't1', name: 'T1' } }),
@@ -156,5 +157,88 @@ describe('FixturesPage', () => {
     expect(parsed.score2).toBeNull();
   });
 
+  it('shows overdue banner for fixtures >60 min past with no scores', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // Set "now" to 12:00; fixture at 09:00 (3h ago) with no scores → overdue
+    vi.setSystemTime(new Date('2026-03-15T12:00:00'));
+    adminFetchMock.mockImplementationOnce((url) => {
+      if (String(url).startsWith('/admin/fixtures')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            data: [{ fixture_id: 'fx_od', date: '2026-03-15', time: '09:00', team1: 'X', team2: 'Y', score1: null, score2: null }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => screen.getByLabelText('Overdue fixtures'), { timeout: 3000 });
+    expect(screen.getByLabelText('Overdue fixtures')).toBeDefined();
+    vi.useRealTimers();
+  });
+
+  it('does not show overdue banner when scored fixtures exist', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-03-15T12:00:00'));
+    adminFetchMock.mockImplementationOnce((url) => {
+      if (String(url).startsWith('/admin/fixtures')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            // 09:00 → overdue time, but has scores → not flagged
+            data: [{ fixture_id: 'fx_sc', date: '2026-03-15', time: '09:00', team1: 'P', team2: 'Q', score1: 2, score2: 1 }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => screen.getByText(/P vs Q/));
+    expect(screen.queryByLabelText('Overdue fixtures')).toBeNull();
+    vi.useRealTimers();
+  });
+
   // Note: we intentionally do not unit test the 1200ms UI timeout; it is a presentational detail.
 });
+
+describe('isOverdue', () => {
+  const now = new Date('2026-03-15T12:00:00').getTime();
+
+  it('returns false when scores are present', () => {
+    expect(isOverdue({ date: '2026-03-15', time: '09:00', score1: '2', score2: '1' }, now)).toBe(false);
+    expect(isOverdue({ date: '2026-03-15', time: '09:00', score1: '0', score2: null }, now)).toBe(false);
+  });
+
+  it('returns false when fixture is recent (within 60 min)', () => {
+    // 30 minutes ago — not overdue
+    expect(isOverdue({ date: '2026-03-15', time: '11:30', score1: '', score2: '' }, now)).toBe(false);
+  });
+
+  it('returns true when fixture is >60 min ago with no scores', () => {
+    // 2 hours ago
+    expect(isOverdue({ date: '2026-03-15', time: '10:00', score1: '', score2: '' }, now)).toBe(true);
+  });
+
+  it('returns false for future fixtures', () => {
+    expect(isOverdue({ date: '2026-03-15', time: '14:00', score1: '', score2: '' }, now)).toBe(false);
+  });
+
+  it('returns false when time is TBD', () => {
+    expect(isOverdue({ date: '2026-03-15', time: 'TBD', score1: '', score2: '' }, now)).toBe(false);
+  });
+
+  it('returns false when date or time is missing', () => {
+    expect(isOverdue({ date: '', time: '09:00', score1: '', score2: '' }, now)).toBe(false);
+    expect(isOverdue({ date: '2026-03-15', time: '', score1: '', score2: '' }, now)).toBe(false);
+  });
+});
+
