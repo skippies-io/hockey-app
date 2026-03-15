@@ -10,6 +10,7 @@ describe("TournamentWizard", () => {
     vi.clearAllMocks();
     vi.stubEnv("VITE_API_BASE", "http://localhost:8787/api");
     vi.resetModules();
+    sessionStorage.clear();
     fetch.mockImplementation((url) => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
@@ -352,6 +353,93 @@ describe("TournamentWizard", () => {
     await waitFor(() => {
       expect(screen.getByText(/Save failed/i)).toBeDefined();
     });
+  });
+
+  it("populates franchise datalist from API", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ ok: true, rows: [{ Name: "Gryphons" }, { Name: "Dragons" }] }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+
+    await waitFor(() => {
+      const datalist = document.querySelector("datalist");
+      const options = datalist ? Array.from(datalist.querySelectorAll("option")).map((o) => o.value) : [];
+      expect(options).toContain("Gryphons");
+      expect(options).toContain("Dragons");
+    });
+  });
+
+  it("merges form-added franchises with API names in datalist", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, rows: [{ Name: "Gryphons" }] }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderWizard();
+
+    // Navigate to Teams step and add a franchise via the form
+    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+
+    // The franchise "Name" input is within the Franchises section
+    const franchisesSection = screen
+      .getByRole("heading", { name: "Franchises" })
+      .closest("section");
+    const nameInput = within(franchisesSection).getAllByPlaceholderText("Purple Panthers")[0];
+    await act(async () => {
+      fireEvent.change(nameInput, { target: { value: "New Club" } });
+    });
+
+    await waitFor(() => {
+      const datalist = document.querySelector("datalist");
+      const options = datalist ? Array.from(datalist.querySelectorAll("option")).map((o) => o.value) : [];
+      expect(options).toContain("Gryphons");
+      expect(options).toContain("New Club");
+    });
+  });
+
+  it("falls back gracefully when franchise API call fails", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    // Should render without throwing even if franchise fetch fails
+    await renderWizard();
+    expect(screen.getByText("Tournament Setup Wizard")).toBeDefined();
   });
 
   it("computes form errors for invalid inputs", () => {

@@ -1,29 +1,10 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, getFranchises } from "../../lib/api";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
 const STEP_LABELS = ["Tournament", "Groups", "Teams", "Fixtures"];
-const CANONICAL_FRANCHISES = [
-  "Purple Panthers",
-  "Blue Cranes",
-  "Black Hawks",
-  "BHA",
-  "Gryphons",
-  "Mighty Ducks",
-  "Northern Guardians",
-  "Dragons",
-  "Giants",
-  "Knights",
-  "GS Hockey",
-  "Meta SMS",
-  "Gladiators",
-  "Khosa",
-  "Pink Otters",
-  "Reddam",
-  "Turfwar",
-];
 
 function normalizeId(value) {
   return String(value || "")
@@ -192,6 +173,7 @@ export default function TournamentWizard() {
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
   const [venueOptions, setVenueOptions] = useState([]);
+  const [apiFranchiseNames, setApiFranchiseNames] = useState([]);
 
   const [tournament, setTournament] = useState({
     id: "",
@@ -283,11 +265,11 @@ export default function TournamentWizard() {
 
   const franchiseOptions = useMemo(() => {
     const fromForm = franchises.map((f) => f.name).filter(Boolean);
-    const merged = [...CANONICAL_FRANCHISES, ...fromForm];
+    const merged = [...apiFranchiseNames, ...fromForm];
     return Array.from(new Set(merged.map((n) => n.trim()).filter(Boolean))).sort((a, b) =>
       a.localeCompare(b)
     );
-  }, [franchises]);
+  }, [apiFranchiseNames, franchises]);
 
   function updateTournament(next) {
     setTournament((prev) => ({ ...prev, ...next }));
@@ -650,6 +632,23 @@ export default function TournamentWizard() {
         setVenueOptions(list);
       } catch (err) {
         console.warn("Failed to load venues", err);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const rows = await getFranchises();
+        if (!alive) return;
+        const names = rows.map((r) => r.Name || r.name).filter(Boolean);
+        setApiFranchiseNames(names);
+      } catch (err) {
+        console.warn("Failed to load franchises", err);
       }
     })();
     return () => {
