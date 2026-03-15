@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Tournaments from './Tournaments';
 
@@ -8,7 +8,18 @@ vi.mock('../lib/api', () => ({
   getTournaments: vi.fn(),
 }));
 
+vi.mock('../context/TournamentContext', () => ({
+  useTournament: vi.fn(),
+}));
+
 import { getTournaments } from '../lib/api';
+import { useTournament } from '../context/TournamentContext';
+
+const mockSetActiveTournamentId = vi.fn();
+
+function setupTournamentContext({ activeTournamentId = null } = {}) {
+  useTournament.mockReturnValue({ activeTournamentId, setActiveTournamentId: mockSetActiveTournamentId });
+}
 
 function renderTournaments() {
   return render(
@@ -21,12 +32,19 @@ function renderTournaments() {
 describe('Tournaments view', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setupTournamentContext();
   });
 
   it('shows loading state initially', () => {
     getTournaments.mockReturnValue(new Promise(() => {})); // never resolves
     renderTournaments();
     expect(screen.getByText(/loading tournaments/i)).toBeTruthy();
+  });
+
+  it('loading card has role=status', () => {
+    getTournaments.mockReturnValue(new Promise(() => {}));
+    const { container } = renderTournaments();
+    expect(container.querySelector('[role="status"]')).not.toBeNull();
   });
 
   it('renders a list of tournaments after loading', async () => {
@@ -76,13 +94,7 @@ describe('Tournaments view', () => {
     await waitFor(() => expect(screen.getByText(/error loading tournaments/i)).toBeTruthy());
   });
 
-  it('loading state has role=status', () => {
-    getTournaments.mockReturnValue(new Promise(() => {}));
-    renderTournaments();
-    expect(screen.getByRole('status')).toBeTruthy();
-  });
-
-  it('error state has role=alert', async () => {
+  it('error card has role=alert', async () => {
     getTournaments.mockRejectedValue(new Error('Network error'));
     renderTournaments();
     await screen.findByText(/error loading tournaments/i);
@@ -93,5 +105,73 @@ describe('Tournaments view', () => {
     getTournaments.mockResolvedValue([{ id: 't1', name: 'Cup', season: '2025' }]);
     renderTournaments();
     await waitFor(() => expect(screen.getByText('Tournament Directory')).toBeTruthy());
+  });
+
+  it('shows "Active" badge for the currently active tournament', async () => {
+    setupTournamentContext({ activeTournamentId: 't1' });
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025' },
+      { id: 't2', name: 'Spring League', season: null },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Winter Cup'));
+    expect(screen.getByText('Active')).toBeTruthy();
+  });
+
+  it('does not show "Active" badge for non-active tournaments', async () => {
+    setupTournamentContext({ activeTournamentId: 't1' });
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025' },
+      { id: 't2', name: 'Spring League', season: null },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Spring League'));
+    // Only one "Active" badge should exist
+    expect(screen.getAllByText('Active').length).toBe(1);
+  });
+
+  it('renders "View Tournament" button for non-active tournaments', async () => {
+    setupTournamentContext({ activeTournamentId: 't1' });
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025' },
+      { id: 't2', name: 'Spring League', season: null },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Spring League'));
+    const btn = screen.getByRole('button', { name: /view tournament/i });
+    expect(btn).toBeTruthy();
+  });
+
+  it('does not render "View Tournament" button for the active tournament', async () => {
+    setupTournamentContext({ activeTournamentId: 't1' });
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025' },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Winter Cup'));
+    expect(screen.queryByRole('button', { name: /view tournament/i })).toBeNull();
+  });
+
+  it('clicking "View Tournament" calls setActiveTournamentId with the tournament id', async () => {
+    setupTournamentContext({ activeTournamentId: 't1' });
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025' },
+      { id: 't2', name: 'Spring League', season: null },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Spring League'));
+    fireEvent.click(screen.getByRole('button', { name: /view tournament/i }));
+    expect(mockSetActiveTournamentId).toHaveBeenCalledWith('t2');
+  });
+
+  it('renders logo img when logo_url is present', async () => {
+    getTournaments.mockResolvedValue([
+      { id: 't1', name: 'Winter Cup', season: '2025', logo_url: 'https://example.com/logo.png' },
+    ]);
+    renderTournaments();
+    await waitFor(() => screen.getByText('Winter Cup'));
+    const img = screen.getByRole('img', { name: /winter cup logo/i });
+    expect(img).toBeTruthy();
+    expect(img.getAttribute('src')).toBe('https://example.com/logo.png');
   });
 });
