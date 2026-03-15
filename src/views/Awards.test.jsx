@@ -149,4 +149,36 @@ describe('Awards', () => {
     const labels = headers.map((h) => h.textContent);
     expect(labels).toContain('Pool');
   });
+
+  it('shows Age column in scorers and clean sheets when ageId is all', async () => {
+    renderAwards({}, { route: '/all/awards' });
+    await waitFor(() => screen.getByText('Top Scorers'));
+    const headers = screen.getAllByRole('columnheader');
+    const labels = headers.map((h) => h.textContent);
+    expect(labels.filter((l) => l === 'Age').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows ageId values in rows when isAllAges', async () => {
+    renderAwards({}, { route: '/all/awards' });
+    await waitFor(() => screen.getByText('John Smith'));
+    // ageId 'U12' should appear in both scorer and clean sheet rows
+    expect(screen.getAllByText('U12').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows pool fallback dash when a row has no pool but others do', async () => {
+    apiMocks.getAwardsRows.mockResolvedValue({
+      topScorers: [
+        { playerName: 'Pool Player', teamName: 'Jets', goals: 5, ageId: 'U12', pool: 'A' },
+        { playerName: 'No Pool Player', teamName: 'Sharks', goals: 3, ageId: 'U12', pool: null },
+      ],
+      cleanSheets: [
+        { teamName: 'Jets', cleanSheets: 2, ageId: 'U12', pool: 'A' },
+        { teamName: 'Sharks', cleanSheets: 1, ageId: 'U12', pool: null },
+      ],
+    });
+    renderAwards();
+    await waitFor(() => screen.getByText('No Pool Player'));
+    // Pool column is shown (some rows have pool), null pools render as '—'
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
+  });
 });
