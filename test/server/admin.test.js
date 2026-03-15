@@ -761,4 +761,85 @@ describe('handleAdminRequest', () => {
 
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
     });
+
+    // ── Digest share links ────────────────────────────────────────────────────
+
+    it('POST /digests creates a share link and returns token', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't-1', age_id: 'U12', label: 'Test' }));
+        mockPool.query
+            .mockResolvedValueOnce({ rows: [] })  // INSERT digest_share
+            .mockResolvedValueOnce({ rows: [] }); // audit_log
+
+        await handleAdminRequest(mockReq, mockRes, {
+            url, pool: mockPool, sendJson: mockSendJson,
+            caches: { actorEmail: 'admin@example.com' },
+        });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({
+            ok: true,
+            token: expect.stringMatching(/^[0-9a-f]{64}$/),
+            expires_at: expect.any(String),
+        }));
+    });
+
+    it('POST /digests returns 400 when tournament_id is missing', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockReq.method = 'POST';
+        setReqBody(mockReq, JSON.stringify({ age_id: 'U12' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /digests returns list of share links', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockPool.query.mockResolvedValueOnce({
+            rows: [
+                { id: 'abc', tournament_id: 't-1', age_id: 'U12', label: 'Test', created_by: 'a@b.com',
+                  created_at: new Date().toISOString(), expires_at: new Date().toISOString(), revoked_at: null },
+            ],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: expect.arrayContaining([expect.objectContaining({ id: 'abc' })]),
+        }));
+    });
+
+    it('DELETE /digests revokes a share link by id', async () => {
+        const url = new URL('http://localhost/api/admin/digests?id=abc-123');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('revoked_at'),
+            ['abc-123']
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));
+    });
+
+    it('DELETE /digests returns 400 when id is missing', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockReq.method = 'DELETE';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({ ok: false }));
+    });
+
+    it('POST /digests returns 405 for unsupported method', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockReq.method = 'PUT';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
+    });
 });

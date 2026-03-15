@@ -72,6 +72,7 @@ export default function AdminLayout() {
         <NavLink to="/admin/announcements" style={linkStyle}>Announcements</NavLink>
         <NavLink to="/admin/teams" style={linkStyle}>Teams</NavLink>
         <NavLink to="/admin/fixtures" style={linkStyle}>Fixtures</NavLink>
+        <NavLink to="/admin/digests" style={linkStyle}>Share Digests</NavLink>
 
         <div style={{ marginTop: 'auto' }}>
           <button
