@@ -91,6 +91,12 @@ describe("Fixtures – loading state", () => {
     renderFixtures(DEFAULT_PROPS);
     expect(screen.getByText(/loading fixtures/i)).toBeTruthy();
   });
+
+  it("loading card has role=status", () => {
+    apiMocks.getFixturesRows.mockReturnValue(new Promise(() => {}));
+    renderFixtures(DEFAULT_PROPS);
+    expect(screen.getByRole("status")).toBeTruthy();
+  });
 });
 
 describe("Fixtures – error state", () => {
@@ -98,6 +104,13 @@ describe("Fixtures – error state", () => {
     apiMocks.getFixturesRows.mockRejectedValue(new Error("Network fail"));
     renderFixtures(DEFAULT_PROPS);
     expect(await screen.findByText(/Error: Network fail/i)).toBeTruthy();
+  });
+
+  it("error card has role=alert", async () => {
+    apiMocks.getFixturesRows.mockRejectedValue(new Error("Network fail"));
+    renderFixtures(DEFAULT_PROPS);
+    await screen.findByText(/Error:/i);
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });
 
@@ -251,6 +264,22 @@ describe("Fixtures – all-ages mode", () => {
 
     expect(await screen.findByText(/U9 Mixed — Fixtures/i)).toBeTruthy();
     expect(screen.getByText(/U12 Boys — Fixtures/i)).toBeTruthy();
+  });
+
+  it("all-ages section headings are h2 elements", async () => {
+    apiMocks.getFixturesRows
+      .mockResolvedValueOnce([
+        { Date: "2025-06-01", Time: "09:00", Team1: "U9 TeamA", Team2: "U9 TeamB" },
+      ])
+      .mockResolvedValueOnce([
+        { Date: "2025-06-01", Time: "10:00", Team1: "U12 TeamX", Team2: "U12 TeamY" },
+      ]);
+
+    const { container } = renderFixtures(ALL_AGES_PROPS, { route: "/all/fixtures", path: "/:ageId/fixtures" });
+    await screen.findByText(/U9 Mixed/i);
+
+    const headings = container.querySelectorAll("h2.pool-head");
+    expect(headings.length).toBe(2);
   });
 
   it("calls getFixturesRows once per age group", async () => {

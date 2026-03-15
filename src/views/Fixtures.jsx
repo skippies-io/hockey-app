@@ -358,7 +358,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
   if (loading) {
     return (
       <div className="page-stack fixtures-page">
-        <Card>Loading fixtures…</Card>
+        <Card role="status">Loading fixtures…</Card>
       </div>
     );
   }
@@ -366,7 +366,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
   if (err) {
     return (
       <div className="page-stack fixtures-page">
-        <Card className="text-red-600">Error: {err}</Card>
+        <Card role="alert" className="text-red-600">Error: {err}</Card>
       </div>
     );
   }
@@ -400,9 +400,9 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
       {isAllAges ? (
         groupedByAge.map((group) => (
           <section key={group.ageId} className="page-section">
-            <h3 className="section-title pool-head">
+            <h2 className="section-title pool-head">
               {group.ageLabel} — Fixtures
-            </h3>
+            </h2>
             {renderDateGroups(group.items, group.ageId)}
           </section>
         ))
