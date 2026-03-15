@@ -29,7 +29,7 @@ export default function Tournaments() {
     return (
       <div className="page-stack">
         <PageHeading title="Tournaments" />
-        <Card>Loading tournaments...</Card>
+        <Card role="status">Loading tournaments...</Card>
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default function Tournaments() {
     return (
       <div className="page-stack">
         <PageHeading title="Tournaments" />
-        <Card className="text-red-600">Error loading tournaments.</Card>
+        <Card role="alert" className="text-red-600">Error loading tournaments.</Card>
       </div>
     );
   }
