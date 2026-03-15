@@ -15,6 +15,7 @@ import FilterBar from "./components/FilterBar";
 import Fixtures from "./views/Fixtures";
 import InstallPrompt from "./components/InstallPrompt";
 import Standings from "./views/Standings";
+import Awards from "./views/Awards";
 import { FALLBACK_GROUPS } from "./config";
 import { getGroups, getStandingsRows } from "./lib/api";
 import { useTournament } from "./context/TournamentContext";
@@ -364,7 +365,8 @@ function AppShell({ groups }) {
     if (
       secondSegment === "standings" ||
       secondSegment === "teams" ||
-      secondSegment === "fixtures"
+      secondSegment === "fixtures" ||
+      secondSegment === "awards"
     ) {
       return secondSegment;
     }
@@ -456,6 +458,10 @@ function AgeLayout({ groups, loading }) {
         element={
           <TeamsPage ageId={ageId} ageLabel={ageLabel} ageGroups={groups} />
         }
+      />
+      <Route
+        path="awards"
+        element={<Awards ageId={ageId} />}
       />
       <Route index element={<Navigate to="fixtures" replace />} />
       <Route path="*" element={<Navigate to="fixtures" replace />} />

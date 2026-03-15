@@ -524,6 +524,63 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(res.writeHead).toHaveBeenCalledWith(405);
     });
 
+    it('GET /api/awards returns top scorers and clean sheets', async () => {
+        mocks.query.mockResolvedValueOnce({
+            rows: [{ player_name: 'John Smith', team_name: 'Tigers', age_id: 'U12', pool: 'A', goals: '8' }],
+        });
+        mocks.query.mockResolvedValueOnce({
+            rows: [{ team_name: 'Lions', age_id: 'U12', pool: 'A', clean_sheets: '3' }],
+        });
+
+        const req = {
+            method: 'GET',
+            url: '/api/awards?tournamentId=t1&age=U12',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const body = JSON.parse(res.end.mock.calls[0][0]);
+        expect(body.ok).toBe(true);
+        expect(body.topScorers[0].playerName).toBe('John Smith');
+        expect(body.topScorers[0].goals).toBe(8);
+        expect(body.cleanSheets[0].teamName).toBe('Lions');
+        expect(body.cleanSheets[0].cleanSheets).toBe(3);
+    });
+
+    it('GET /api/awards returns 500 on DB error', async () => {
+        mocks.query.mockRejectedValueOnce(new Error('DB fail'));
+
+        const req = {
+            method: 'GET',
+            url: '/api/awards?tournamentId=t1',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(500);
+    });
+
+    it('POST /api/awards returns 405', async () => {
+        const req = {
+            method: 'POST',
+            url: '/api/awards',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(405);
+    });
+
     it('GET /version returns version info', async () => {
         const req = {
             method: 'GET',

@@ -173,6 +173,15 @@ export async function getMeta() {
   return j;
 }
 
+export async function getAwardsRows(tournamentId, ageId) {
+  if (!API_BASE) throw new Error('Missing API base');
+  const root = API_BASE.replace(/\/api$/, '');
+  const age = ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
+  const url = `${root}/api/awards?tournamentId=${encodeURIComponent(tournamentId || '')}${age}`;
+  const j = await fetchJSON(url);
+  return { topScorers: j.topScorers || [], cleanSheets: j.cleanSheets || [] };
+}
+
 export function getCachedLastSyncAt() {
   try {
     return localStorage.getItem('hj:last_sync_at') || '';
