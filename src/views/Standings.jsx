@@ -206,7 +206,7 @@ function StandingsSection({
   if (isMobile) {
     return (
       <div className="standings-mobile-section">
-        {heading ? <h3 className="section-title pool-head">{heading}</h3> : null}
+        {heading ? <h2 className="section-title pool-head">{heading}</h2> : null}
         {pools.map((pool) => (
           <section key={pool.poolKey || pool.poolLabel} className="standings-mobile-pool">
             {pool.poolLabel ? (
@@ -556,14 +556,14 @@ export default function Standings({
   if (loading) {
     return (
       <div className="page-stack standings-page">
-        <Card>Loading standings…</Card>
+        <Card role="status">Loading standings…</Card>
       </div>
     );
   }
   if (err) {
     return (
       <div className="page-stack standings-page">
-        <Card className="text-red-600">Error: {err}</Card>
+        <Card role="alert" className="text-red-600">Error: {err}</Card>
       </div>
     );
   }
