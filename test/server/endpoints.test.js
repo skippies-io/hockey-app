@@ -130,8 +130,8 @@ describe('API Endpoints (Mocked DB)', () => {
     it('GET /api/tournaments returns data', async () => {
         mocks.query.mockResolvedValueOnce({
             rows: [
-                { id: 't1', name: 'Tourney 1' },
-                { id: 't2', name: 'Tourney 2' }
+                { id: 't1', name: 'Tourney 1', season: '2025', is_active: true, logo_url: null },
+                { id: 't2', name: 'Tourney 2', season: null, is_active: false, logo_url: null }
             ]
         });
 
@@ -146,12 +146,17 @@ describe('API Endpoints (Mocked DB)', () => {
         await requestHandler(req, res);
 
         expect(mocks.query).toHaveBeenCalledWith(
-            expect.stringContaining('SELECT id, name, season FROM tournament'),
+            expect.stringContaining('SELECT id, name, season, is_active, logo_url FROM tournament'),
+            []
+        );
+        expect(mocks.query).toHaveBeenCalledWith(
+            expect.stringContaining('ORDER BY is_active DESC'),
             []
         );
         expect(res.writeHead).toHaveBeenCalledWith(200);
         const responseBody = JSON.parse(res.end.mock.calls[0][0]);
         expect(responseBody.data).toHaveLength(2);
+        expect(responseBody.data[0]).toMatchObject({ id: 't1', is_active: true });
     });
 
     it('GET /api/announcements handles DB errors', async () => {
