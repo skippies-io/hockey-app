@@ -87,7 +87,7 @@ export default function Tournaments() {
                     {isActive && (
                       <span
                         aria-label="Currently active tournament"
-                        style={{ fontSize: 'var(--hj-font-size-xs)', background: 'var(--hj-color-brand)', color: '#fff', borderRadius: 'var(--hj-radius-sm)', padding: '2px 6px', fontWeight: 600 }}
+                        style={{ fontSize: 'var(--hj-font-size-xs)', background: '#15803d', color: '#fff', borderRadius: 'var(--hj-radius-sm)', padding: '2px 6px', fontWeight: 600 }}
                       >
                         Active
                       </span>
