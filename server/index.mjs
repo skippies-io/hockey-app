@@ -640,7 +640,7 @@ export const requestHandler = async (req, res) => {
         return;
       }
 
-      const query = `SELECT id, name, season FROM tournament ORDER BY created_at DESC`;
+      const query = `SELECT id, name, season, is_active, logo_url FROM tournament ORDER BY is_active DESC, created_at DESC`;
       await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
       return;
     }
