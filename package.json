@@ -26,8 +26,10 @@
     "test:app:db:local": "node scripts/test-app-db-local.mjs",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium",
     "test:e2e:ui": "playwright test --ui",
+    "test:visual": "playwright test --project=visual",
+    "test:visual:update": "playwright test --project=visual --update-snapshots",
     "build:e2e": "VITE_DB_API_BASE=http://localhost:8787/api vite build"
   },
   "dependencies": {
