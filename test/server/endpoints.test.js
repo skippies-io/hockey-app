@@ -644,6 +644,67 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(res.writeHead).toHaveBeenCalledWith(405);
     });
 
+    // ── GET /api/share/:token ─────────────────────────────────────────────────
+
+    it('GET /api/share/:token returns config for a valid token', async () => {
+        const crypto = await import('node:crypto');
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+        mocks.query.mockResolvedValueOnce({
+            rows: [{ tournament_id: 't-1', age_id: 'U12', label: 'Test', expires_at: expiresAt }],
+        });
+
+        const req = {
+            method: 'GET',
+            url: `/api/share/${rawToken}`,
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const body = JSON.parse(res.end.mock.calls[0][0]);
+        expect(body.ok).toBe(true);
+        expect(body.config.tournament_id).toBe('t-1');
+        expect(body.config.age_id).toBe('U12');
+    });
+
+    it('GET /api/share/:token returns 404 for unknown token', async () => {
+        const crypto = await import('node:crypto');
+        const rawToken = crypto.randomBytes(32).toString('hex');
+
+        mocks.query.mockResolvedValueOnce({ rows: [] });
+
+        const req = {
+            method: 'GET',
+            url: `/api/share/${rawToken}`,
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(404);
+    });
+
+    it('GET /api/share/:token returns 404 for malformed token', async () => {
+        const req = {
+            method: 'GET',
+            url: '/api/share/bad-token',
+            headers: { host: 'localhost' },
+            on: vi.fn(),
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(404);
+    });
+
     it('GET /version returns version info', async () => {
         const req = {
             method: 'GET',

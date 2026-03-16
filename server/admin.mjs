@@ -861,6 +861,93 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
   }
 
+  // ── Digest share links ───────────────────────────────────────────────────
+
+  if (path === "/digests") {
+    if (method === "POST") {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      let body;
+      try { body = await readBody(req); } catch { return sendJson(req, res, 400, { ok: false, error: "Invalid JSON" }); }
+
+      const { tournament_id, age_id, label } = body || {};
+      if (!isNonEmptyString(tournament_id)) {
+        return sendJson(req, res, 400, { ok: false, error: "tournament_id is required" });
+      }
+
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = hashString(rawToken);
+      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+      try {
+        await pool.query(
+          `INSERT INTO digest_share (token_hash, tournament_id, age_id, label, created_by, expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            tokenHash,
+            tournament_id,
+            age_id || null,
+            label ? normalizeSpaces(label) : null,
+            caches?.actorEmail || "unknown",
+            expiresAt.toISOString(),
+          ]
+        );
+      } catch (err) {
+        console.error("digest_share INSERT error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to create share link" });
+      }
+
+      await logAudit("digest_share.create", {
+        tournament_id,
+        entity_type: "digest_share",
+        meta: { age_id: age_id || null, label: label || null },
+      });
+
+      return sendJson(req, res, 201, {
+        ok: true,
+        token: rawToken,
+        expires_at: expiresAt.toISOString(),
+      });
+    }
+
+    if (method === "GET") {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const tournamentId = url.searchParams.get("tournamentId");
+      const qParams = tournamentId ? [tournamentId] : [];
+      const whereClause = tournamentId
+        ? "WHERE tournament_id = $1 ORDER BY created_at DESC"
+        : "ORDER BY created_at DESC";
+      try {
+        const result = await pool.query(
+          `SELECT id, tournament_id, age_id, label, created_by, created_at, expires_at, revoked_at
+           FROM digest_share ${whereClause}`,
+          qParams
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      } catch (err) {
+        console.error("digest_share GET error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to list share links" });
+      }
+    }
+
+    if (method === "DELETE") {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const id = url.searchParams.get("id");
+      if (!isNonEmptyString(id)) return sendJson(req, res, 400, { ok: false, error: "id is required" });
+      try {
+        await pool.query(
+          `UPDATE digest_share SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL`,
+          [id]
+        );
+        return sendJson(req, res, 200, { ok: true });
+      } catch (err) {
+        console.error("digest_share DELETE error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to revoke share link" });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
   // Fallback for unknown admin routes
   return sendJson(req, res, 404, { ok: false, error: "Admin route not found" });
 }
