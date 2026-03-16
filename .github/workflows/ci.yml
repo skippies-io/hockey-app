@@ -135,19 +135,21 @@ jobs:
       - name: Build (visual — local API base)
         run: npm run build:e2e
 
-      - name: Update baselines on main (first run or intentional update)
-        if: github.ref == 'refs/heads/main'
-        run: npm run test:visual:update
+      - name: Run visual tests (generate missing baselines, detect regressions)
+        run: |
+          npm run test:visual:update
+          # Any snapshot that was MODIFIED (not just newly created) is a regression.
+          CHANGED=$(git diff --name-only e2e/snapshots/ | wc -l | tr -d ' ')
+          if [ "$CHANGED" -gt "0" ]; then
+            echo "::error::Visual regression detected — $CHANGED snapshot(s) changed:"
+            git diff --stat e2e/snapshots/
+            exit 1
+          fi
 
-      - name: Compare against baselines on PRs
-        if: github.ref != 'refs/heads/main'
-        run: npm run test:visual
-
-      - name: Commit updated snapshots to main
-        if: github.ref == 'refs/heads/main'
+      - name: Commit new baselines to branch
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: update visual regression baselines [skip ci]"
+          commit_message: "chore: add visual regression baselines [skip ci]"
           file_pattern: "e2e/snapshots/**"
 
       - name: Upload visual diff artifacts
