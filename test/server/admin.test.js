@@ -842,4 +842,29 @@ describe('handleAdminRequest', () => {
 
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
     });
+
+    it('GET /digests returns 500 when DB query fails', async () => {
+        const url = new URL('http://localhost/api/admin/digests');
+        mockPool.query.mockRejectedValueOnce(new Error('DB connection lost'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
+            ok: false,
+            error: 'Failed to list share links',
+        }));
+    });
+
+    it('DELETE /digests returns 500 when DB query fails', async () => {
+        const url = new URL('http://localhost/api/admin/digests?id=abc-123');
+        mockReq.method = 'DELETE';
+        mockPool.query.mockRejectedValueOnce(new Error('DB connection lost'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
+            ok: false,
+            error: 'Failed to revoke share link',
+        }));
+    });
 });

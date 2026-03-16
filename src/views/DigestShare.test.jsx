@@ -153,4 +153,22 @@ describe("DigestShare – valid token", () => {
     renderShare();
     expect(await screen.findByText(/Fixtures unavailable/i)).toBeTruthy();
   });
+
+  it("formatDate returns raw iso string when toLocaleDateString throws", async () => {
+    const iso = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    apiMocks.getDigestShare.mockResolvedValue({
+      ok: true,
+      config: { ...CONFIG, expires_at: iso },
+    });
+
+    const spy = vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementationOnce(() => {
+      throw new Error("Locale not supported");
+    });
+
+    renderShare();
+    // "Valid until" paragraph should contain the raw ISO string (catch fallback)
+    const expiryEl = await screen.findByText(/Valid until/i);
+    expect(expiryEl.textContent).toContain(iso);
+    spy.mockRestore();
+  });
 });

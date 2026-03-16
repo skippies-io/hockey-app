@@ -331,4 +331,22 @@ describe("DigestPage – create form", () => {
     await screen.findByText(/Copy it now/i);
     expect(tournamentInput.value).toBe("");
   });
+
+  it("formatExpiry returns raw iso string when toLocaleDateString throws", async () => {
+    const iso = new Date().toISOString();
+    mockFetch([{
+      ok: true,
+      data: [{ id: "x1", tournament_id: "t-1", age_id: "U12", label: "Test",
+               expires_at: iso, revoked_at: null }],
+    }]);
+
+    const spy = vi.spyOn(Date.prototype, "toLocaleDateString").mockImplementationOnce(() => {
+      throw new Error("Locale not supported");
+    });
+
+    renderPage();
+    // The raw ISO string should appear as the expiry text (fallback)
+    await waitFor(() => expect(screen.getByText(iso)).toBeTruthy());
+    spy.mockRestore();
+  });
 });
