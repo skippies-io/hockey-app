@@ -181,4 +181,44 @@ describe('Awards', () => {
     // Pool column is shown (some rows have pool), null pools render as '—'
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
   });
+
+  it('uses ageId prop when routeAgeId param is absent', async () => {
+    renderAwards({ ageId: 'U14' }, { route: '/standings' }); // wildcard route, no :ageId param
+    await waitFor(() => screen.getByText('Top Scorers'));
+    expect(apiMocks.getAwardsRows).toHaveBeenCalledWith('t1', 'U14');
+  });
+
+  it('does not update state after unmount (success path)', async () => {
+    let resolveApi;
+    apiMocks.getAwardsRows.mockImplementation(
+      () => new Promise((r) => { resolveApi = r; })
+    );
+    const { unmount } = renderAwards();
+    unmount();
+    resolveApi({ topScorers: [], cleanSheets: [] });
+    // No errors or state-update warnings after unmount
+  });
+
+  it('does not update error state after unmount', async () => {
+    let rejectApi;
+    apiMocks.getAwardsRows.mockImplementation(
+      () => new Promise((_, r) => { rejectApi = r; })
+    );
+    const { unmount } = renderAwards();
+    unmount();
+    rejectApi(new Error('late error'));
+    // No errors or state-update warnings after unmount
+  });
+
+  it('falls back to empty arrays when result omits topScorers/cleanSheets', async () => {
+    apiMocks.getAwardsRows.mockResolvedValue({});
+    renderAwards();
+    await waitFor(() => screen.getByText(/No awards data yet/));
+  });
+
+  it('shows stringified error when thrown value has no message', async () => {
+    apiMocks.getAwardsRows.mockRejectedValue('plain string error');
+    renderAwards();
+    await waitFor(() => screen.getByText(/plain string error/));
+  });
 });
