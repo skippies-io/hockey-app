@@ -620,6 +620,51 @@ describe('handleAdminRequest', () => {
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.any(Object));
     });
 
+    it('PUT /results returns 400 for invalid alert_status', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: null, score2: null, alert_status: 'BadValue' }));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({ ok: false, error: expect.stringContaining('alert_status') }));
+    });
+
+    it('PUT /results accepts valid alert_status and saves it', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: null, score2: null, alert_status: 'Postponed', alert_message: 'Ice damage' }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ 1: 1 }] })
+            .mockResolvedValueOnce({ rows: [{ tournament_id: 't1', fixture_id: 'fx1', score1: null, score2: null, status: 'Postponed', alert_message: 'Ice damage' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { fixturesCache: new Map(), standingsCache: new Map() } });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('INSERT INTO result'),
+            expect.arrayContaining(['Postponed', 'Ice damage'])
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));
+    });
+
+    it('PUT /results alert_status wins over score-derived Final status', async () => {
+        const url = new URL('http://localhost/api/admin/results');
+        mockReq.method = 'PUT';
+        setReqBody(mockReq, JSON.stringify({ tournament_id: 't1', fixture_id: 'fx1', score1: 3, score2: 1, alert_status: 'Cancelled' }));
+
+        mockPool.query
+            .mockResolvedValueOnce({ rowCount: 1, rows: [{ 1: 1 }] })
+            .mockResolvedValueOnce({ rows: [{ tournament_id: 't1', fixture_id: 'fx1', score1: 3, score2: 1, status: 'Cancelled' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { fixturesCache: new Map(), standingsCache: new Map() } });
+
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('INSERT INTO result'),
+            expect.arrayContaining(['Cancelled'])
+        );
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({ ok: true }));
+    });
+
     it('PUT /results returns 200 when clearing scores (null)', async () => {
         const url = new URL('http://localhost/api/admin/results');
         mockReq.method = 'PUT';

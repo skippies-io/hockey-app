@@ -45,6 +45,7 @@ export default function FixtureCard({
   resultPill,
   expandable = false,
   notes,
+  alertMessage,
 }) {
   const statusKey = normalizeStatusKey(status);
   const pill = statusMeta[statusKey] || null;
@@ -118,6 +119,9 @@ export default function FixtureCard({
               <div className={`fixture-card-status ${pill.className}`}>
                 {pill.label}
               </div>
+            ) : null}
+            {alertMessage ? (
+              <div className="fixture-card-alert">{alertMessage}</div>
             ) : null}
           </div>
 
@@ -220,4 +224,5 @@ FixtureCard.propTypes = {
   resultPill: PropTypes.oneOf(['W', 'D', 'L']),
   expandable: PropTypes.bool,
   notes: PropTypes.string,
+  alertMessage: PropTypes.string,
 };

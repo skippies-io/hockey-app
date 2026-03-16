@@ -170,6 +170,9 @@ function mapFixtureRow(row) {
   const score1 = row.score1 == null ? "" : row.score1;
   const score2 = row.score2 == null ? "" : row.score2;
   const hasScores = row.score1 != null && row.score2 != null;
+  const resultStatus = row.result_status || "";
+  // Use explicit result status if set (e.g. Postponed, Cancelled), otherwise derive from scores
+  const status = resultStatus || (hasScores ? "Final" : "");
   return {
     Date: row.date,
     Time: row.time || "",
@@ -180,7 +183,8 @@ function mapFixtureRow(row) {
     Pool: row.pool || "",
     Venue: row.venue || "",
     Round: row.round || "",
-    Status: hasScores ? "Final" : "",
+    Status: status,
+    AlertMessage: row.alert_message || "",
     Age: row.age,
     ageId: row.age,
   };
@@ -274,6 +278,8 @@ async function getFixturesPayload(ageId, tournamentId) {
        t2.name AS team2,
        r.score1 AS score1,
        r.score2 AS score2,
+       r.status AS result_status,
+       r.alert_message AS alert_message,
        f.pool AS pool,
        f.venue AS venue,
        f.round AS round,
@@ -308,6 +314,8 @@ async function getFixturesAllPayload(tournamentId) {
        t2.name AS team2,
        r.score1 AS score1,
        r.score2 AS score2,
+       r.status AS result_status,
+       r.alert_message AS alert_message,
        f.pool AS pool,
        f.venue AS venue,
        f.round AS round,
@@ -688,7 +696,7 @@ export const requestHandler = async (req, res) => {
         return;
       }
 
-      const query = `SELECT id, name, season FROM tournament ORDER BY created_at DESC`;
+      const query = `SELECT id, name, season, is_active, logo_url FROM tournament ORDER BY is_active DESC, created_at DESC`;
       await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
       return;
     }

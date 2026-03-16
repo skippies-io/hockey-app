@@ -334,6 +334,7 @@ export default function Fixtures({ ageId, ageGroups = [] }) {
         awayIsFollowed={star2On}
         onToggleHomeFollow={() => toggleFollow(followId1)}
         onToggleAwayFollow={() => toggleFollow(followId2)}
+        alertMessage={f?.AlertMessage || ''}
       />
     );
   };

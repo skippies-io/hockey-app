@@ -4,6 +4,8 @@ import { adminFetch } from '../../lib/adminAuth';
 import { useTournament } from '../../context/TournamentContext';
 import { isOverdue } from '../../lib/fixtureOverdue';
 
+const ALERT_STATUSES = ['', 'Postponed', 'Cancelled', 'Delayed', 'TBC'];
+
 function normaliseScoreInput(value) {
   if (value === '' || value == null) return '';
   return String(value);
@@ -79,6 +81,8 @@ export default function FixturesPage() {
           ...r,
           score1: normaliseScoreInput(r.score1),
           score2: normaliseScoreInput(r.score2),
+          alert_status: r.result_status || '',
+          alert_message: r.alert_message || '',
         }));
         setFixtures(rows);
       } catch (e) {
@@ -93,7 +97,7 @@ export default function FixturesPage() {
     };
   }, [tournamentId, groupId]);
 
-  const updateScore = (fixtureId, key, value) => {
+  const updateField = (fixtureId, key, value) => {
     setFixtures((prev) =>
       prev.map((f) => (f.fixture_id === fixtureId ? { ...f, [key]: value } : f))
     );
@@ -110,6 +114,8 @@ export default function FixturesPage() {
         fixture_id: fixtureId,
         score1: row.score1 === '' ? null : Number(row.score1),
         score2: row.score2 === '' ? null : Number(row.score2),
+        alert_status: row.alert_status || '',
+        alert_message: row.alert_message || '',
       };
 
       const res = await adminFetch('/admin/results', {
@@ -135,7 +141,7 @@ export default function FixturesPage() {
   return (
     <div style={{ padding: '1rem' }}>
       <h1>Fixtures & Results</h1>
-      <p>Enter final scores for fixtures (admin-only).</p>
+      <p>Enter final scores and set alerts for fixtures (admin-only).</p>
 
       {!tournamentId && (
         <div role="alert" style={{ padding: '0.75rem', border: '1px solid #ccc' }}>
@@ -188,28 +194,30 @@ export default function FixturesPage() {
               <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Time</th>
               <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Fixture</th>
               <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Score</th>
+              <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Alert</th>
               <th style={{ textAlign: 'left', borderBottom: '1px solid #ddd', padding: '0.5rem' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {fixtures.length === 0 && !loadingFixtures && (
               <tr>
-                <td colSpan={5} style={{ padding: '0.75rem', color: '#666' }}>
+                <td colSpan={6} style={{ padding: '0.75rem', color: '#666' }}>
                   No fixtures found.
                 </td>
               </tr>
             )}
 
             {fixtures.map((row) => {
-              const status = saveState[row.fixture_id] || '';
-              const disabled = status === 'saving' || !tournamentId;
+              const saving = saveState[row.fixture_id] || '';
+              const disabled = saving === 'saving' || !tournamentId;
               const overdue = isOverdue(row);
+              const hasAlert = !!row.alert_status;
 
               return (
                 <tr
                   key={row.fixture_id}
                   data-overdue={overdue ? 'true' : undefined}
-                  style={overdue ? { background: '#fef9c3' } : undefined}
+                  style={overdue ? { background: '#fef9c3' } : hasAlert ? { background: '#fff7ed' } : undefined}
                 >
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>{row.date}</td>
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>{row.time}</td>
@@ -228,7 +236,7 @@ export default function FixturesPage() {
                     <input
                       aria-label={`Score1 ${row.fixture_id}`}
                       value={row.score1}
-                      onChange={(e) => updateScore(row.fixture_id, 'score1', e.target.value)}
+                      onChange={(e) => updateField(row.fixture_id, 'score1', e.target.value)}
                       inputMode="numeric"
                       style={{ width: 60 }}
                       disabled={disabled}
@@ -237,18 +245,39 @@ export default function FixturesPage() {
                     <input
                       aria-label={`Score2 ${row.fixture_id}`}
                       value={row.score2}
-                      onChange={(e) => updateScore(row.fixture_id, 'score2', e.target.value)}
+                      onChange={(e) => updateField(row.fixture_id, 'score2', e.target.value)}
                       inputMode="numeric"
                       style={{ width: 60 }}
                       disabled={disabled}
                     />
                   </td>
                   <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>
+                    <select
+                      aria-label={`Alert status ${row.fixture_id}`}
+                      value={row.alert_status}
+                      onChange={(e) => updateField(row.fixture_id, 'alert_status', e.target.value)}
+                      disabled={disabled}
+                      style={{ marginRight: '0.25rem' }}
+                    >
+                      {ALERT_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s || '—'}</option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label={`Alert message ${row.fixture_id}`}
+                      value={row.alert_message}
+                      onChange={(e) => updateField(row.fixture_id, 'alert_message', e.target.value)}
+                      placeholder="Message (optional)"
+                      style={{ width: 180 }}
+                      disabled={disabled}
+                    />
+                  </td>
+                  <td style={{ padding: '0.5rem', borderBottom: '1px solid #f0f0f0' }}>
                     <button type="button" onClick={() => saveRow(row)} disabled={disabled}>
-                      {status === 'saving' ? 'Saving…' : 'Save'}
+                      {saving === 'saving' ? 'Saving…' : 'Save'}
                     </button>
-                    {status === 'saved' && <span style={{ marginLeft: '0.5rem' }}>Saved</span>}
-                    {status === 'error' && <span style={{ marginLeft: '0.5rem' }}>Error</span>}
+                    {saving === 'saved' && <span style={{ marginLeft: '0.5rem' }}>Saved</span>}
+                    {saving === 'error' && <span style={{ marginLeft: '0.5rem' }}>Error</span>}
                   </td>
                 </tr>
               );
