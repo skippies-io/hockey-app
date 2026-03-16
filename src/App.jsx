@@ -28,6 +28,7 @@ import TeamProfile from "./views/TeamProfile";
 import Overview from "./views/Overview";
 import Franchises from "./views/Franchises";
 import Tournaments from "./views/Tournaments";
+import Help from "./views/Help";
 import { useFilterSlot } from "./components/filterSlotContext";
 import DebugInfo from "./components/DebugInfo";
 
@@ -360,11 +361,13 @@ function AppShell({ groups }) {
   const isWelcome = segments.length === 0;
   const isFeedback = firstSegment === "feedback";
   const isTournaments = firstSegment === "tournaments";
+  const isHelp = firstSegment === "help";
   const isTeamProfile = secondSegment === "team";
 
   const currentTab = useMemo(() => {
     if (isFeedback) return "feedback";
     if (isTournaments) return "tournaments";
+    if (isHelp) return "help";
     if (isTeamProfile) return "teams";
     if (
       secondSegment === "standings" ||
@@ -375,12 +378,12 @@ function AppShell({ groups }) {
       return secondSegment;
     }
     return "fixtures";
-  }, [isFeedback, isTournaments, isTeamProfile, secondSegment]);
+  }, [isFeedback, isTournaments, isHelp, isTeamProfile, secondSegment]);
 
   const selectedAge = ageId || groups[0]?.id || "";
   const showNav = !isWelcome;
-  const showAgeSelector = Boolean(ageId) && !isFeedback && !isTournaments && !isTeamProfile;
-  const enableFilterSlot = Boolean(ageId) && !isFeedback && !isTournaments && !isTeamProfile;
+  const showAgeSelector = Boolean(ageId) && !isFeedback && !isTournaments && !isHelp && !isTeamProfile;
+  const enableFilterSlot = Boolean(ageId) && !isFeedback && !isTournaments && !isHelp && !isTeamProfile;
 
   const onAgeChange = (nextId) => {
     const tab = currentTab || "fixtures";
@@ -560,6 +563,7 @@ export default function App() {
           <Route path="feedback" element={<Feedback />} />
           <Route path="franchises" element={<Franchises />} />
           <Route path="tournaments" element={<Tournaments />} />
+          <Route path="help" element={<Help />} />
           <Route path=":ageId/team/:teamId" element={<TeamProfile />} />
           <Route
             path=":ageId/*"
