@@ -1,4 +1,6 @@
 // src/lib/api.js
+import { recordApiLatency } from "./vitals.js";
+
 const PROVIDER = import.meta.env.VITE_PROVIDER || "db";
 export const DB_API_BASE = import.meta.env.VITE_DB_API_BASE;
 const RAW_API_BASE = import.meta.env.VITE_API_BASE;
@@ -93,9 +95,11 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
     }
   }
 
+  const t0 = performance.now();
   const res = retry
     ? await fetchWithRetry(url, retry === true ? DEFAULT_RETRY : retry)
     : await fetch(url);
+  recordApiLatency({ endpoint: url, duration: performance.now() - t0 });
   if (!res.ok) {
     const err = new Error(`HTTP ${res.status}`);
     err.status = res.status;
