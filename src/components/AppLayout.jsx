@@ -5,6 +5,7 @@ import { FilterSlotContext } from "./filterSlotContext";
 import TournamentSwitcher from "./TournamentSwitcher";
 import AnnouncementBanner from "./AnnouncementBanner";
 import DataFreshness from "./DataFreshness";
+import NotificationBell from "./NotificationBell";
 import { getAnnouncements } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 
@@ -83,6 +84,7 @@ export default function AppLayout({
                 </div>
               </div>
               <div className="header-actions">
+                <NotificationBell announcements={announcements} />
                 <TournamentSwitcher />
                 <DataFreshness />
               </div>
