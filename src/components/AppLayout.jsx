@@ -43,10 +43,12 @@ export default function AppLayout({
         { key: "awards", label: "Awards", to: `/${ageId}/awards` },
         { key: "tournaments", label: "Tournaments", to: "/tournaments" },
         { key: "feedback", label: "Feedback", to: "/feedback" },
+        { key: "help", label: "Help", to: "/help" },
       ]
     : [
         { key: "tournaments", label: "Tournaments", to: "/tournaments" },
         { key: "feedback", label: "Feedback", to: "/feedback" },
+        { key: "help", label: "Help", to: "/help" },
       ];
 
   const [slot, setSlot] = useState(filters);
