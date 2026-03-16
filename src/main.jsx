@@ -6,6 +6,7 @@ import "./styles/hj-tokens.css";
 import './index.css'
 
 import { TournamentProvider } from './context/TournamentContext'
+import { initVitals } from './lib/vitals.js'
 
 // Handle client-side routing for GitHub Pages
 if (window.location.search.startsWith('?/')) {
@@ -14,6 +15,7 @@ if (window.location.search.startsWith('?/')) {
 }
 
 console.warn("HJ build", import.meta.env.VITE_BUILD_ID);
+initVitals();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
