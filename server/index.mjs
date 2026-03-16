@@ -390,6 +390,72 @@ async function getStandingsAllPayload(tournamentId) {
   return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
+async function getAwardsPayload(tournamentId, ageId) {
+  if (!pool) throw new Error("DB provider disabled");
+  const [scorersResult, csResult] = await Promise.all([
+    pool.query(
+      `SELECT
+         e->>'scorer' AS player_name,
+         CASE WHEN (e->>'team')::int = 1 THEN t1.name ELSE t2.name END AS team_name,
+         f.group_id AS age_id,
+         f.pool,
+         COUNT(*) AS goals
+       FROM fixture f
+       JOIN team t1 ON t1.tournament_id = f.tournament_id AND t1.id = f.team1_id
+       JOIN team t2 ON t2.tournament_id = f.tournament_id AND t2.id = f.team2_id
+       JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE WHEN jsonb_typeof(r.match_events) = 'array' THEN r.match_events ELSE '[]'::jsonb END
+       ) AS e
+       WHERE f.tournament_id = $1
+         AND e->>'type' = 'goal'
+         AND e->>'scorer' IS NOT NULL
+         AND (e->>'scorer') <> ''
+         AND (f.group_id = $2 OR $2 = '')
+       GROUP BY player_name, team_name, f.group_id, f.pool
+       ORDER BY goals DESC, player_name ASC
+       LIMIT 20`,
+      [tournamentId, ageId]
+    ),
+    pool.query(
+      `SELECT
+         t.name AS team_name,
+         f.group_id AS age_id,
+         f.pool,
+         COUNT(*) AS clean_sheets
+       FROM fixture f
+       JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
+         AND r.score1 IS NOT NULL AND r.score2 IS NOT NULL
+       JOIN team t ON t.tournament_id = f.tournament_id
+         AND (
+           (t.id = f.team1_id AND r.score2 = 0) OR
+           (t.id = f.team2_id AND r.score1 = 0)
+         )
+       WHERE f.tournament_id = $1
+         AND (f.group_id = $2 OR $2 = '')
+       GROUP BY t.name, f.group_id, f.pool
+       ORDER BY clean_sheets DESC, t.name ASC
+       LIMIT 20`,
+      [tournamentId, ageId]
+    ),
+  ]);
+  return {
+    topScorers: scorersResult.rows.map((r) => ({
+      playerName: r.player_name,
+      teamName: r.team_name,
+      ageId: r.age_id,
+      pool: r.pool || "",
+      goals: Number(r.goals),
+    })),
+    cleanSheets: csResult.rows.map((r) => ({
+      teamName: r.team_name,
+      ageId: r.age_id,
+      pool: r.pool || "",
+      cleanSheets: Number(r.clean_sheets),
+    })),
+  };
+}
+
 async function fetchAppsJson(targetUrl) {
   if (!APPS_SCRIPT_BASE_URL) {
     return {
@@ -658,84 +724,17 @@ export const requestHandler = async (req, res) => {
     if (url.pathname === "/api/awards") {
       applyCors(req, res);
       if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
-      if (req.method !== "GET" && !isHead) {
-        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-        return;
-      }
-      if (PROVIDER_MODE !== "db" || !pool) {
-        sendJson(req, res, 501, { ok: false, error: "Not implemented" });
-        return;
-      }
-      const awdTournamentId = url.searchParams.get("tournamentId") || TOURNAMENT_ID;
-      const awdAgeId = url.searchParams.get("age") || "";
+      if (!isHead && req.method !== "GET") { sendJson(req, res, 405, { ok: false, error: "Method not allowed" }); return; }
+      if (!pool || PROVIDER_MODE !== "db") { sendJson(req, res, 501, { ok: false, error: "Not implemented" }); return; }
       try {
-        const [scorersResult, csResult] = await Promise.all([
-          pool.query(
-            `SELECT
-               e->>'scorer' AS player_name,
-               CASE WHEN (e->>'team')::int = 1 THEN t1.name ELSE t2.name END AS team_name,
-               f.group_id AS age_id,
-               f.pool,
-               COUNT(*) AS goals
-             FROM fixture f
-             JOIN team t1 ON t1.tournament_id = f.tournament_id AND t1.id = f.team1_id
-             JOIN team t2 ON t2.tournament_id = f.tournament_id AND t2.id = f.team2_id
-             JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
-             CROSS JOIN LATERAL jsonb_array_elements(
-               CASE WHEN jsonb_typeof(r.match_events) = 'array' THEN r.match_events ELSE '[]'::jsonb END
-             ) AS e
-             WHERE f.tournament_id = $1
-               AND e->>'type' = 'goal'
-               AND e->>'scorer' IS NOT NULL
-               AND (e->>'scorer') <> ''
-               AND ($2 = '' OR f.group_id = $2)
-             GROUP BY player_name, team_name, f.group_id, f.pool
-             ORDER BY goals DESC, player_name ASC
-             LIMIT 20`,
-            [awdTournamentId, awdAgeId]
-          ),
-          pool.query(
-            `SELECT
-               t.name AS team_name,
-               f.group_id AS age_id,
-               f.pool,
-               COUNT(*) AS clean_sheets
-             FROM fixture f
-             JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
-               AND r.score1 IS NOT NULL AND r.score2 IS NOT NULL
-             JOIN team t ON t.tournament_id = f.tournament_id
-               AND (
-                 (t.id = f.team1_id AND r.score2 = 0) OR
-                 (t.id = f.team2_id AND r.score1 = 0)
-               )
-             WHERE f.tournament_id = $1
-               AND ($2 = '' OR f.group_id = $2)
-             GROUP BY t.name, f.group_id, f.pool
-             ORDER BY clean_sheets DESC, t.name ASC
-             LIMIT 20`,
-            [awdTournamentId, awdAgeId]
-          ),
-        ]);
-        const topScorers = scorersResult.rows.map((r) => ({
-          playerName: r.player_name,
-          teamName: r.team_name,
-          ageId: r.age_id,
-          pool: r.pool || "",
-          goals: Number(r.goals),
-        }));
-        const cleanSheets = csResult.rows.map((r) => ({
-          teamName: r.team_name,
-          ageId: r.age_id,
-          pool: r.pool || "",
-          cleanSheets: Number(r.clean_sheets),
-        }));
-        sendJson(req, res, 200, { ok: true, topScorers, cleanSheets }, {
-          head: isHead,
-          cache: { maxAge: 30, swr: 300 },
-        });
-      } catch (e) {
-        console.error(e);
-        sendJson(req, res, 500, { ok: false, error: safeErrorMessage(e) });
+        const awards = await getAwardsPayload(
+          url.searchParams.get("tournamentId") || TOURNAMENT_ID,
+          url.searchParams.get("age") || ""
+        );
+        sendJson(req, res, 200, { ok: true, ...awards }, { head: isHead, cache: { maxAge: 30, swr: 300 } });
+      } catch (awdErr) {
+        console.error("awards error:", awdErr);
+        sendJson(req, res, 500, { ok: false, error: safeErrorMessage(awdErr) });
       }
       return;
     }
