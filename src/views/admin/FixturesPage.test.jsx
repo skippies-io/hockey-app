@@ -207,6 +207,63 @@ describe('FixturesPage', () => {
     vi.useRealTimers();
   });
 
+  it('renders alert status dropdown and alert message input', async () => {
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => screen.getByText(/A vs B/));
+
+    expect(screen.getByLabelText('Alert status fx1')).toBeDefined();
+    expect(screen.getByLabelText('Alert message fx1')).toBeDefined();
+  });
+
+  it('save payload includes alert_status and alert_message', async () => {
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => screen.getByText(/A vs B/));
+
+    fireEvent.change(screen.getByLabelText('Alert status fx1'), { target: { value: 'Postponed' } });
+    fireEvent.change(screen.getByLabelText('Alert message fx1'), { target: { value: 'Rink flooded' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(adminFetchMock).toHaveBeenCalledWith('/admin/results', expect.objectContaining({ method: 'PUT' }));
+    });
+
+    const call = adminFetchMock.mock.calls.find((c) => c[0] === '/admin/results');
+    const parsed = JSON.parse(call[1].body);
+    expect(parsed.alert_status).toBe('Postponed');
+    expect(parsed.alert_message).toBe('Rink flooded');
+  });
+
+  it('pre-populates alert fields from loaded fixture data', async () => {
+    adminFetchMock.mockImplementationOnce((url) => {
+      if (String(url).startsWith('/admin/fixtures')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ok: true,
+            data: [{
+              fixture_id: 'fx2', date: '2026-01-02', time: '10:00',
+              team1: 'C', team2: 'D', score1: null, score2: null,
+              result_status: 'Delayed', alert_message: 'Start pushed back',
+            }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => screen.getByText(/C vs D/));
+
+    expect(screen.getByLabelText('Alert status fx2').value).toBe('Delayed');
+    expect(screen.getByLabelText('Alert message fx2').value).toBe('Start pushed back');
+  });
+
   // Note: we intentionally do not unit test the 1200ms UI timeout; it is a presentational detail.
 });
 
