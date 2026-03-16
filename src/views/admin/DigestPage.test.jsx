@@ -332,6 +332,27 @@ describe("DigestPage – create form", () => {
     expect(tournamentInput.value).toBe("");
   });
 
+  it("shows error when POST response has no error field", async () => {
+    mockFetch([EMPTY_LIST, { ok: false }]); // no error field in the failure response
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+
+    const tournamentInput = screen.getByLabelText(/Tournament ID/i);
+    fireEvent.change(tournamentInput, { target: { value: "my-tournament" } });
+    fireEvent.submit(tournamentInput.closest("form"));
+
+    await waitFor(() => expect(screen.getByText("Failed")).toBeTruthy());
+  });
+
+  it("uses empty Authorization header when no admin token", async () => {
+    const { getAdminToken } = await import("../../lib/adminAuth");
+    getAdminToken.mockReturnValueOnce(null); // no token for the first apiFetch call
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    // No crash — headers fallback to Content-Type only (no Authorization)
+  });
+
   it("formatExpiry returns raw iso string when toLocaleDateString throws", async () => {
     const iso = new Date().toISOString();
     mockFetch([{

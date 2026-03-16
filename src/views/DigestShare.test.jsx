@@ -171,4 +171,32 @@ describe("DigestShare – valid token", () => {
     expect(expiryEl.textContent).toContain(iso);
     spy.mockRestore();
   });
+
+  it("uses 'Tournament Digest' title when both label and age_id are null", async () => {
+    apiMocks.getDigestShare.mockResolvedValue({
+      ok: true,
+      config: { ...CONFIG, label: null, age_id: null },
+    });
+    renderShare();
+    expect(await screen.findByText("Tournament Digest")).toBeTruthy();
+  });
+
+  it("passes 'all' as ageId to sections when age_id is null", async () => {
+    apiMocks.getDigestShare.mockResolvedValue({
+      ok: true,
+      config: { ...CONFIG, age_id: null },
+    });
+    renderShare();
+    await screen.findByText(/Tournament Digest|U12 Digest/);
+    await waitFor(() => {
+      expect(apiMocks.getStandingsRows).toHaveBeenCalledWith("t-1", "all");
+      expect(apiMocks.getFixturesRows).toHaveBeenCalledWith("t-1", "all");
+    });
+  });
+
+  it("shows fallback error message when rejection has no message", async () => {
+    apiMocks.getDigestShare.mockRejectedValue({});
+    renderShare();
+    expect(await screen.findByText("Invalid or expired link.")).toBeTruthy();
+  });
 });
