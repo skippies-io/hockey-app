@@ -74,6 +74,12 @@ describe("Standings – loading state", () => {
     renderStandings(DEFAULT_PROPS);
     expect(screen.getByText(/loading standings/i)).toBeTruthy();
   });
+
+  it("loading card has role=status", () => {
+    apiMocks.getStandingsRows.mockReturnValue(new Promise(() => {}));
+    renderStandings(DEFAULT_PROPS);
+    expect(screen.getByRole("status")).toBeTruthy();
+  });
 });
 
 describe("Standings – error state", () => {
@@ -81,6 +87,13 @@ describe("Standings – error state", () => {
     apiMocks.getStandingsRows.mockRejectedValue(new Error("Server down"));
     renderStandings(DEFAULT_PROPS);
     expect(await screen.findByText(/Error: Server down/i)).toBeTruthy();
+  });
+
+  it("error card has role=alert", async () => {
+    apiMocks.getStandingsRows.mockRejectedValue(new Error("Server down"));
+    renderStandings(DEFAULT_PROPS);
+    await screen.findByText(/Error:/i);
+    expect(screen.getByRole("alert")).toBeTruthy();
   });
 });
 

@@ -100,6 +100,22 @@
   --hj-duration-slow: 240ms;
   --hj-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* ===== Semantic / legacy aliases ===== */
+  /* These map short-hand names used in admin components to the canonical tokens
+   * above. Define them here so --hj-color-brand-primary etc. resolve correctly
+   * rather than silently falling back to an empty value. */
+  --hj-color-brand-primary:  var(--hj-color-brand);
+  --hj-color-inverse-text:   #ffffff;               /* white on brand backgrounds */
+  --hj-color-surface-1:      var(--hj-color-surface);
+  --hj-color-surface-2:      var(--hj-color-surface-muted);
+  --hj-color-text-primary:   var(--hj-color-ink);
+  --hj-color-text-secondary: var(--hj-color-ink-subtle);
+  --hj-border-color:         var(--hj-color-border-subtle);
+  --hj-card-bg:              var(--hj-color-surface);
+  --hj-text-primary:         var(--hj-color-ink);
+  --hj-spacing-xs:           var(--hj-space-1);
+  --hj-spacing-sm:           var(--hj-space-2);
+
   /* ===== Layout ===== */
   --hj-page-max-width: 1120px;
 
