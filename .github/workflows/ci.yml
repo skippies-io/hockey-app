@@ -111,6 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci
     timeout-minutes: 15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
