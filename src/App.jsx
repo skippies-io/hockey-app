@@ -39,6 +39,8 @@ import AnnouncementsPage from "./views/admin/AnnouncementsPage";
 import TournamentWizard from "./views/admin/TournamentWizard";
 import FixturesPage from "./views/admin/FixturesPage";
 import TechDesk from "./views/admin/TechDesk";
+import DigestPage from "./views/admin/DigestPage";
+import DigestShare from "./views/DigestShare";
 
 // Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
 function isRealTeamName(name) {
@@ -531,6 +533,7 @@ export default function App() {
               <Route path="tournaments" element={<TournamentWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="fixtures" element={<FixturesPage />} />
+              <Route path="digests" element={<DigestPage />} />
               <Route path="tech-desk/:matchId" element={<TechDesk />} />
               <Route
                 path="*"
@@ -539,6 +542,9 @@ export default function App() {
             </Route>
           </Route>
         </Route>
+
+        {/* Public digest share view — outside AppShell (no nav) */}
+        <Route path="share/:token" element={<DigestShare />} />
 
         {/* Public App Section */}
         <Route element={<AppShell groups={groupsWithAll} />}>
