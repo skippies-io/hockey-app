@@ -557,6 +557,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
              t2.name AS team2,
              r.score1,
              r.score2,
+             r.status AS result_status,
+             r.alert_message,
              COALESCE(r.match_events, '[]'::jsonb) AS match_events,
              COALESCE(r.is_signed_off, false) AS is_signed_off,
              r.coach_signature,
@@ -598,6 +600,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
            t2.name AS team2,
            r.score1,
            r.score2,
+           r.status AS result_status,
+           r.alert_message,
            r.updated_at AS result_updated_at
          FROM fixture f
          JOIN team t1
@@ -639,6 +643,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
       const coachSignature = body.coach_signature && typeof body.coach_signature === 'object'
         ? body.coach_signature : undefined;
 
+      const VALID_STATUSES = new Set(["Final", "Postponed", "Cancelled", "Delayed", "TBC", "Live", ""]);
+      const alertStatus = body.alert_status != null ? normalizeSpaces(String(body.alert_status)) : null;
+      const alertMessage = body.alert_message != null ? normalizeSpaces(String(body.alert_message)).slice(0, 280) : null;
+      if (alertStatus !== null && !VALID_STATUSES.has(alertStatus)) {
+        return sendJson(req, res, 400, { ok: false, error: `Invalid alert_status. Must be one of: ${[...VALID_STATUSES].filter(Boolean).join(", ")}` });
+      }
+
       if (!tournamentId) {
         return sendJson(req, res, 400, { ok: false, error: "tournament_id is required" });
       }
@@ -658,24 +669,31 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         return sendJson(req, res, 404, { ok: false, error: "Fixture not found" });
       }
 
+      // Derive final status: alert_status wins if provided, else "Final" if scores present
+      const resolvedStatus = alertStatus !== null && alertStatus !== ""
+        ? alertStatus
+        : (score1 !== null || score2 !== null ? "Final" : "");
+
       const upsert = await pool.query(
-        `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, updated_at, source,
+        `INSERT INTO result (tournament_id, fixture_id, score1, score2, status, alert_message, updated_at, source,
            match_events, is_signed_off, coach_signature)
-         VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, $8, $9, $10)
          ON CONFLICT (tournament_id, fixture_id)
          DO UPDATE SET
            score1 = EXCLUDED.score1,
            score2 = EXCLUDED.score2,
            status = EXCLUDED.status,
+           alert_message = EXCLUDED.alert_message,
            updated_at = NOW(),
            source = EXCLUDED.source,
            match_events = COALESCE(EXCLUDED.match_events, result.match_events),
            is_signed_off = CASE WHEN EXCLUDED.is_signed_off THEN true ELSE result.is_signed_off END,
            coach_signature = COALESCE(EXCLUDED.coach_signature, result.coach_signature)
-         RETURNING tournament_id, fixture_id, score1, score2, status, updated_at,
+         RETURNING tournament_id, fixture_id, score1, score2, status, alert_message, updated_at,
            match_events, is_signed_off, coach_signature`,
         [
-          tournamentId, fixtureId, score1, score2, "Final", "tech-desk",
+          tournamentId, fixtureId, score1, score2, resolvedStatus || null, alertMessage,
+          "admin",
           matchEvents ? JSON.stringify(matchEvents) : null,
           isSignedOff,
           coachSignature ? JSON.stringify(coachSignature) : null,
@@ -694,7 +712,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         tournament_id: tournamentId,
         entity_type: "result",
         entity_id: fixtureId,
-        meta: { score1, score2, is_signed_off: isSignedOff },
+        meta: { score1, score2, alert_status: resolvedStatus, is_signed_off: isSignedOff },
       });
 
       return sendJson(req, res, 200, { ok: true, data: upsert.rows?.[0] || null });

@@ -272,3 +272,26 @@ describe('FixtureCard – result pill', () => {
     expect(screen.queryByText('W')).toBeNull();
   });
 });
+
+describe('FixtureCard – alertMessage', () => {
+  it('renders alert message text when provided', () => {
+    render(<FixtureCard {...BASE} alertMessage="Match postponed due to ice damage" />);
+    expect(screen.getByText('Match postponed due to ice damage')).toBeTruthy();
+  });
+
+  it('renders alert message in fixture-card-alert element', () => {
+    const { container } = render(<FixtureCard {...BASE} alertMessage="Rink closed" />);
+    expect(container.querySelector('.fixture-card-alert')).toBeTruthy();
+    expect(container.querySelector('.fixture-card-alert').textContent).toBe('Rink closed');
+  });
+
+  it('does not render fixture-card-alert when alertMessage is empty string', () => {
+    const { container } = render(<FixtureCard {...BASE} alertMessage="" />);
+    expect(container.querySelector('.fixture-card-alert')).toBeNull();
+  });
+
+  it('does not render fixture-card-alert when alertMessage is omitted', () => {
+    const { container } = render(<FixtureCard {...BASE} />);
+    expect(container.querySelector('.fixture-card-alert')).toBeNull();
+  });
+});

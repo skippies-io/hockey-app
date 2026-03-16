@@ -41,9 +41,13 @@ export default function AppLayout({
         { key: "standings", label: "Standings", to: `/${ageId}/standings` },
         { key: "teams", label: "Teams", to: `/${ageId}/teams` },
         { key: "awards", label: "Awards", to: `/${ageId}/awards` },
+        { key: "tournaments", label: "Tournaments", to: "/tournaments" },
         { key: "feedback", label: "Feedback", to: "/feedback" },
       ]
-    : [{ key: "feedback", label: "Feedback", to: "/feedback" }];
+    : [
+        { key: "tournaments", label: "Tournaments", to: "/tournaments" },
+        { key: "feedback", label: "Feedback", to: "/feedback" },
+      ];
 
   const [slot, setSlot] = useState(filters);
   useEffect(() => {

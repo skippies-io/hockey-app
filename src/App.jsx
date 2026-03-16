@@ -357,10 +357,12 @@ function AppShell({ groups }) {
   const secondSegment = segments[1] || "";
   const isWelcome = segments.length === 0;
   const isFeedback = firstSegment === "feedback";
+  const isTournaments = firstSegment === "tournaments";
   const isTeamProfile = secondSegment === "team";
 
   const currentTab = useMemo(() => {
     if (isFeedback) return "feedback";
+    if (isTournaments) return "tournaments";
     if (isTeamProfile) return "teams";
     if (
       secondSegment === "standings" ||
@@ -371,12 +373,12 @@ function AppShell({ groups }) {
       return secondSegment;
     }
     return "fixtures";
-  }, [isFeedback, isTeamProfile, secondSegment]);
+  }, [isFeedback, isTournaments, isTeamProfile, secondSegment]);
 
   const selectedAge = ageId || groups[0]?.id || "";
   const showNav = !isWelcome;
-  const showAgeSelector = Boolean(ageId) && !isFeedback && !isTeamProfile;
-  const enableFilterSlot = Boolean(ageId) && !isFeedback && !isTeamProfile;
+  const showAgeSelector = Boolean(ageId) && !isFeedback && !isTournaments && !isTeamProfile;
+  const enableFilterSlot = Boolean(ageId) && !isFeedback && !isTournaments && !isTeamProfile;
 
   const onAgeChange = (nextId) => {
     const tab = currentTab || "fixtures";

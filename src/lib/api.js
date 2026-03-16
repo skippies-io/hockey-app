@@ -182,6 +182,13 @@ export async function getAwardsRows(tournamentId, ageId) {
   return { topScorers: j.topScorers || [], cleanSheets: j.cleanSheets || [] };
 }
 
+export function getFixturesIcsUrl(tournamentId, ageId) {
+  if (!API_BASE) return '';
+  const root = API_BASE.replace(/\/api$/, '');
+  const age = ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
+  return `${root}/api/fixtures.ics?tournamentId=${encodeURIComponent(tournamentId || '')}${age}`;
+}
+
 export function getCachedLastSyncAt() {
   try {
     return localStorage.getItem('hj:last_sync_at') || '';
