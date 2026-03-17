@@ -509,7 +509,6 @@ export const requestHandler = async (req, res) => {
   try {
     const isHead = req.method === "HEAD";
     const url = new URL(req.url, `http://${req.headers.host}`);
-    console.log("Incoming Request:", req.method, url.pathname); // DEBUG
     const isOptions = req.method === "OPTIONS";
     const isHealth = url.pathname === "/health";
 
