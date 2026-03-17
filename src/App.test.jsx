@@ -109,4 +109,5 @@ describe("App Smoke Test", () => {
 
     const heading = await screen.findByText(/Teams/i);
     expect(heading).toBeTruthy();
-  });});
+  });
+});
