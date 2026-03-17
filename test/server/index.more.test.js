@@ -189,6 +189,27 @@ describe('server/index.mjs additional coverage', () => {
     expect(body.error).toBe('Not implemented for Apps Script provider');
   });
 
+  it('apps provider returns 501 for /api/tournaments', async () => {
+    const { requestHandler } = await loadServer({
+      PROVIDER_MODE: 'apps',
+      APPS_SCRIPT_BASE_URL: 'https://example.com/apps',
+    });
+
+    const req = {
+      method: 'GET',
+      url: '/api/tournaments',
+      headers: { host: 'localhost' },
+      on: vi.fn(),
+    };
+    const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+    await requestHandler(req, res);
+
+    expect(res.writeHead).toHaveBeenCalledWith(501);
+    const body = JSON.parse(res.end.mock.calls[0][0]);
+    expect(body.ok).toBe(false);
+  });
+
   it('requestHandler returns 500 for malformed query strings', async () => {
     const { requestHandler } = await loadServer({
       PROVIDER_MODE: 'db',
