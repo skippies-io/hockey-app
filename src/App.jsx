@@ -484,6 +484,7 @@ AgeLayout.propTypes = {
 export default function App() {
   const [groups, setGroups] = useState(FALLBACK_GROUPS);
   const [loadingGroups, setLoadingGroups] = useState(true);
+  const { activeTournamentId, loading: tournamentLoading } = useTournament();
 
   const groupsWithAll = useMemo(() => {
     const rest = (groups || []).filter((g) => g.id !== "all");
@@ -491,10 +492,11 @@ export default function App() {
   }, [groups]);
 
   useEffect(() => {
+    if (tournamentLoading) return;
     let alive = true;
     (async () => {
       try {
-        const list = await getGroups();
+        const list = await getGroups(activeTournamentId);
         if (!alive) return;
         if (Array.isArray(list) && list.length) {
           setGroups(list);
@@ -510,7 +512,7 @@ export default function App() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [activeTournamentId, tournamentLoading]);
 
   return (
     <>
