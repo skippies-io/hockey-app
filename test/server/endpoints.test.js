@@ -194,6 +194,28 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(res.writeHead).toHaveBeenCalledWith(500);
     });
 
+    it('GET /api/tournaments falls back when migration 014 not applied (42703)', async () => {
+        const missingColumnError = Object.assign(new Error('column "is_active" does not exist'), { code: '42703' });
+        mocks.query
+            .mockRejectedValueOnce(missingColumnError)
+            .mockResolvedValueOnce({ rows: [{ id: 't1', name: 'Tourney 1', season: '2025' }] });
+
+        const req = {
+            method: 'GET',
+            url: '/api/tournaments',
+            headers: { host: 'localhost' },
+            on: vi.fn()
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const responseBody = JSON.parse(res.end.mock.calls[0][0]);
+        expect(responseBody.data).toHaveLength(1);
+        expect(responseBody.data[0].id).toBe('t1');
+    });
+
     it('GET /api/groups returns data', async () => {
         mocks.query.mockResolvedValueOnce({
             rows: [

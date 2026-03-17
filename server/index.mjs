@@ -762,8 +762,33 @@ export const requestHandler = async (req, res) => {
         return;
       }
 
-      const query = `SELECT id, name, season, is_active, logo_url FROM tournament ORDER BY is_active DESC, created_at DESC`;
-      await handleDbGet(req, res, query, [], { maxAge: 300, swr: 3600 });
+      // Columns is_active and logo_url were added in migration 014_tournaments_public.sql.
+      // Fall back to a simpler query if that migration has not been applied yet.
+      if (!pool || PROVIDER_MODE !== "db") {
+        sendJson(req, res, 501, { ok: false, error: "Not implemented" });
+        return;
+      }
+      try {
+        const result = await pool.query(
+          `SELECT id, name, season, is_active, logo_url FROM tournament ORDER BY is_active DESC, created_at DESC`,
+          []
+        );
+        const data = result.rows || [];
+        sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
+      } catch (e) {
+        if (e.code === '42703') {
+          // 42703 = undefined_column — migration 014 not yet applied; fall back
+          const result = await pool.query(
+            `SELECT id, name, season FROM tournament ORDER BY created_at DESC`,
+            []
+          );
+          const data = result.rows || [];
+          sendJson(req, res, 200, { ok: true, data }, { head: isHead, cache: { maxAge: 300, swr: 3600 } });
+        } else {
+          console.error('tournaments query error:', e);
+          sendJson(req, res, 500, { ok: false, error: 'DB Error' });
+        }
+      }
       return;
     }
 
