@@ -25,11 +25,24 @@ describe('TournamentSwitcher', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('returns null when only 1 tournament', () => {
+  it('renders when at least 1 tournament (single item case)', () => {
     useTournament.mockReturnValue({
       activeTournamentId: 't1',
       setActiveTournamentId: vi.fn(),
       availableTournaments: [{ id: 't1', name: 'One' }],
+      loading: false,
+    });
+
+    render(<TournamentSwitcher />);
+    expect(screen.getByText('Select Tournament:')).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'One' })).toBeTruthy();
+  });
+
+  it('returns null when 0 tournaments', () => {
+    useTournament.mockReturnValue({
+      activeTournamentId: null,
+      setActiveTournamentId: vi.fn(),
+      availableTournaments: [],
       loading: false,
     });
 

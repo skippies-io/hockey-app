@@ -122,8 +122,10 @@ describe('TechDesk', () => {
     const increaseBtn = screen.getByLabelText('Increase score Eagles');
     fireEvent.click(increaseBtn);
 
-    expect(screen.getByLabelText('Score Eagles').textContent).toBe('1');
-    expect(screen.getByLabelText('Score Hawks').textContent).toBe('0');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Score Eagles').textContent).toBe('1');
+      expect(screen.getByLabelText('Score Hawks').textContent).toBe('0');
+    });
   });
 
   it('decrements team2 score with − button (floor at 0)', async () => {
