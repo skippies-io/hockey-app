@@ -28,7 +28,9 @@ async function getTransporter() {
 }
 
 function normalizeBaseUrl(url) {
-  return String(url || "").trim().replace(/\/+$/, "");
+  let out = String(url || "").trim();
+  while (out.endsWith("/")) out = out.slice(0, -1);
+  return out;
 }
 
 export function resolveAppUrl(env = process.env) {
