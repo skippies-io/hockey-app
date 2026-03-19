@@ -23,6 +23,7 @@ describe('AnnouncementsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     vi.stubEnv('VITE_API_BASE', 'http://localhost:8787/api');
     vi.resetModules();
     fetch.mockImplementation((url) => {
@@ -51,6 +52,24 @@ describe('AnnouncementsPage', () => {
 
     expect(screen.getByText('Pub 1')).toBeDefined();
     expect(screen.getByText('Draft 1')).toBeDefined();
+  });
+
+  it('shows explicit load error when admin announcements request is unauthorized', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ ok: false, error: 'Unauthorized' }) });
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Unauthorized')).toBeDefined();
+    });
+    expect(screen.queryByText('No announcements found.')).toBeNull();
   });
 
   it('filters list by published/draft', async () => {
@@ -110,6 +129,7 @@ describe('AnnouncementsPage', () => {
     await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
+    sessionStorage.setItem('hj_admin_session_token', 'sess');
     fireEvent.change(screen.getByPlaceholderText(/headline/i), { target: { value: 'New Ann' } });
     fireEvent.change(screen.getByPlaceholderText(/update/i), { target: { value: 'New Body' } });
     
@@ -122,6 +142,13 @@ describe('AnnouncementsPage', () => {
         body: expect.stringContaining('"title":"New Ann"'),
       }));
     });
+
+    const [, opts] = fetch.mock.calls.find(([url, options]) =>
+      typeof url === 'string' &&
+      url === 'http://localhost:8787/api/admin/announcements' &&
+      options?.method === 'POST'
+    );
+    expect(opts.headers.get('Authorization')).toBe('Bearer sess');
   });
 
   it('allows editing an existing announcement', async () => {
