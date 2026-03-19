@@ -23,6 +23,7 @@ describe('AnnouncementsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     vi.stubEnv('VITE_API_BASE', 'http://localhost:8787/api');
     vi.resetModules();
     fetch.mockImplementation((url) => {
@@ -51,6 +52,58 @@ describe('AnnouncementsPage', () => {
 
     expect(screen.getByText('Pub 1')).toBeDefined();
     expect(screen.getByText('Draft 1')).toBeDefined();
+  });
+
+  it('shows explicit load error when admin announcements request is unauthorized', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ ok: false, error: 'Unauthorized' }) });
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Unauthorized')).toBeDefined();
+    });
+    expect(screen.queryByText('No announcements found.')).toBeNull();
+  });
+
+  it('shows fallback message when announcements error body is not JSON', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.reject(new Error('bad-json')) });
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load announcements.')).toBeDefined();
+    });
+  });
+
+  it('shows thrown load error when announcements request fails before response', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.reject(new Error('Network down'));
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Network down')).toBeDefined();
+    });
   });
 
   it('filters list by published/draft', async () => {
@@ -110,6 +163,7 @@ describe('AnnouncementsPage', () => {
     await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
+    sessionStorage.setItem('hj_admin_session_token', 'sess');
     fireEvent.change(screen.getByPlaceholderText(/headline/i), { target: { value: 'New Ann' } });
     fireEvent.change(screen.getByPlaceholderText(/update/i), { target: { value: 'New Body' } });
     
@@ -122,6 +176,13 @@ describe('AnnouncementsPage', () => {
         body: expect.stringContaining('"title":"New Ann"'),
       }));
     });
+
+    const [, opts] = fetch.mock.calls.find(([url, options]) =>
+      typeof url === 'string' &&
+      url === 'http://localhost:8787/api/admin/announcements' &&
+      options?.method === 'POST'
+    );
+    expect(opts.headers.get('Authorization')).toBe('Bearer sess');
   });
 
   it('allows editing an existing announcement', async () => {
@@ -228,6 +289,52 @@ describe('AnnouncementsPage', () => {
 
     await waitFor(() => {
       expect(window.alert).toHaveBeenCalledWith("Failed to delete.");
+    });
+  });
+
+  it('shows server error details when delete fails with JSON error', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: 'Delete blocked' }),
+        });
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+    fireEvent.click(screen.getAllByTitle(/delete/i)[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Delete blocked');
+    });
+  });
+
+  it('shows thrown error details when delete request throws', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'DELETE') {
+        return Promise.reject(new Error('Delete network fail'));
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+    fireEvent.click(screen.getAllByTitle(/delete/i)[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Delete network fail');
     });
   });
 

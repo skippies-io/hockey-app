@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API_BASE } from '../../lib/api';
+import { adminFetch } from '../../lib/adminAuth';
 
 // Character Limits
 const MAX_TITLE = 50;
@@ -163,6 +164,7 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, published, draft
   const [contextFilter, setContextFilter] = useState('all'); // all, general, tournament id
   
@@ -178,28 +180,42 @@ export default function AnnouncementsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  async function readErrorMessage(res, fallback) {
+    if (!res || typeof res.json !== "function") {
+      return fallback || (res?.status ? `HTTP ${res.status}` : "Request failed");
+    }
+    const json = await res.json().catch(() => ({}));
+    return json?.error || fallback || `HTTP ${res.status}`;
+  }
+
   useEffect(() => {
     fetchData();
   }, []);
 
   async function fetchData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [annsRes, tournsRes] = await Promise.all([
-        fetch(`${API_BASE}/admin/announcements`),
+        adminFetch('/admin/announcements'),
         fetch(`${API_BASE}/tournaments`)
       ]);
 
       if (annsRes.ok) {
         const json = await annsRes.json();
         setAnnouncements(json.data || []);
+      } else {
+        setAnnouncements([]);
+        setLoadError(await readErrorMessage(annsRes, "Failed to load announcements."));
       }
       if (tournsRes.ok) {
         const json = await tournsRes.json();
         setTournaments(Array.isArray(json) ? json : (json.data || []));
       }
     } catch (e) {
-      console.error(e);
+      console.error("Announcements load failed", e);
+      setAnnouncements([]);
+      setLoadError(e?.message || "Failed to load announcements.");
     } finally {
       setLoading(false);
     }
@@ -237,17 +253,17 @@ export default function AnnouncementsPage() {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
 
     try {
-      const res = await fetch(`${API_BASE}/admin/announcements/${id}`, { method: 'DELETE' });
+      const res = await adminFetch(`/admin/announcements/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setAnnouncements(prev => prev.filter(a => a.id !== id));
         // If we were editing this item, clear the form
         if (editingId === id) resetForm();
       } else {
-        alert("Failed to delete.");
+        alert(await readErrorMessage(res, "Failed to delete."));
       }
     } catch (err) {
       console.error(err);
-      alert("Error deleting.");
+      alert(err?.message || "Error deleting.");
     }
   }
 
@@ -274,14 +290,14 @@ export default function AnnouncementsPage() {
       refresh_date: isPublished // If publishing, refresh the date to bring it to top
     };
 
-    const url = editingId 
-      ? `${API_BASE}/admin/announcements/${editingId}`
-      : `${API_BASE}/admin/announcements`;
-    
+    const path = editingId
+      ? `/admin/announcements/${editingId}`
+      : '/admin/announcements';
+
     const method = editingId ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await adminFetch(path, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -478,8 +494,13 @@ export default function AnnouncementsPage() {
           </div>
           
           {loading && <div style={{ color: '#6b7280' }}>Loading...</div>}
+          {!loading && loadError && (
+            <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '12px', borderRadius: '6px', marginBottom: '12px' }}>
+              {loadError}
+            </div>
+          )}
 
-          {!loading && filteredList.length === 0 ? (
+          {!loading && !loadError && filteredList.length === 0 ? (
              <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '8px', border: '2px dashed #e5e7eb', color: '#9ca3af' }}>
                No announcements found.
              </div>
