@@ -72,6 +72,40 @@ describe('AnnouncementsPage', () => {
     expect(screen.queryByText('No announcements found.')).toBeNull();
   });
 
+  it('shows fallback message when announcements error body is not JSON', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.reject(new Error('bad-json')) });
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load announcements.')).toBeDefined();
+    });
+  });
+
+  it('shows thrown load error when announcements request fails before response', async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.reject(new Error('Network down'));
+      }
+      if (typeof url === 'string' && url.includes('http://localhost:8787/api/tournaments')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockTournaments }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Network down')).toBeDefined();
+    });
+  });
+
   it('filters list by published/draft', async () => {
     await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
@@ -255,6 +289,52 @@ describe('AnnouncementsPage', () => {
 
     await waitFor(() => {
       expect(window.alert).toHaveBeenCalledWith("Failed to delete.");
+    });
+  });
+
+  it('shows server error details when delete fails with JSON error', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve({ error: 'Delete blocked' }),
+        });
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+    fireEvent.click(screen.getAllByTitle(/delete/i)[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Delete blocked');
+    });
+  });
+
+  it('shows thrown error details when delete request throws', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'DELETE') {
+        return Promise.reject(new Error('Delete network fail'));
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+    fireEvent.click(screen.getAllByTitle(/delete/i)[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Delete network fail');
     });
   });
 
