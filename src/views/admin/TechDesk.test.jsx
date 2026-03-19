@@ -206,6 +206,11 @@ describe('TechDesk', () => {
     fireEvent.click(screen.getByLabelText('Increase score Eagles'));
     fireEvent.click(screen.getByLabelText('Increase score Hawks'));
 
+    await waitFor(() => {
+      expect(screen.getByLabelText('Score Eagles').textContent).toBe('2');
+      expect(screen.getByLabelText('Score Hawks').textContent).toBe('1');
+    });
+
     fireEvent.click(screen.getByLabelText('Save result'));
 
     await waitFor(() => {
