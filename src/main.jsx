@@ -7,11 +7,12 @@ import './index.css'
 
 import { TournamentProvider } from './context/TournamentContext'
 import { initVitals } from './lib/vitals.js'
+import { decodeGithubPagesRedirect } from './lib/githubPagesRoute.js'
 
 // Handle client-side routing for GitHub Pages
-if (window.location.search.startsWith('?/')) {
-  const path = window.location.search.slice(2);
-  window.history.replaceState(null, '', path);
+const rewrittenPath = decodeGithubPagesRedirect(window.location.search, window.location.hash);
+if (rewrittenPath !== null) {
+  window.history.replaceState(null, '', rewrittenPath);
 }
 
 console.warn("HJ build", import.meta.env.VITE_BUILD_ID);

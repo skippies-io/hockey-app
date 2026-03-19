@@ -1,5 +1,5 @@
 // ----- bump to force update -----
-const VERSION = 'v1.0.5'
+const VERSION = 'v1.0.6'
 const CACHE_NAME = `hj-cache-${VERSION}`
 
 // Derive base path from the SW scope so it works on GitHub Pages subpath
