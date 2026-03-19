@@ -4,8 +4,8 @@ import { useTournament } from '../context/TournamentContext';
 export default function TournamentSwitcher() {
   const { activeTournamentId, setActiveTournamentId, availableTournaments, loading } = useTournament();
 
-  if (loading || availableTournaments.length <= 1) {
-    return null; // Don't show if loading or only 1 option
+  if (loading || availableTournaments.length === 0) {
+    return null; // Don't show if loading or no options
   }
 
   return (
