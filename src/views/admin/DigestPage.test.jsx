@@ -1,11 +1,17 @@
 import React from "react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DigestPage from "./DigestPage";
 
 vi.mock("../../lib/api", () => ({ API_BASE: "http://localhost:8787/api" }));
-vi.mock("../../lib/adminAuth", () => ({ getAdminToken: vi.fn(() => "test-token") }));
+
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem("hj_admin_session_token", "test-token");
+  localStorage.setItem("hj_admin_session_expires_at", "2099-01-01T00:00:00.000Z");
+});
 
 function renderPage() {
   return render(
@@ -345,12 +351,10 @@ describe("DigestPage – create form", () => {
   });
 
   it("uses empty Authorization header when no admin token", async () => {
-    const { getAdminToken } = await import("../../lib/adminAuth");
-    getAdminToken.mockReturnValueOnce(null); // no token for the first apiFetch call
-    mockFetch([EMPTY_LIST]);
+    localStorage.removeItem("hj_admin_session_token");
+    localStorage.removeItem("hj_admin_session_expires_at");
     renderPage();
-    await screen.findByText(/No share links yet/i);
-    // No crash — headers fallback to Content-Type only (no Authorization)
+    expect(await screen.findByText(/Admin session expired. Please sign in again./i)).toBeTruthy();
   });
 
   it("formatExpiry returns raw iso string when toLocaleDateString throws", async () => {

@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 describe("adminAuth", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -93,5 +94,35 @@ describe("adminAuth", () => {
     const [, opts] = globalThis.fetch.mock.calls[0];
     expect(opts.headers.get("Authorization")).toBe("Bearer sess");
     expect(opts.headers.get("X-Test")).toBe("1");
+  });
+
+  it("migrates legacy sessionStorage session into localStorage", async () => {
+    sessionStorage.setItem("hj_admin_session_token", "legacy-token");
+    const mod = await import("./adminAuth.js");
+    expect(mod.getAdminToken()).toBe("legacy-token");
+    expect(localStorage.getItem("hj_admin_session_token")).toBe("legacy-token");
+    expect(sessionStorage.getItem("hj_admin_session_token")).toBeNull();
+  });
+
+  it("treats expired session as unauthenticated", async () => {
+    const mod = await import("./adminAuth.js");
+    mod.setAdminSession({
+      token: "expired-token",
+      email: "e",
+      expiresAt: "2000-01-01T00:00:00.000Z",
+    });
+    expect(mod.getAdminToken()).toBe("");
+    expect(mod.isAdminAuthed()).toBe(false);
+  });
+
+  it("adminFetch clears session and throws auth error on 401", async () => {
+    const mod = await import("./adminAuth.js");
+    mod.setAdminSession({ token: "sess", email: "e", expiresAt: "2099-01-01T00:00:00.000Z" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ status: 401 });
+
+    await expect(mod.adminFetch("/admin/announcements")).rejects.toThrow(
+      "Admin session expired. Please sign in again."
+    );
+    expect(mod.isAdminAuthed()).toBe(false);
   });
 });

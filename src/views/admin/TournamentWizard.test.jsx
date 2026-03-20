@@ -11,6 +11,9 @@ describe("TournamentWizard", () => {
     vi.stubEnv("VITE_API_BASE", "http://localhost:8787/api");
     vi.resetModules();
     sessionStorage.clear();
+    localStorage.clear();
+    localStorage.setItem("hj_admin_session_token", "sess");
+    localStorage.setItem("hj_admin_session_expires_at", "2099-01-01T00:00:00.000Z");
     fetch.mockImplementation((url) => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
@@ -83,13 +86,15 @@ describe("TournamentWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        "http://localhost:8787/api/admin/tournament-wizard",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        })
+      const call = fetch.mock.calls.find(
+        ([url, options]) =>
+          url === "http://localhost:8787/api/admin/tournament-wizard" &&
+          options?.method === "POST"
       );
+      expect(call).toBeDefined();
+      const [, options] = call;
+      expect(options.headers.get("Content-Type")).toBe("application/json");
+      expect(options.headers.get("Authorization")).toBe("Bearer sess");
     });
   });
 

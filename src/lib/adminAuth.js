@@ -4,33 +4,72 @@ import { API_BASE } from "./api";
 const TOKEN_KEY = "hj_admin_session_token";
 const EMAIL_KEY = "hj_admin_email";
 const EXP_KEY = "hj_admin_session_expires_at";
+const AUTH_EXPIRED_MESSAGE = "Admin session expired. Please sign in again.";
+
+function readStorage(key) {
+  const localValue = localStorage.getItem(key);
+  if (localValue) return localValue;
+  const sessionValue = sessionStorage.getItem(key);
+  if (!sessionValue) return "";
+  // Migrate legacy tab-only sessions into persistent storage.
+  localStorage.setItem(key, sessionValue);
+  sessionStorage.removeItem(key);
+  return sessionValue;
+}
+
+function isExpired(expiresAt) {
+  if (!expiresAt) return false;
+  const ts = Date.parse(expiresAt);
+  return Number.isFinite(ts) && ts <= Date.now();
+}
+
+function ensureActiveSession() {
+  const expiresAt = readStorage(EXP_KEY);
+  if (isExpired(expiresAt)) {
+    clearAdminSession();
+    return false;
+  }
+  return true;
+}
+
+function authExpiredError() {
+  const err = new Error(AUTH_EXPIRED_MESSAGE);
+  err.code = "ADMIN_AUTH_EXPIRED";
+  return err;
+}
 
 export function getAdminToken() {
-  return sessionStorage.getItem(TOKEN_KEY) || "";
+  if (!ensureActiveSession()) return "";
+  return readStorage(TOKEN_KEY);
 }
 
 export function getAdminEmail() {
-  return sessionStorage.getItem(EMAIL_KEY) || "";
+  if (!ensureActiveSession()) return "";
+  return readStorage(EMAIL_KEY);
 }
 
 export function getAdminExpiresAt() {
-  return sessionStorage.getItem(EXP_KEY) || "";
+  if (!ensureActiveSession()) return "";
+  return readStorage(EXP_KEY);
 }
 
 export function setAdminSession({ token, email, expiresAt }) {
-  if (token) sessionStorage.setItem(TOKEN_KEY, token);
-  if (email) sessionStorage.setItem(EMAIL_KEY, email);
-  if (expiresAt) sessionStorage.setItem(EXP_KEY, expiresAt);
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  if (email) localStorage.setItem(EMAIL_KEY, email);
+  if (expiresAt) localStorage.setItem(EXP_KEY, expiresAt);
 }
 
 export function clearAdminSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(EMAIL_KEY);
+  localStorage.removeItem(EXP_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(EMAIL_KEY);
   sessionStorage.removeItem(EXP_KEY);
 }
 
 export function isAdminAuthed() {
-  return Boolean(getAdminToken());
+  return ensureActiveSession() && Boolean(readStorage(TOKEN_KEY));
 }
 
 function apiUrl(path) {
@@ -67,7 +106,15 @@ export async function verifyMagicToken(token) {
 
 export async function adminFetch(path, opts = {}) {
   const token = getAdminToken();
+  if (!token) {
+    throw authExpiredError();
+  }
   const headers = new Headers(opts.headers || {});
   headers.set("Authorization", `Bearer ${token}`);
-  return fetch(apiUrl(path), { ...opts, headers });
+  const res = await fetch(apiUrl(path), { ...opts, headers });
+  if (res.status === 401) {
+    clearAdminSession();
+    throw authExpiredError();
+  }
+  return res;
 }

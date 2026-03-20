@@ -390,6 +390,26 @@ async function getStandingsAllPayload(tournamentId) {
   return { rows: (result && result.rows) ? result.rows.map(mapStandingsRow) : [] };
 }
 
+async function getFranchisesPayload(tournamentId) {
+  if (!pool) {
+    throw new Error("DB provider disabled");
+  }
+  const result = await pool.query(
+    `SELECT DISTINCT franchise_name AS name
+     FROM team
+     WHERE tournament_id = $1
+       AND franchise_name IS NOT NULL
+       AND btrim(franchise_name) <> ''
+     ORDER BY franchise_name ASC`,
+    [tournamentId]
+  );
+  return {
+    rows: (result && result.rows)
+      ? result.rows.map((row) => ({ Name: row.name }))
+      : [],
+  };
+}
+
 async function getAwardsPayload(tournamentId, ageId) {
   if (!pool) throw new Error("DB provider disabled");
   const [scorersResult, csResult] = await Promise.all([
@@ -1004,6 +1024,23 @@ export const requestHandler = async (req, res) => {
         if (status === 200 && !(body && body.ok === false)) {
           setCachedStandings(cacheKey, body);
         }
+        sendJson(req, res, status, body, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      }
+      return;
+    }
+    if (sheet === "Franchises") {
+      if (PROVIDER_MODE === "db") {
+        const payload = await getFranchisesPayload(reqTournamentId);
+        sendJson(req, res, 200, payload, {
+          head: isHead,
+          cache: { maxAge: 30, swr: 300 },
+        });
+      } else {
+        const targetUrl = `${APPS_SCRIPT_BASE_URL}?sheet=Franchises`;
+        const { status, body } = await fetchAppsJson(targetUrl);
         sendJson(req, res, status, body, {
           head: isHead,
           cache: { maxAge: 30, swr: 300 },
