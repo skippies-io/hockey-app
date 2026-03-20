@@ -1,29 +1,24 @@
 import { useEffect, useState } from 'react';
-import { API_BASE } from '../../lib/api';
-import { getAdminToken } from '../../lib/adminAuth';
-
-const DIGEST_ENDPOINT = `${API_BASE}/admin/digests`;
+import { adminFetch } from '../../lib/adminAuth';
 
 async function apiFetch(method, params = {}) {
-  const token = getAdminToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
   if (method === 'GET') {
     const qs = params.tournamentId ? `?tournamentId=${encodeURIComponent(params.tournamentId)}` : '';
-    const res = await fetch(`${DIGEST_ENDPOINT}${qs}`, { headers });
+    const res = await adminFetch(`/admin/digests${qs}`);
     return res.json();
   }
 
   if (method === 'POST') {
-    const res = await fetch(DIGEST_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(params) });
+    const res = await adminFetch('/admin/digests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
     return res.json();
   }
 
   if (method === 'DELETE') {
-    const res = await fetch(`${DIGEST_ENDPOINT}?id=${encodeURIComponent(params.id)}`, { method: 'DELETE', headers });
+    const res = await adminFetch(`/admin/digests?id=${encodeURIComponent(params.id)}`, { method: 'DELETE' });
     return res.json();
   }
 }

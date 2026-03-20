@@ -24,6 +24,9 @@ describe('AnnouncementsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    localStorage.clear();
+    localStorage.setItem('hj_admin_session_token', 'sess');
+    localStorage.setItem('hj_admin_session_expires_at', '2099-01-01T00:00:00.000Z');
     vi.stubEnv('VITE_API_BASE', 'http://localhost:8787/api');
     vi.resetModules();
     fetch.mockImplementation((url) => {
@@ -67,7 +70,7 @@ describe('AnnouncementsPage', () => {
 
     await renderPage();
     await waitFor(() => {
-      expect(screen.getByText('Unauthorized')).toBeDefined();
+      expect(screen.getByText('Admin session expired. Please sign in again.')).toBeDefined();
     });
     expect(screen.queryByText('No announcements found.')).toBeNull();
   });
@@ -163,7 +166,6 @@ describe('AnnouncementsPage', () => {
     await renderPage();
     await waitFor(() => screen.getByPlaceholderText(/headline/i));
 
-    sessionStorage.setItem('hj_admin_session_token', 'sess');
     fireEvent.change(screen.getByPlaceholderText(/headline/i), { target: { value: 'New Ann' } });
     fireEvent.change(screen.getByPlaceholderText(/update/i), { target: { value: 'New Body' } });
     

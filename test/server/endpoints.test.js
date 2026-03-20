@@ -224,6 +224,33 @@ describe('API Endpoints (Mocked DB)', () => {
         expect(responseBody.groups).toHaveLength(2);
     });
 
+    it('GET /api?sheet=Franchises returns distinct franchise names', async () => {
+        mocks.query.mockResolvedValueOnce({
+            rows: [
+                { name: 'Dragons' },
+                { name: 'Gryphons' }
+            ]
+        });
+
+        const req = {
+            method: 'GET',
+            url: '/api?sheet=Franchises',
+            headers: { host: 'localhost' },
+            on: vi.fn()
+        };
+        const res = { setHeader: vi.fn(), writeHead: vi.fn(), end: vi.fn() };
+
+        await requestHandler(req, res);
+
+        expect(mocks.query).toHaveBeenCalledWith(
+            expect.stringContaining('SELECT DISTINCT franchise_name AS name'),
+            ['hj-indoor-allstars-2025']
+        );
+        expect(res.writeHead).toHaveBeenCalledWith(200);
+        const responseBody = JSON.parse(res.end.mock.calls[0][0]);
+        expect(responseBody.rows).toEqual([{ Name: 'Dragons' }, { Name: 'Gryphons' }]);
+    });
+
     it('GET /api/fixtures returns data with params', async () => {
         mocks.query.mockResolvedValueOnce({
             rows: [
