@@ -499,7 +499,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     try {
       const result = await pool.query(
         `SELECT DISTINCT name
-         FROM venue
+         FROM venue_directory
          ORDER BY name ASC`
       );
       return sendJson(req, res, 200, { ok: true, data: result.rows });

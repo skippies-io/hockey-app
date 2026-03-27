@@ -265,7 +265,7 @@ describe('handleVerifyRequest', () => {
     expect(sendJson).toHaveBeenCalledWith(req, res, 401, expect.objectContaining({ ok: false }));
   });
 
-  it('returns 200 with a session token on success', async () => {
+  it('returns 200 with a session token and email on success', async () => {
     // First query = verifyMagicToken (returns email), second = issueSession (insert, no rows needed)
     const pool = {
       query: vi.fn()
@@ -280,6 +280,7 @@ describe('handleVerifyRequest', () => {
       expect.objectContaining({
         ok: true,
         token: expect.any(String),
+        email: 'leroybarnes@me.com',
         expiresAt: expect.any(String),
       })
     );
@@ -441,6 +442,7 @@ describe('requestHandler — auth routes', () => {
     const body = JSON.parse(res.end.mock.calls[0][0]);
     expect(body.ok).toBe(true);
     expect(body.token).toBeTruthy();
+    expect(body.email).toBe('leroybarnes@me.com');
     expect(body.expiresAt).toBeTruthy();
   });
 

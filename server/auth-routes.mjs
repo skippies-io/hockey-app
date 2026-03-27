@@ -77,6 +77,7 @@ export async function handleVerifyRequest(req, res, { pool, sendJson }) {
     return sendJson(req, res, 200, {
       ok: true,
       token: sessionToken,
+      email: email,
       expiresAt: expiresAt.toISOString(),
     });
   } catch (err) {
