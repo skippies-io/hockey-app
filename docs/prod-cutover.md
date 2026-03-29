@@ -18,6 +18,7 @@
 - `PROVIDER_MODE=db`
 - `DATABASE_URL` (Supabase pooler connection string; code strips query params for node-postgres)
 - `APPS_SCRIPT_BASE_URL` (only needed for rollback to apps mode)
+- `APP_URL=https://skippies-io.github.io/hockey-app` (used to generate admin magic-link callback URLs)
 - `PG_TLS_INSECURE=1` (TEMPORARY: required due to `SELF_SIGNED_CERT_IN_CHAIN`; follow up with CA-based verification)
 
 ## Deployment Steps

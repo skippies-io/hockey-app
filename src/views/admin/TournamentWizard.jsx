@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { API_BASE, getFranchises } from "../../lib/api";
+import { getFranchises } from "../../lib/api";
+import { adminFetch } from "../../lib/adminAuth";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
@@ -603,7 +604,7 @@ export default function TournamentWizard() {
           })),
       };
 
-      const res = await fetch(`${API_BASE}/admin/tournament-wizard`, {
+      const res = await adminFetch("/admin/tournament-wizard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -624,7 +625,7 @@ export default function TournamentWizard() {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/admin/venues`);
+        const res = await adminFetch("/admin/venues");
         if (!res.ok) throw new Error("Failed to load venues");
         const json = await res.json();
         if (!alive) return;
@@ -643,7 +644,7 @@ export default function TournamentWizard() {
     let alive = true;
     (async () => {
       try {
-        const rows = await getFranchises();
+        const rows = await getFranchises(tournament.id || tournamentIdHint || undefined);
         if (!alive) return;
         const names = rows.map((r) => r.Name || r.name).filter(Boolean);
         setApiFranchiseNames(names);
@@ -654,7 +655,7 @@ export default function TournamentWizard() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [tournament.id, tournamentIdHint]);
 
   return (
     <div className="wizard-page">

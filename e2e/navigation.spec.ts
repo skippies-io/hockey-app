@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test('homepage loads and shows tournament name', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByText(TOURNAMENT.name).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: TOURNAMENT.name, level: 1 })).toBeVisible();
 });
 
 test('skip-nav link is present and points to #main-content', async ({ page }) => {
@@ -53,7 +53,7 @@ test('tournament directory page loads', async ({ page }) => {
   await page.goto('tournaments');
   await page.waitForLoadState('networkidle');
   await expect(page.getByText('Tournament Directory')).toBeVisible();
-  await expect(page.getByText(TOURNAMENT.name).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: TOURNAMENT.name })).toBeVisible();
 });
 
 test('feedback page renders', async ({ page }) => {

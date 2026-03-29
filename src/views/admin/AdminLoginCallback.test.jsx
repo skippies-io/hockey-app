@@ -18,6 +18,7 @@ import { setAdminSession } from "../../lib/adminAuth";
 describe("AdminLoginCallback", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
     vi.clearAllMocks();
   });
 

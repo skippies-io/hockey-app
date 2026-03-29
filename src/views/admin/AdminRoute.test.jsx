@@ -19,6 +19,7 @@ function renderAt(path) {
 describe("AdminRoute", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
   });
 
   it("redirects to /admin/login when not authed", () => {
@@ -27,8 +28,16 @@ describe("AdminRoute", () => {
   });
 
   it("allows access when token exists", () => {
-    sessionStorage.setItem("hj_admin_session_token", "token");
+    localStorage.setItem("hj_admin_session_token", "token");
+    localStorage.setItem("hj_admin_session_expires_at", "2099-01-01T00:00:00.000Z");
     renderAt("/admin");
     expect(screen.getByText("ADMIN OK")).toBeTruthy();
+  });
+
+  it("redirects to /admin/login when session is expired", () => {
+    localStorage.setItem("hj_admin_session_token", "token");
+    localStorage.setItem("hj_admin_session_expires_at", "2000-01-01T00:00:00.000Z");
+    renderAt("/admin");
+    expect(screen.getByText("LOGIN")).toBeTruthy();
   });
 });

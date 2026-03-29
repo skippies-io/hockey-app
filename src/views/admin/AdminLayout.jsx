@@ -29,6 +29,7 @@ export default function AdminLayout() {
     padding: 'var(--hj-space-6)',
     backgroundColor: 'var(--hj-color-surface-1)',
     minHeight: '100vh',
+    overflowY: 'auto',
     color: 'var(--hj-color-text-primary)'
   };
 
