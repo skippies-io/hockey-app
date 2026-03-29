@@ -1,0 +1,78 @@
+name: Deploy to Staging
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@0a44ba7841725637141d9dca04aadf313a9e1eac
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild esbuild
+        run: npm rebuild esbuild
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_PROVIDER: db
+          VITE_DB_API_BASE: https://hockey-app.aetherarc.co.za/api
+          VITE_BASE_PATH: /
+
+      - name: Deploy to staging VPS
+        if: success()
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H srv1362771.hstgr.cloud >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Upload build to staging server
+          scp -r dist/* aether@srv1362771.hstgr.cloud:/var/www/hockey-app/
+          
+          # Clean up
+          rm ~/.ssh/id_ed25519
+
+      - name: Comment PR with staging URL
+        if: success()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Staging deployment successful!\n\n🔗 **[View on Staging](https://hockey-app.aetherarc.co.za/admin)**\n\nAdmin console is ready for testing. Changes to this PR will auto-deploy.'
+            })
+
+      - name: Deployment failed
+        if: failure()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Staging deployment failed. Check workflow logs.'
+            })
