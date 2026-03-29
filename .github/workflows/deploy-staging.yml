@@ -1,13 +1,11 @@
 name: Deploy to Staging
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build-and-deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,8 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -51,3 +47,19 @@ jobs:
           
           # Clean up
           rm ~/.ssh/id_ed25519
+
+      - name: Comment PR with staging URL
+        if: success()
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Staging deployment successful!\n\n🔗 **[View on Staging](https://hockey-app.aetherarc.co.za/admin)**\n\nAdmin console is ready for testing. Changes to this PR will auto-deploy.'
+            })
+
+      - name: Deployment failed
+        if: failure()
+        run: echo "❌ Staging deployment failed. Check workflow logs at https://github.com/skippies-io/hockey-app/actions"
