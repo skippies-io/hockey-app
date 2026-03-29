@@ -37,14 +37,17 @@ jobs:
 
       - name: Deploy to staging VPS
         if: success()
-        uses: appleboy/scp-action@master
-        with:
-          host: srv1362771.hstgr.cloud
-          username: aether
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "dist/*"
-          target: "/var/www/hockey-app"
-          strip_components: 1
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/hockey_staging_deploy
+          chmod 600 ~/.ssh/hockey_staging_deploy
+          ssh-keyscan -H srv1362771.hstgr.cloud >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Copy build to staging
+          scp -i ~/.ssh/hockey_staging_deploy -r dist/* aether@srv1362771.hstgr.cloud:/var/www/hockey-app/
+          
+          # Cleanup
+          rm ~/.ssh/hockey_staging_deploy
 
       - name: Comment PR with staging URL
         if: success()
