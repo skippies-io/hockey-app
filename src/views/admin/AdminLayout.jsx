@@ -71,6 +71,7 @@ export default function AdminLayout() {
         <NavLink to="/admin" end style={linkStyle}>Dashboard</NavLink>
         <NavLink to="/admin/tournaments" style={linkStyle}>Tournaments</NavLink>
         <NavLink to="/admin/announcements" style={linkStyle}>Announcements</NavLink>
+        <NavLink to="/admin/venues" style={linkStyle}>Venues</NavLink>
         <NavLink to="/admin/teams" style={linkStyle}>Teams</NavLink>
         <NavLink to="/admin/fixtures" style={linkStyle}>Fixtures</NavLink>
         <NavLink to="/admin/digests" style={linkStyle}>Share Digests</NavLink>
