@@ -24,11 +24,25 @@ jobs:
         with:
           filters: |
             code:
-              - '**'
+              # Only deploy when application/runtime code changes.
+              - 'src/**'
+              - 'server/**'
+              - 'scripts/**'
+              - 'db/**'
+              - 'e2e/**'
+              - 'public/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.*'
+              - 'playwright.config.*'
+              - '.storybook/**'
+              # Explicitly ignore docs + agent meta + GitHub workflow churn.
+              - '!docs/**'
               - '!CLAUDE.md'
               - '!.claude/**'
-              - '!docs/**'
               - '!CONTRIBUTING.md'
+              - '!.github/**'
 
       - name: Setup Node
         if: steps.changes.outputs.code == 'true'
