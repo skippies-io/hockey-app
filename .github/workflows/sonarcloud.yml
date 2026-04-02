@@ -29,9 +29,27 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      # PR path: install and run tests to generate coverage
-      - name: Setup Node
+      # PR path: detect whether this PR changes app/runtime code.
+      - name: Detect app changes
         if: github.event_name == 'pull_request'
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"; echo "$files"
+
+          if echo "$files" | grep -Eq '^(src/|server/|scripts/|db/|e2e/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|playwright\.config\.|\.storybook/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: 20
@@ -39,16 +57,20 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install (no lifecycle scripts)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code == 'true'
         run: npm ci --ignore-scripts
 
       - name: Rebuild required native deps
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code == 'true'
         run: npm rebuild esbuild
 
       - name: Test (coverage)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code == 'true'
         run: npm run test:coverage
+
+      - name: Skip Sonar (docs-only)
+        if: github.event_name == 'pull_request' && steps.changes.outputs.code != 'true'
+        run: echo "Docs-only change detected — skipping SonarCloud coverage run."
 
       # workflow_run path: reuse coverage artifact from CI
       - name: Download coverage artifact
