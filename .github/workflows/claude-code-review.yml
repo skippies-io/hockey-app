@@ -31,7 +31,25 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Detect app changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"; echo "$files"
+
+          if echo "$files" | grep -Eq '^(src/|server/|scripts/|db/|e2e/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|playwright\.config\.|\.storybook/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Claude Code Review
+        if: ${{ steps.changes.outputs.code == 'true' && secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         id: claude-review
         uses: anthropics/claude-code-action@5d0cc745cd0cce4c0e9e0b3511de26c3bc285eb5
         with:
@@ -41,3 +59,7 @@ jobs:
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
+
+      - name: Skip Claude review
+        if: ${{ steps.changes.outputs.code != 'true' || secrets.CLAUDE_CODE_OAUTH_TOKEN == '' }}
+        run: echo "Skipping Claude Code Review (docs-only change or missing CLAUDE_CODE_OAUTH_TOKEN)."
