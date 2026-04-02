@@ -6,6 +6,7 @@ on:
 
 jobs:
   build-and-deploy:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -15,41 +16,69 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
+      # Determine whether this PR contains any non-doc changes.
+      # If it's docs-only, we skip deploy (SSH is locked down) but still succeed the required check.
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"; echo "$files"
+
+          # Deploy only when application/runtime code changes.
+          if echo "$files" | grep -Eq '^(src/|server/|scripts/|db/|e2e/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|playwright\.config\.|\.storybook/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
+        if: steps.changes.outputs.code == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
+        if: steps.changes.outputs.code == 'true'
         run: npm ci --ignore-scripts
 
       - name: Rebuild esbuild
+        if: steps.changes.outputs.code == 'true'
         run: npm rebuild esbuild
 
       - name: Build
+        if: steps.changes.outputs.code == 'true'
         run: npm run build
         env:
           VITE_PROVIDER: db
           VITE_DB_API_BASE: https://hockey-app.aetherarc.co.za/api
           VITE_BASE_PATH: /
 
-      - name: Deploy to staging VPS
-        if: success()
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H srv1362771.hstgr.cloud >> ~/.ssh/known_hosts 2>/dev/null || true
-          
-          # Upload build to staging server
-          scp -r dist/* aether@srv1362771.hstgr.cloud:/var/www/hockey-app/
-          
-          # Clean up
-          rm ~/.ssh/id_ed25519
+      - name: Connect runner to Tailscale (for staging deploy)
+        if: steps.changes.outputs.code == 'true'
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.STAGING_TAILSCALE_AUTHKEY }}
+
+      - name: Deploy to staging VPS (via Tailscale)
+        if: steps.changes.outputs.code == 'true'
+        uses: appleboy/scp-action@master
+        with:
+          # Use tailnet hostname to avoid public SSH.
+          host: srv1362771.tail22ccf5.ts.net
+          username: aether
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          source: "dist/*"
+          target: "/var/www/hockey-app"
+          strip_components: 1
 
       - name: Comment PR with staging URL
-        if: success()
+        if: steps.changes.outputs.code == 'true'
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
@@ -60,6 +89,6 @@ jobs:
               body: '✅ Staging deployment successful!\n\n🔗 **[View on Staging](https://hockey-app.aetherarc.co.za/admin)**\n\nAdmin console is ready for testing. Changes to this PR will auto-deploy.'
             })
 
-      - name: Deployment failed
-        if: failure()
-        run: echo "❌ Staging deployment failed. Check workflow logs at https://github.com/skippies-io/hockey-app/actions"
+      - name: Skip deploy (docs-only)
+        if: steps.changes.outputs.code != 'true'
+        run: echo "Docs-only change detected — skipping staging deploy."
