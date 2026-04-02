@@ -21,3 +21,17 @@ All agents must run the following locally before suggesting a PR-ready change:
 ```bash
 npm run verify
 ```
+
+### Coverage gate (Sonar / Quality Gate)
+
+This repo is subject to quality gates. **New code coverage is often the blocker**.
+
+Before opening a PR (or when Sonar fails), run:
+
+```bash
+npm run test:coverage
+```
+
+**Rule:** if a PR introduces new/changed files, add tests so the PR meets the **new code coverage threshold (typically ≥80%)**.
+
+This prevents “green locally, blocked in Sonar” failures.
