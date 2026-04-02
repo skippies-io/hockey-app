@@ -20,29 +20,21 @@ jobs:
       # If it's docs-only, we skip deploy (SSH is locked down) but still succeed the required check.
       - name: Detect changes
         id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            code:
-              # Only deploy when application/runtime code changes.
-              - 'src/**'
-              - 'server/**'
-              - 'scripts/**'
-              - 'db/**'
-              - 'e2e/**'
-              - 'public/**'
-              - 'index.html'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'vite.config.*'
-              - 'playwright.config.*'
-              - '.storybook/**'
-              # Explicitly ignore docs + agent meta + GitHub workflow churn.
-              - '!docs/**'
-              - '!CLAUDE.md'
-              - '!.claude/**'
-              - '!CONTRIBUTING.md'
-              - '!.github/**'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          echo "Changed files:"; echo "$files"
+
+          # Deploy only when application/runtime code changes.
+          if echo "$files" | grep -Eq '^(src/|server/|scripts/|db/|e2e/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|playwright\.config\.|\.storybook/)'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node
         if: steps.changes.outputs.code == 'true'
