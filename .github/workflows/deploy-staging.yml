@@ -59,11 +59,18 @@ jobs:
           VITE_DB_API_BASE: https://hockey-app.aetherarc.co.za/api
           VITE_BASE_PATH: /
 
-      - name: Deploy to staging VPS
+      - name: Connect runner to Tailscale (for staging deploy)
+        if: steps.changes.outputs.code == 'true'
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.STAGING_TAILSCALE_AUTHKEY }}
+
+      - name: Deploy to staging VPS (via Tailscale)
         if: steps.changes.outputs.code == 'true'
         uses: appleboy/scp-action@master
         with:
-          host: srv1362771.hstgr.cloud
+          # Use tailnet hostname to avoid public SSH.
+          host: srv1362771.tail22ccf5.ts.net
           username: aether
           key: ${{ secrets.STAGING_SSH_KEY }}
           source: "dist/*"
