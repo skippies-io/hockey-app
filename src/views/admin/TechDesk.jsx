@@ -286,6 +286,14 @@ export default function TechDesk() {
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json.ok === false) throw new Error(json.error || `HTTP ${res.status}`);
         if (!alive) return;
+
+        // Initialise live state immediately so the UI can't be interacted with
+        // before the reducer is seeded (avoids a race where INIT overwrites a user click).
+        if (json.data?.fixture_id && json.data.fixture_id !== initialisedFor.current) {
+          initialisedFor.current = json.data.fixture_id;
+          dispatch({ type: 'INIT', fixture: json.data });
+        }
+
         setFixture(json.data);
       } catch (e) {
         if (!alive) return;
