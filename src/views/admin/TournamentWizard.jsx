@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { getFranchises } from "../../lib/api";
+// NOTE: franchises now come from the admin franchise directory (global)
+// import { getFranchises } from "../../lib/api";
 import { adminFetch } from "../../lib/adminAuth";
 import { parseFranchiseName, normalizeTeamName } from "../../lib/franchise";
 import { computeFormErrors } from "./tournamentWizardUtils";
@@ -644,9 +645,11 @@ export default function TournamentWizard() {
     let alive = true;
     (async () => {
       try {
-        const rows = await getFranchises(tournament.id || tournamentIdHint || undefined);
+        const res = await adminFetch("/admin/franchises");
+        if (!res.ok) throw new Error("Failed to load franchises");
+        const json = await res.json();
         if (!alive) return;
-        const names = rows.map((r) => r.Name || r.name).filter(Boolean);
+        const names = (json?.data || []).map((f) => f.name).filter(Boolean);
         setApiFranchiseNames(names);
       } catch (err) {
         console.warn("Failed to load franchises", err);
@@ -655,7 +658,7 @@ export default function TournamentWizard() {
     return () => {
       alive = false;
     };
-  }, [tournament.id, tournamentIdHint]);
+  }, []);
 
   return (
     <div className="wizard-page">

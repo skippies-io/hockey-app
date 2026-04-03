@@ -509,6 +509,200 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
   }
 
+  if (path === "/franchises") {
+    if (!pool) {
+      return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    }
+
+    if (method === "GET") {
+      try {
+        const result = await pool.query(
+          `SELECT id, name, logo_url, manager_name, manager_photo_url, description,
+                  contact_phone, location_map_url, contact_email, created_at, updated_at
+           FROM franchise_directory
+           ORDER BY name ASC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to load franchises" });
+      }
+    }
+
+    if (method === "POST") {
+      try {
+        const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+        const name = toTitleCase(normalizeSpaces(body.name));
+        if (!name) return sendJson(req, res, 400, { ok: false, error: "name is required" });
+
+        const result = await pool.query(
+          `INSERT INTO franchise_directory (
+             name, logo_url, manager_name, manager_photo_url, description,
+             contact_phone, location_map_url, contact_email
+           )
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           RETURNING id, name, logo_url, manager_name, manager_photo_url, description,
+                     contact_phone, location_map_url, contact_email, created_at, updated_at`,
+          [
+            name,
+            body.logo_url || null,
+            body.manager_name || null,
+            body.manager_photo_url || null,
+            body.description || null,
+            body.contact_phone || null,
+            body.location_map_url || null,
+            body.contact_email || null,
+          ]
+        );
+
+        logAudit("franchise_directory.create", { entity_type: "franchise_directory", entity_id: result.rows[0].id, meta: { name } });
+        return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (method !== "POST" && method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+  }
+
+  if (path.startsWith("/franchises/") && path !== "/franchises/import") {
+    if (!pool) {
+      return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    }
+
+    const id = normalizeSpaces(path.replace("/franchises/", ""));
+    if (!id) return sendJson(req, res, 400, { ok: false, error: "Missing id" });
+
+    if (method === "PATCH") {
+      try {
+        const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+
+        const patch = {
+          name: body.name != null ? toTitleCase(normalizeSpaces(body.name)) : null,
+          logo_url: body.logo_url != null ? body.logo_url : null,
+          manager_name: body.manager_name != null ? body.manager_name : null,
+          manager_photo_url: body.manager_photo_url != null ? body.manager_photo_url : null,
+          description: body.description != null ? body.description : null,
+          contact_phone: body.contact_phone != null ? body.contact_phone : null,
+          location_map_url: body.location_map_url != null ? body.location_map_url : null,
+          contact_email: body.contact_email != null ? body.contact_email : null,
+        };
+
+        const name = patch.name;
+        if (body.name != null && !name) {
+          return sendJson(req, res, 400, { ok: false, error: "name is required" });
+        }
+
+        const result = await pool.query(
+          `UPDATE franchise_directory
+              SET name = COALESCE($2, name),
+                  logo_url = COALESCE($3, logo_url),
+                  manager_name = COALESCE($4, manager_name),
+                  manager_photo_url = COALESCE($5, manager_photo_url),
+                  description = COALESCE($6, description),
+                  contact_phone = COALESCE($7, contact_phone),
+                  location_map_url = COALESCE($8, location_map_url),
+                  contact_email = COALESCE($9, contact_email)
+            WHERE id = $1
+        RETURNING id, name, logo_url, manager_name, manager_photo_url, description,
+                  contact_phone, location_map_url, contact_email, created_at, updated_at`,
+          [
+            id,
+            patch.name,
+            patch.logo_url,
+            patch.manager_name,
+            patch.manager_photo_url,
+            patch.description,
+            patch.contact_phone,
+            patch.location_map_url,
+            patch.contact_email,
+          ]
+        );
+
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
+        }
+
+        logAudit("franchise_directory.update", { entity_type: "franchise_directory", entity_id: id, meta: { name: result.rows[0].name } });
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (method === "DELETE") {
+      try {
+        const existing = await pool.query(
+          `SELECT id, name FROM franchise_directory WHERE id = $1`,
+          [id]
+        );
+        if (existing.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
+        }
+
+        await pool.query(`DELETE FROM franchise_directory WHERE id = $1`, [id]);
+        logAudit("franchise_directory.delete", { entity_type: "franchise_directory", entity_id: id, meta: { name: existing.rows[0].name } });
+        return sendJson(req, res, 200, { ok: true });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  if (path === "/franchises/import") {
+    if (!pool) {
+      return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    }
+
+    if (method !== "POST") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+
+    try {
+      const body = await readBody(req);
+      if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+
+      const raw = normalizeSpaces(body.names || body.text || body.csv || "");
+      if (!raw) return sendJson(req, res, 400, { ok: false, error: "No names provided" });
+
+      const lines = String(body.names || body.text || body.csv || "")
+        .split(/\r?\n/)
+        .map((line) => line.split(",")[0])
+        .map((line) => toTitleCase(normalizeSpaces(line)))
+        .filter(Boolean);
+
+      const unique = Array.from(new Set(lines));
+      if (unique.length === 0) return sendJson(req, res, 400, { ok: false, error: "No valid names provided" });
+
+      const inserted = [];
+      for (const name of unique) {
+        const result = await pool.query(
+          `INSERT INTO franchise_directory (name)
+           VALUES ($1)
+           ON CONFLICT (name) DO NOTHING
+           RETURNING id, name, created_at, updated_at`,
+          [name]
+        );
+        if (result.rowCount > 0) inserted.push(result.rows[0]);
+      }
+
+      logAudit("franchise_directory.import", { entity_type: "franchise_directory", meta: { inserted: inserted.length, attempted: unique.length } });
+      return sendJson(req, res, 201, { ok: true, data: inserted });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
   if (path === "/audit-log") {
     if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
     try {

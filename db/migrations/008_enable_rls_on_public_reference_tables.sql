@@ -9,6 +9,7 @@ BEGIN
     'fixture_date_fix_backup_allstars',
     'venue_directory',
     'franchise',
+    'franchise_directory',
     'time_slot',
     'venue',
     'group_venue',

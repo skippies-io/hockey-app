@@ -1,0 +1,91 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('./adminAuth', () => ({
+  adminFetch: vi.fn(),
+}));
+
+const { adminFetch } = await import('./adminAuth');
+
+function okJson(data) {
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ ok: true, data }),
+  });
+}
+
+function failJson(status, error) {
+  return Promise.resolve({
+    ok: false,
+    status,
+    json: () => Promise.resolve({ ok: false, error }),
+  });
+}
+
+describe('franchiseApi', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('getFranchises calls admin endpoint and returns data', async () => {
+    adminFetch.mockResolvedValueOnce(okJson([{ id: 'f1', name: 'Alpha' }]));
+
+    const api = await import('./franchiseApi');
+    const result = await api.getFranchises();
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises');
+    expect(result).toEqual([{ id: 'f1', name: 'Alpha' }]);
+  });
+
+  it('createFranchise POSTs and returns created data', async () => {
+    adminFetch.mockResolvedValueOnce(okJson({ id: 'f1', name: 'Alpha' }));
+
+    const api = await import('./franchiseApi');
+    const created = await api.createFranchise({ name: 'Alpha' });
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises', expect.objectContaining({ method: 'POST' }));
+    expect(created).toEqual({ id: 'f1', name: 'Alpha' });
+  });
+
+  it('updateFranchise PATCHes and returns updated data', async () => {
+    adminFetch.mockResolvedValueOnce(okJson({ id: 'f1', name: 'Alpha Updated' }));
+
+    const api = await import('./franchiseApi');
+    const updated = await api.updateFranchise('f1', { name: 'Alpha Updated' });
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/f1', expect.objectContaining({ method: 'PATCH' }));
+    expect(updated).toEqual({ id: 'f1', name: 'Alpha Updated' });
+  });
+
+  it('deleteFranchise DELETEs and returns void', async () => {
+    adminFetch.mockResolvedValueOnce(okJson(undefined));
+
+    const api = await import('./franchiseApi');
+    await expect(api.deleteFranchise('f1')).resolves.toBeUndefined();
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/f1', expect.objectContaining({ method: 'DELETE' }));
+  });
+
+  it('importFranchises POSTs names and returns inserted rows', async () => {
+    adminFetch.mockResolvedValueOnce(okJson([{ id: 'f1', name: 'Alpha' }]));
+
+    const api = await import('./franchiseApi');
+    const inserted = await api.importFranchises('Alpha');
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/import', expect.objectContaining({ method: 'POST' }));
+    expect(inserted).toEqual([{ id: 'f1', name: 'Alpha' }]);
+  });
+
+  it('throws when server responds not ok', async () => {
+    adminFetch.mockResolvedValueOnce(failJson(400, 'Bad request'));
+
+    const api = await import('./franchiseApi');
+    await expect(api.getFranchises()).rejects.toThrow('Bad request');
+  });
+});

@@ -368,11 +368,11 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, data: [] }),
         });
       }
-      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
         return Promise.resolve({
           ok: true,
           json: () =>
-            Promise.resolve({ ok: true, rows: [{ Name: "Gryphons" }, { Name: "Dragons" }] }),
+            Promise.resolve({ ok: true, data: [{ id: "f1", name: "Gryphons" }, { id: "f2", name: "Dragons" }] }),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
@@ -397,10 +397,10 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, data: [] }),
         });
       }
-      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ ok: true, rows: [{ Name: "Gryphons" }] }),
+          json: () => Promise.resolve({ ok: true, data: [{ id: "f1", name: "Gryphons" }] }),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
@@ -436,7 +436,7 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, data: [] }),
         });
       }
-      if (typeof url === "string" && url.includes("sheet=Franchises")) {
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
         return Promise.reject(new Error("Network error"));
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });

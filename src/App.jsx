@@ -43,6 +43,7 @@ import TechDesk from "./views/admin/TechDesk";
 import DigestPage from "./views/admin/DigestPage";
 import DigestShare from "./views/DigestShare";
 import VenuesPage from "./views/admin/VenuesPage";
+import FranchisesPage from "./views/admin/FranchisesPage";
 
 // Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
 function isRealTeamName(name) {
@@ -539,6 +540,7 @@ export default function App() {
               <Route path="tournaments" element={<TournamentWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="venues/*" element={<VenuesPage />} />
+              <Route path="franchises/*" element={<FranchisesPage />} />
               <Route path="fixtures" element={<FixturesPage />} />
               <Route path="digests" element={<DigestPage />} />
               <Route path="tech-desk/:matchId" element={<TechDesk />} />
