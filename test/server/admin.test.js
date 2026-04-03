@@ -601,6 +601,119 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('GET /franchises returns 501 when DB is not configured', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            501,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('DB not configured') })
+        );
+    });
+
+    it('PUT /franchises returns 405', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'PUT';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            405,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('Method not allowed') })
+        );
+    });
+
+    it('POST /franchises returns 400 when name missing', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({})));
+            if (event === 'end') cb();
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('name is required') })
+        );
+    });
+
+    it('PATCH /franchises/:id returns 404 when not found', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/missing');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ name: 'Alpha' })));
+            if (event === 'end') cb();
+        });
+
+        mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('Franchise not found') })
+        );
+    });
+
+    it('DELETE /franchises/:id returns 404 when not found', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/missing');
+        mockReq.method = 'DELETE';
+
+        mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('Franchise not found') })
+        );
+    });
+
+    it('POST /franchises/import returns 400 when no names provided', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/import');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ names: '' })));
+            if (event === 'end') cb();
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('GET /franchises returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('GET /fixtures returns 400 when missing tournamentId', async () => {
         const url = new URL('http://localhost/api/admin/fixtures?groupId=U11B');
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
