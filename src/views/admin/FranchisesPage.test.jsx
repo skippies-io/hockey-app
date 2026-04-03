@@ -112,4 +112,36 @@ describe('FranchisesPage', () => {
 
     expect(await screen.findByText(/Failed to save franchise: Create failed/)).toBeInTheDocument();
   });
+
+  it('updates a franchise then returns to list view', async () => {
+    franchiseApi.updateFranchise.mockResolvedValue({ id: 'f1' });
+    franchiseApi.getFranchises.mockResolvedValueOnce(mockFranchises);
+    franchiseApi.getFranchises.mockResolvedValueOnce([{ id: 'f1', name: 'Test Franchise' }]);
+
+    renderPage('/admin/franchises/f1');
+
+    expect(await screen.findByText('Edit Franchise')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(franchiseApi.updateFranchise).toHaveBeenCalledWith('f1', { name: 'Test Franchise' });
+    });
+
+    expect(await screen.findByText('Franchises')).toBeInTheDocument();
+  });
+
+  it('delete confirmation cancel does not delete', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+    franchiseApi.deleteFranchise.mockResolvedValue();
+
+    vi.stubGlobal('confirm', vi.fn(() => false));
+
+    renderPage('/admin/franchises');
+
+    expect(await screen.findByText('Alpha')).toBeInTheDocument();
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    expect(franchiseApi.deleteFranchise).not.toHaveBeenCalled();
+  });
 });
