@@ -7,6 +7,25 @@ import * as venueApi from '../../lib/venueApi';
 
 vi.mock('../../lib/venueApi');
 
+// Mock VenueForm so we can drive VenuesPage's onSave/onCancel behaviour deterministically
+vi.mock('./VenueForm', () => ({
+  default: ({ venue, onSave, onCancel, isLoading, error }) => (
+    <div>
+      <div data-testid="venue-form">
+        <div data-testid="venue-form-venue-name">{venue?.name ?? ''}</div>
+        <div data-testid="venue-form-loading">{isLoading ? 'loading' : 'idle'}</div>
+        {error ? <div role="alert">{error}</div> : null}
+        <button type="button" onClick={() => onSave({ name: 'Test Venue', location: 'Test Location' })}>
+          Save
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  ),
+}));
+
 // Wrapper that includes the full routing context
 const renderVenuesPage = (route = '/admin/venues') => {
   window.history.pushState({}, 'Test page', route);
@@ -291,6 +310,90 @@ describe('VenuesPage', () => {
         const addButton = screen.getByText('+ Add Venue');
         expect(addButton).not.toBeDisabled();
       });
+    });
+  });
+
+  describe('Form View (Add/Edit)', () => {
+    it('creates a venue then returns to list view', async () => {
+      venueApi.createVenue.mockResolvedValue({ id: '3' });
+      venueApi.getVenues.mockResolvedValue([{ id: '3', name: 'Test Venue', location: 'Test Location' }]);
+
+      renderVenuesPage('/admin/venues/new');
+
+      expect(await screen.findByText('Create Venue')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(venueApi.createVenue).toHaveBeenCalledWith({ name: 'Test Venue', location: 'Test Location' });
+      });
+
+      await waitFor(() => {
+        // handleSave reload + list view load
+        expect(venueApi.getVenues).toHaveBeenCalled();
+        expect(screen.getByText('Venues')).toBeInTheDocument();
+      });
+    });
+
+    it('updates a venue then returns to list view', async () => {
+      venueApi.getVenue.mockResolvedValue({ id: '1', name: 'Arena A', location: 'Downtown' });
+      venueApi.updateVenue.mockResolvedValue({ id: '1' });
+      venueApi.getVenues.mockResolvedValue([{ id: '1', name: 'Test Venue', location: 'Test Location' }]);
+
+      renderVenuesPage('/admin/venues/1');
+
+      expect(await screen.findByText('Edit Venue')).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(venueApi.getVenue).toHaveBeenCalledWith('1');
+      });
+
+      fireEvent.click(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(venueApi.updateVenue).toHaveBeenCalledWith('1', { name: 'Test Venue', location: 'Test Location' });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Venues')).toBeInTheDocument();
+      });
+    });
+
+    it('shows error when create fails (and does not navigate)', async () => {
+      venueApi.createVenue.mockRejectedValue(new Error('Create failed'));
+
+      renderVenuesPage('/admin/venues/new');
+
+      expect(await screen.findByText('Create Venue')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Save'));
+
+      expect(await screen.findByText(/Failed to save venue: Create failed/)).toBeInTheDocument();
+      expect(screen.getByText('Create Venue')).toBeInTheDocument();
+      expect(venueApi.getVenues).not.toHaveBeenCalled();
+    });
+
+    it('cancels back to list view', async () => {
+      venueApi.getVenues.mockResolvedValue([]);
+
+      renderVenuesPage('/admin/venues/new');
+
+      expect(await screen.findByText('Create Venue')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Cancel'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Venues')).toBeInTheDocument();
+      });
+    });
+
+    it('shows error when edit load fails', async () => {
+      venueApi.getVenue.mockRejectedValue(new Error('Load failed'));
+
+      renderVenuesPage('/admin/venues/1');
+
+      expect(await screen.findByText('Edit Venue')).toBeInTheDocument();
+      expect(await screen.findByText(/Failed to load venue: Load failed/)).toBeInTheDocument();
     });
   });
 });
