@@ -44,13 +44,12 @@ describe("TournamentWizard", () => {
     await renderWizard();
 
     expect(screen.getByText("Tournament Setup Wizard")).toBeDefined();
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
     expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
     expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
-
-    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
     expect(screen.getByRole("heading", { name: "Fixtures" })).toBeDefined();
   });
 
@@ -64,7 +63,7 @@ describe("TournamentWizard", () => {
       target: { value: "2026" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -72,14 +71,19 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    if (!teamsSection) throw new Error("Teams section not found");
+    const teamsScope = within(teamsSection);
+
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Group" }), {
       target: { value: "U11B" },
     });
-    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+    fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
       target: { value: "A" },
     });
 
@@ -101,7 +105,7 @@ describe("TournamentWizard", () => {
   it("generates fixtures for a group", async () => {
     await renderWizard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -109,35 +113,45 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    if (!teamsSection) throw new Error("Teams section not found");
+    const teamsScope = within(teamsSection);
+
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Group" }), {
       target: { value: "U11B" },
     });
-    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+    fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
       target: { value: "A" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
-    const teamInputs = screen.getAllByPlaceholderText("PP Amber");
+    fireEvent.click(teamsScope.getByRole("button", { name: /Add Team/i }));
+    const teamInputs = teamsScope.getAllByPlaceholderText("PP Amber");
     fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
-    const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
-    fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
-    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
+
+    const teamGroupCombos = teamsScope.getAllByRole("combobox", { name: "Team Group" });
+    fireEvent.change(teamGroupCombos[1], { target: { value: "U11B" } });
+    const poolCombos = teamsScope.getAllByRole("combobox", { name: "Pool" });
     fireEvent.change(poolCombos[1], { target: { value: "A" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
-    const fixtureGroupSelects = screen.getAllByRole("combobox", { name: "Group" });
-    fireEvent.change(fixtureGroupSelects[0], { target: { value: "U11B" } });
-    fireEvent.change(screen.getAllByLabelText("Date")[0], {
+    const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
+    if (!fixturesSection) throw new Error("Fixtures section not found");
+    const fixturesScope = within(fixturesSection);
+
+    fireEvent.change(fixturesScope.getByRole("combobox", { name: "Generator Group" }), {
+      target: { value: "U11B" },
+    });
+    fireEvent.change(fixturesScope.getAllByLabelText("Date")[0], {
       target: { value: "2026-01-08" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Generate Fixtures/i }));
+    fireEvent.click(fixturesScope.getByRole("button", { name: /Generate Fixtures/i }));
     await waitFor(() => {
-      expect(screen.getAllByLabelText("Team 1").length).toBeGreaterThan(0);
+      expect(fixturesScope.getAllByLabelText("Team 1").length).toBeGreaterThan(0);
     });
   });
 
@@ -152,12 +166,17 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
-    const fixtureGroupSelects = screen.getAllByLabelText("Group");
-    const fixtureDateInputs = screen.getAllByLabelText("Date");
-    const fixtureVenueSelects = screen.getAllByLabelText("Venue");
-    const fixturePoolInputs = screen.getAllByLabelText("Pool");
-    const fixtureTimeInput = screen.getByLabelText("Time (optional)");
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
+    if (!fixturesSection) throw new Error("Fixtures section not found");
+    const fixturesScope = within(fixturesSection);
+
+    const fixtureGroupSelects = fixturesScope.getAllByLabelText("Fixture Group");
+    const fixtureDateInputs = fixturesScope.getAllByLabelText("Date");
+    const fixtureVenueSelects = fixturesScope.getAllByLabelText("Venue");
+    const fixturePoolInputs = fixturesScope.getAllByLabelText("Pool");
+    const fixtureTimeInput = fixturesScope.getByLabelText("Time (optional)");
     const fixtureGroupSelect = fixtureGroupSelects[fixtureGroupSelects.length - 1];
     const fixtureDateInput = fixtureDateInputs[fixtureDateInputs.length - 1];
     const fixtureVenueSelect = fixtureVenueSelects[fixtureVenueSelects.length - 1];
@@ -199,29 +218,12 @@ describe("TournamentWizard", () => {
     });
   });
 
-  it("manages venues, group venues, and time slots", async () => {
+  it("allows selecting group venues and managing time slots", async () => {
     await renderWizard();
 
-    const venuesSection = screen
-      .getByRole("heading", { name: "Venues" })
-      .closest("section");
-    if (!venuesSection) throw new Error("Venues section not found");
-    const venuesScope = within(venuesSection);
+    // Groups step: select venues (multi-select)
+    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
 
-    await waitFor(() => {
-      expect(venuesScope.getAllByRole("option", { name: "Venue A" }).length).toBe(1);
-    });
-
-    fireEvent.change(venuesScope.getByRole("combobox"), {
-      target: { value: "Venue A" },
-    });
-
-    fireEvent.click(venuesScope.getByRole("button", { name: /Add New/i }));
-    fireEvent.change(venuesScope.getByPlaceholderText(/New venue name/i), {
-      target: { value: "Venue B" },
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -229,18 +231,21 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    const groupSection = screen
-      .getByRole("heading", { name: "Groups" })
-      .closest("section");
+    const groupSection = screen.getByRole("heading", { name: "Groups" }).closest("section");
     if (!groupSection) throw new Error("Groups section not found");
     const groupScope = within(groupSection);
-    fireEvent.click(groupScope.getByLabelText("Venue A"));
 
-    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    const venuesMultiSelect = groupScope.getByRole("listbox", { name: "Group Venues" });
 
-    const timeSlotsSection = screen
-      .getByRole("heading", { name: "Time Slots" })
-      .closest("section");
+    // Select Venue A (JSDOM doesn't allow setting selectedOptions directly)
+    const venueAOption = within(venuesMultiSelect).getByRole("option", { name: "Venue A" });
+    venueAOption.selected = true;
+    fireEvent.change(venuesMultiSelect);
+
+    // Teams & Fixtures step: manage time slots
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const timeSlotsSection = screen.getByRole("heading", { name: "Time Slots" }).closest("section");
     if (!timeSlotsSection) throw new Error("Time Slots section not found");
     const timeSlotsScope = within(timeSlotsSection);
 
@@ -258,8 +263,7 @@ describe("TournamentWizard", () => {
 
     fireEvent.click(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i })[1]);
     await waitFor(() => {
-      expect(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i }).length)
-        .toBe(1);
+      expect(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i }).length).toBe(1);
     });
   });
 
@@ -276,38 +280,45 @@ describe("TournamentWizard", () => {
     const poolCountInput = screen.getByRole("spinbutton", { name: "Pool Count" });
     fireEvent.change(poolCountInput, { target: { value: "2" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    if (!teamsSection) throw new Error("Teams section not found");
+    const teamsScope = within(teamsSection);
+
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Group" }), {
       target: { value: "U11B" },
     });
-    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+    fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
-    const teamInputs = screen.getAllByPlaceholderText("PP Amber");
+    fireEvent.click(teamsScope.getByRole("button", { name: /Add Team/i }));
+    const teamInputs = teamsScope.getAllByPlaceholderText("PP Amber");
     fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
-    const groupCombos = screen.getAllByRole("combobox", { name: "Group" });
+
+    const groupCombos = teamsScope.getAllByRole("combobox", { name: "Team Group" });
     fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
 
-    const autoAssignButtons = screen.getAllByRole("button", { name: /Auto-assign pools/i });
+    const autoAssignButtons = teamsScope.getAllByRole("button", { name: /Auto-assign pools/i });
     fireEvent.click(autoAssignButtons[0]);
-    const poolCombos = screen.getAllByRole("combobox", { name: "Pool" });
+
+    const poolCombos = teamsScope.getAllByRole("combobox", { name: "Pool" });
     expect(poolCombos[0].value).toBe("A");
     expect(poolCombos[1].value).toBe("B");
 
-    const franchiseImportInputs = screen.getAllByPlaceholderText(/Purple Panthers/i);
-    fireEvent.change(franchiseImportInputs[0], {
-      target: { value: "Purple Panthers\nBlue Cranes" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Import Franchises/i }));
-    expect(screen.getAllByPlaceholderText("Purple Panthers").length).toBeGreaterThan(1);
+    // Franchise import removed in simplified wizard (#211).
   });
 
   it("shows generator validation errors when required fields are missing", async () => {
     await renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Generate Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
+    if (!fixturesSection) throw new Error("Fixtures section not found");
+    const fixturesScope = within(fixturesSection);
+
+    fireEvent.click(fixturesScope.getByRole("button", { name: /Generate Fixtures/i }));
     expect(screen.getByText(/Generator requires group, date, and pool/i)).toBeDefined();
   });
 
@@ -342,14 +353,19 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), {
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    if (!teamsSection) throw new Error("Teams section not found");
+    const teamsScope = within(teamsSection);
+
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Group" }), {
       target: { value: "U11B" },
     });
-    fireEvent.change(screen.getByPlaceholderText("PP Amber"), {
+    fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Pool" }), {
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
       target: { value: "A" },
     });
 
@@ -379,7 +395,7 @@ describe("TournamentWizard", () => {
     });
 
     await renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
 
     await waitFor(() => {
       const datalist = document.querySelector("datalist");
@@ -389,7 +405,7 @@ describe("TournamentWizard", () => {
     });
   });
 
-  it("merges form-added franchises with API names in datalist", async () => {
+  it("populates franchise datalist from API (no form merge in simplified wizard)", async () => {
     fetch.mockImplementation((url) => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
@@ -407,24 +423,12 @@ describe("TournamentWizard", () => {
     });
 
     await renderWizard();
-
-    // Navigate to Teams step and add a franchise via the form
-    fireEvent.click(screen.getByRole("button", { name: /Teams/i }));
-
-    // The franchise "Name" input is within the Franchises section
-    const franchisesSection = screen
-      .getByRole("heading", { name: "Franchises" })
-      .closest("section");
-    const nameInput = within(franchisesSection).getAllByPlaceholderText("Purple Panthers")[0];
-    await act(async () => {
-      fireEvent.change(nameInput, { target: { value: "New Club" } });
-    });
+    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
 
     await waitFor(() => {
       const datalist = document.querySelector("datalist");
       const options = datalist ? Array.from(datalist.querySelectorAll("option")).map((o) => o.value) : [];
       expect(options).toContain("Gryphons");
-      expect(options).toContain("New Club");
     });
   });
 
