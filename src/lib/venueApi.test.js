@@ -99,7 +99,7 @@ describe('venueApi', () => {
     expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues/v1', { method: 'DELETE' });
   });
 
-  it('throws a status error when fetch fails', async () => {
+  it('getVenues throws a status error when fetch fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
     vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(403)));
 
@@ -107,5 +107,45 @@ describe('venueApi', () => {
 
     await expect(getVenues()).rejects.toMatchObject({ status: 403 });
     await expect(getVenues()).rejects.toThrow('Failed to fetch venues: 403');
+  });
+
+  it('getVenue throws a status error when fetch fails', async () => {
+    vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(404)));
+
+    const { getVenue } = await import('./venueApi');
+
+    await expect(getVenue('v404')).rejects.toMatchObject({ status: 404 });
+    await expect(getVenue('v404')).rejects.toThrow('Failed to fetch venue: 404');
+  });
+
+  it('createVenue throws a status error when fetch fails', async () => {
+    vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(400)));
+
+    const { createVenue } = await import('./venueApi');
+
+    await expect(createVenue({ name: 'Bad payload' })).rejects.toMatchObject({ status: 400 });
+    await expect(createVenue({ name: 'Bad payload' })).rejects.toThrow('Failed to create venue: 400');
+  });
+
+  it('updateVenue throws a status error when fetch fails', async () => {
+    vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(409)));
+
+    const { updateVenue } = await import('./venueApi');
+
+    await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toMatchObject({ status: 409 });
+    await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toThrow('Failed to update venue: 409');
+  });
+
+  it('deleteVenue throws a status error when fetch fails', async () => {
+    vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(500)));
+
+    const { deleteVenue } = await import('./venueApi');
+
+    await expect(deleteVenue('v1')).rejects.toMatchObject({ status: 500 });
+    await expect(deleteVenue('v1')).rejects.toThrow('Failed to delete venue: 500');
   });
 });
