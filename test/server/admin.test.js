@@ -508,6 +508,99 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('GET /franchises returns list', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: [{ id: 'f1', name: 'Alpha' }] })
+        );
+    });
+
+    it('POST /franchises creates franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ name: 'alpha' })));
+            if (event === 'end') cb();
+        });
+
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'f1', name: 'Alpha' }) })
+        );
+    });
+
+    it('PATCH /franchises/:id updates franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ name: 'Alpha Updated' })));
+            if (event === 'end') cb();
+        });
+
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha Updated' }], rowCount: 1 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'f1', name: 'Alpha Updated' }) })
+        );
+    });
+
+    it('DELETE /franchises/:id deletes franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1');
+        mockReq.method = 'DELETE';
+        mockPool.query
+            .mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }], rowCount: 1 })
+            .mockResolvedValueOnce({ rowCount: 1 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true })
+        );
+    });
+
+    it('POST /franchises/import inserts franchises', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/import');
+        mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ names: 'Alpha\nBeta' })));
+            if (event === 'end') cb();
+        });
+
+        mockPool.query
+            .mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }], rowCount: 1 })
+            .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true, data: [expect.objectContaining({ id: 'f1', name: 'Alpha' })] })
+        );
+    });
+
     it('GET /fixtures returns 400 when missing tournamentId', async () => {
         const url = new URL('http://localhost/api/admin/fixtures?groupId=U11B');
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
