@@ -40,7 +40,7 @@ test('fixture cards render with venue information', async ({ page }) => {
 test('fixtures page shows empty state when no rows returned', async ({ page }) => {
   // Override fixtures route to return empty
   await page.route(
-    (url) => url.hostname === 'localhost' && url.port === '8787' && url.pathname === '/api' && url.searchParams.get('sheet') === 'Fixtures',
+    (url) => url.pathname === '/api' && url.searchParams.get('sheet') === 'Fixtures',
     (route) => route.fulfill({ json: { ok: true, rows: [] } })
   );
   await page.goto('U12/fixtures');

@@ -55,35 +55,60 @@ export const STANDINGS_ROWS = [
  * with static mock data — no real backend is required.
  */
 export async function mockApiRoutes(page: Page): Promise<void> {
-  await page.route('http://localhost:8787/api/tournaments', (route) =>
+  await page.route('**/api/tournaments', (route) =>
     route.fulfill({ json: { ok: true, data: [TOURNAMENT] } })
   );
 
-  await page.route('http://localhost:8787/api/meta', (route) =>
+  // -------------------------------------------------------------------------
+  // Admin API mocks (used by Tournament Wizard and admin management pages)
+  // -------------------------------------------------------------------------
+
+  await page.route('**/api/admin/venues', (route) =>
+    route.fulfill({ json: { ok: true, data: [{ name: 'Venue A' }, { name: 'Venue B' }] } })
+  );
+
+  await page.route('**/api/admin/franchises', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: [
+          { id: 'f1', name: 'Gryphons' },
+          { id: 'f2', name: 'Dragons' },
+        ],
+      },
+    })
+  );
+
+  // NOTE: individual specs may override this route to assert on request payload.
+  await page.route('**/api/admin/tournament-wizard', (route) =>
+    route.fulfill({ json: { ok: true, tournament_id: 't-new' } })
+  );
+
+  await page.route('**/api/meta', (route) =>
     route.fulfill({ json: { ok: true, last_sync_at: '2026-03-15T08:00:00Z' } })
   );
 
-  await page.route(/localhost:8787\/api\/announcements/, (route) =>
+  await page.route('**/api/announcements*', (route) =>
     route.fulfill({ json: { ok: true, data: [] } })
   );
 
   await page.route(
-    (url) => url.hostname === 'localhost' && url.port === '8787' && url.pathname === '/api' && url.searchParams.has('groups'),
+    (url) => url.pathname === '/api' && url.searchParams.has('groups'),
     (route) => route.fulfill({ json: { ok: true, groups: GROUPS } })
   );
 
   await page.route(
-    (url) => url.hostname === 'localhost' && url.port === '8787' && url.pathname === '/api' && url.searchParams.get('sheet') === 'Fixtures',
+    (url) => url.pathname === '/api' && url.searchParams.get('sheet') === 'Fixtures',
     (route) => route.fulfill({ json: { ok: true, rows: FIXTURE_ROWS } })
   );
 
   await page.route(
-    (url) => url.hostname === 'localhost' && url.port === '8787' && url.pathname === '/api' && url.searchParams.get('sheet') === 'Standings',
+    (url) => url.pathname === '/api' && url.searchParams.get('sheet') === 'Standings',
     (route) => route.fulfill({ json: { ok: true, rows: STANDINGS_ROWS } })
   );
 
   await page.route(
-    (url) => url.hostname === 'localhost' && url.port === '8787' && url.pathname === '/api' && url.searchParams.get('sheet') === 'Franchises',
+    (url) => url.pathname === '/api' && url.searchParams.get('sheet') === 'Franchises',
     (route) => route.fulfill({ json: { ok: true, rows: [] } })
   );
 }

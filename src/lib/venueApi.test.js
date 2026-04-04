@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 function okJson(data) {
-  return Promise.resolve({ ok: true, json: () => Promise.resolve(data) });
+  return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
 }
 
 function fail(status = 500) {
@@ -21,6 +21,8 @@ describe('venueApi', () => {
 
   it('throws when API_BASE is missing', async () => {
     vi.doMock('./api', () => ({ API_BASE: '' }));
+    vi.doMock('./adminAuth', () => ({ adminFetch: vi.fn() }));
+
     const api = await import('./venueApi');
 
     await expect(api.getVenues()).rejects.toThrow('Missing API_BASE');
@@ -30,34 +32,34 @@ describe('venueApi', () => {
     await expect(api.deleteVenue('v1')).rejects.toThrow('Missing API_BASE');
   });
 
-  it('getVenues fetches and returns JSON', async () => {
+  it('getVenues calls adminFetch and returns JSON', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const fetchMock = vi.fn().mockReturnValue(okJson([{ id: 'v1' }]));
-    vi.stubGlobal('fetch', fetchMock);
+    const adminFetch = vi.fn().mockReturnValue(okJson([{ id: 'v1' }]));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { getVenues } = await import('./venueApi');
 
     const venues = await getVenues();
     expect(venues).toEqual([{ id: 'v1' }]);
-    expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues');
+    expect(adminFetch).toHaveBeenCalledWith('/admin/venues');
   });
 
-  it('getVenue fetches a single venue by id', async () => {
+  it('getVenue calls adminFetch for a single venue by id', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const fetchMock = vi.fn().mockReturnValue(okJson({ id: 'v1', name: 'A' }));
-    vi.stubGlobal('fetch', fetchMock);
+    const adminFetch = vi.fn().mockReturnValue(okJson({ id: 'v1', name: 'A' }));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { getVenue } = await import('./venueApi');
 
     const venue = await getVenue('v1');
     expect(venue).toEqual({ id: 'v1', name: 'A' });
-    expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues/v1');
+    expect(adminFetch).toHaveBeenCalledWith('/admin/venues/v1');
   });
 
-  it('createVenue POSTs JSON body', async () => {
+  it('createVenue POSTs JSON body via adminFetch', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const fetchMock = vi.fn().mockReturnValue(okJson({ id: 'v1' }));
-    vi.stubGlobal('fetch', fetchMock);
+    const adminFetch = vi.fn().mockReturnValue(okJson({ id: 'v1' }));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { createVenue } = await import('./venueApi');
 
@@ -65,43 +67,44 @@ describe('venueApi', () => {
     const created = await createVenue(payload);
 
     expect(created).toEqual({ id: 'v1' });
-    expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues', {
+    expect(adminFetch).toHaveBeenCalledWith('/admin/venues', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
   });
 
-  it('updateVenue PATCHs JSON body', async () => {
+  it('updateVenue PATCHs JSON body via adminFetch', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const fetchMock = vi.fn().mockReturnValue(okJson({ id: 'v1', name: 'B' }));
-    vi.stubGlobal('fetch', fetchMock);
+    const adminFetch = vi.fn().mockReturnValue(okJson({ id: 'v1', name: 'B' }));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { updateVenue } = await import('./venueApi');
 
     const updated = await updateVenue('v1', { name: 'B' });
     expect(updated).toEqual({ id: 'v1', name: 'B' });
-    expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues/v1', {
+    expect(adminFetch).toHaveBeenCalledWith('/admin/venues/v1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'B' }),
     });
   });
 
-  it('deleteVenue issues DELETE and returns void', async () => {
+  it('deleteVenue issues DELETE via adminFetch and returns void', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const fetchMock = vi.fn().mockReturnValue(Promise.resolve({ ok: true }));
-    vi.stubGlobal('fetch', fetchMock);
+    const adminFetch = vi.fn().mockReturnValue(Promise.resolve({ ok: true, status: 204 }));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { deleteVenue } = await import('./venueApi');
 
     await expect(deleteVenue('v1')).resolves.toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledWith('http://example.test/api/admin/venues/v1', { method: 'DELETE' });
+    expect(adminFetch).toHaveBeenCalledWith('/admin/venues/v1', { method: 'DELETE' });
   });
 
-  it('getVenues throws a status error when fetch fails', async () => {
+  it('getVenues throws a status error when request fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(403)));
+    const adminFetch = vi.fn().mockReturnValue(fail(403));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { getVenues } = await import('./venueApi');
 
@@ -109,9 +112,10 @@ describe('venueApi', () => {
     await expect(getVenues()).rejects.toThrow('Failed to fetch venues: 403');
   });
 
-  it('getVenue throws a status error when fetch fails', async () => {
+  it('getVenue throws a status error when request fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(404)));
+    const adminFetch = vi.fn().mockReturnValue(fail(404));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { getVenue } = await import('./venueApi');
 
@@ -119,9 +123,10 @@ describe('venueApi', () => {
     await expect(getVenue('v404')).rejects.toThrow('Failed to fetch venue: 404');
   });
 
-  it('createVenue throws a status error when fetch fails', async () => {
+  it('createVenue throws a status error when request fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(400)));
+    const adminFetch = vi.fn().mockReturnValue(fail(400));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { createVenue } = await import('./venueApi');
 
@@ -129,9 +134,10 @@ describe('venueApi', () => {
     await expect(createVenue({ name: 'Bad payload' })).rejects.toThrow('Failed to create venue: 400');
   });
 
-  it('updateVenue throws a status error when fetch fails', async () => {
+  it('updateVenue throws a status error when request fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(409)));
+    const adminFetch = vi.fn().mockReturnValue(fail(409));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { updateVenue } = await import('./venueApi');
 
@@ -139,9 +145,10 @@ describe('venueApi', () => {
     await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toThrow('Failed to update venue: 409');
   });
 
-  it('deleteVenue throws a status error when fetch fails', async () => {
+  it('deleteVenue throws a status error when request fails', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fail(500)));
+    const adminFetch = vi.fn().mockReturnValue(fail(500));
+    vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { deleteVenue } = await import('./venueApi');
 

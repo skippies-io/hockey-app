@@ -32,8 +32,7 @@ const renderVenuesPage = (route = '/admin/venues') => {
   return render(
     <BrowserRouter>
       <Routes>
-        <Route path="/admin/venues" element={<VenuesPage />} />
-        <Route path="/admin/venues/:venueId" element={<VenuesPage />} />
+        <Route path="/admin/venues/*" element={<VenuesPage />} />
       </Routes>
     </BrowserRouter>
   );
@@ -79,6 +78,8 @@ describe('VenuesPage', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/No venues yet/)).toBeInTheDocument();
+        expect(screen.getByText('+ Add Venue')).toBeInTheDocument();
+        expect(screen.getByText(/to create your first venue/)).toBeInTheDocument();
       });
     });
 
