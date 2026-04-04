@@ -11,7 +11,10 @@ import { getVenues, getVenue, createVenue, updateVenue, deleteVenue } from '../.
  * - /admin/venues/[id] — edit venue
  */
 export default function VenuesPage() {
-  const { venueId } = useParams();
+  const params = useParams();
+  // VenuesPage is mounted under `/admin/venues/*` in App.jsx, so React Router
+  // stores the trailing segment in the `*` param.
+  const venueId = params.venueId || (params['*'] ? params['*'].split('/')[0] : undefined);
   const navigate = useNavigate();
 
   const [venues, setVenues] = useState([]);
@@ -163,7 +166,7 @@ export default function VenuesPage() {
 
         {loading && <div>Loading venues…</div>}
 
-        {!loading && venues.length === 0 && (
+        {!loading && !error && venues.length === 0 && (
           <div
             style={{
               padding: 'var(--hj-space-4)',
@@ -171,7 +174,12 @@ export default function VenuesPage() {
               color: 'var(--hj-color-text-secondary)',
             }}
           >
-            No venues yet. Create one to get started.
+            <div style={{ marginBottom: 'var(--hj-space-2)' }}>
+              No venues yet.
+            </div>
+            <div>
+              Click <strong>“Add Venue”</strong> to create your first venue.
+            </div>
           </div>
         )}
 
