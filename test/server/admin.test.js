@@ -514,6 +514,59 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('GET /venues/:id returns a single venue', async () => {
+        const url = new URL('http://localhost/api/admin/venues/v1');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'v1', name: 'Beaulieu College', location: null, notes: null }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'v1', name: 'Beaulieu College' }) })
+        );
+    });
+
+    it('PATCH /venues/:id updates a venue', async () => {
+        const url = new URL('http://localhost/api/admin/venues/v1');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ location: 'Pretoria', notes: 'Updated' })));
+            if (event === 'end') cb();
+        });
+
+        mockPool.query.mockResolvedValueOnce({
+            rows: [{ id: 'v1', name: 'Beaulieu College', location: 'Pretoria', notes: 'Updated' }],
+            rowCount: 1,
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'v1', location: 'Pretoria' }) })
+        );
+    });
+
+    it('DELETE /venues/:id deletes a venue', async () => {
+        const url = new URL('http://localhost/api/admin/venues/v1');
+        mockReq.method = 'DELETE';
+
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'v1', name: 'Beaulieu College' }], rowCount: 1 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'v1' }) })
+        );
+    });
+
     it('GET /franchises returns list', async () => {
         const url = new URL('http://localhost/api/admin/franchises');
         mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }] });
