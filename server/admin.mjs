@@ -494,19 +494,173 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     // We need to handle /announcements/:id logic.
   }
 
-  if (path === "/venues") {
-    if (!requireGetWithDb(method, pool, req, res, sendJson)) return;
-    try {
-      const result = await pool.query(
-        `SELECT DISTINCT name
-         FROM venue_directory
-         ORDER BY name ASC`
-      );
-      return sendJson(req, res, 200, { ok: true, data: result.rows });
-    } catch (err) {
-      console.error("Admin API Error:", err);
-      return sendJson(req, res, 500, { ok: false, error: err.message });
+  // Venues (global directory)
+  // - GET    /api/admin/venues
+  // - POST   /api/admin/venues
+  // - GET    /api/admin/venues/:id
+  // - PATCH  /api/admin/venues/:id
+  // - DELETE /api/admin/venues/:id
+  if (path === "/venues" || path.startsWith("/venues/")) {
+    if (!pool) {
+      return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
     }
+
+    const venueId = path.startsWith("/venues/") ? decodeURIComponent(path.split("/")[2] || "") : "";
+
+    if (method === "GET" && !venueId) {
+      try {
+        const result = await pool.query(
+          `SELECT id, name, location, notes, created_at, updated_at
+           FROM venue_directory
+           ORDER BY name ASC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to load venues" });
+      }
+    }
+
+    if (method === "GET" && venueId) {
+      try {
+        const result = await pool.query(
+          `SELECT id, name, location, notes, created_at, updated_at
+           FROM venue_directory
+           WHERE id = $1`,
+          [venueId]
+        );
+        if (!result.rows?.length) {
+          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to load venue" });
+      }
+    }
+
+    if (method === "POST" && !venueId) {
+      try {
+        const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+
+        const name = toTitleCase(normalizeSpaces(body.name));
+        if (!name) return sendJson(req, res, 400, { ok: false, error: "name is required" });
+
+        const result = await pool.query(
+          `INSERT INTO venue_directory (name, location, notes)
+           VALUES ($1, $2, $3)
+           RETURNING id, name, location, notes, created_at, updated_at`,
+          [
+            name,
+            body.location ? normalizeSpaces(body.location) : null,
+            body.notes ? normalizeSpaces(body.notes) : null,
+          ]
+        );
+
+        await logAudit("venue.create", {
+          entity_type: "venue_directory",
+          entity_id: String(result.rows[0]?.id ?? ""),
+          meta: { name },
+        });
+
+        return sendJson(req, res, 201, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (method === "PATCH" && venueId) {
+      try {
+        const body = await readBody(req);
+        if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
+
+        const updates = {
+          name: body.name ? toTitleCase(normalizeSpaces(body.name)) : null,
+          location: Object.prototype.hasOwnProperty.call(body, "location")
+            ? (body.location ? normalizeSpaces(body.location) : null)
+            : undefined,
+          notes: Object.prototype.hasOwnProperty.call(body, "notes")
+            ? (body.notes ? normalizeSpaces(body.notes) : null)
+            : undefined,
+        };
+
+        // Build dynamic update set
+        const set = [];
+        const values = [];
+        let idx = 1;
+
+        if (updates.name !== null) {
+          set.push(`name = $${idx++}`);
+          values.push(updates.name);
+        }
+        if (updates.location !== undefined) {
+          set.push(`location = $${idx++}`);
+          values.push(updates.location);
+        }
+        if (updates.notes !== undefined) {
+          set.push(`notes = $${idx++}`);
+          values.push(updates.notes);
+        }
+
+        if (set.length === 0) {
+          return sendJson(req, res, 400, { ok: false, error: "No fields to update" });
+        }
+
+        values.push(venueId);
+        const result = await pool.query(
+          `UPDATE venue_directory
+           SET ${set.join(", ")}
+           WHERE id = $${idx}
+           RETURNING id, name, location, notes, created_at, updated_at`,
+          values
+        );
+
+        if (!result.rowCount) {
+          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+        }
+
+        await logAudit("venue.update", {
+          entity_type: "venue_directory",
+          entity_id: String(venueId),
+          meta: { fields: Object.keys(body || {}) },
+        });
+
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (method === "DELETE" && venueId) {
+      try {
+        const result = await pool.query(
+          `DELETE FROM venue_directory
+           WHERE id = $1
+           RETURNING id, name`,
+          [venueId]
+        );
+
+        if (!result.rowCount) {
+          return sendJson(req, res, 404, { ok: false, error: "Venue not found" });
+        }
+
+        await logAudit("venue.delete", {
+          entity_type: "venue_directory",
+          entity_id: String(venueId),
+          meta: { name: result.rows[0]?.name || "" },
+        });
+
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
   }
 
   if (path === "/franchises") {
