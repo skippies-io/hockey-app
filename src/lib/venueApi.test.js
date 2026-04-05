@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 function okJson(data) {
-  return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(data) });
+  return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, data }) });
 }
 
 function fail(status = 500) {
-  return Promise.resolve({ ok: false, status, json: () => Promise.resolve({ ok: false }) });
+  return Promise.resolve({ ok: false, status, json: () => Promise.resolve({ ok: false, error: 'nope' }) });
 }
 
 describe('venueApi', () => {
@@ -92,7 +92,7 @@ describe('venueApi', () => {
 
   it('deleteVenue issues DELETE via adminFetch and returns void', async () => {
     vi.doMock('./api', () => ({ API_BASE: 'http://example.test/api' }));
-    const adminFetch = vi.fn().mockReturnValue(Promise.resolve({ ok: true, status: 204 }));
+    const adminFetch = vi.fn().mockReturnValue(okJson({}));
     vi.doMock('./adminAuth', () => ({ adminFetch }));
 
     const { deleteVenue } = await import('./venueApi');
@@ -109,7 +109,7 @@ describe('venueApi', () => {
     const { getVenues } = await import('./venueApi');
 
     await expect(getVenues()).rejects.toMatchObject({ status: 403 });
-    await expect(getVenues()).rejects.toThrow('Failed to fetch venues: 403');
+    await expect(getVenues()).rejects.toThrow('nope');
   });
 
   it('getVenue throws a status error when request fails', async () => {
@@ -120,7 +120,7 @@ describe('venueApi', () => {
     const { getVenue } = await import('./venueApi');
 
     await expect(getVenue('v404')).rejects.toMatchObject({ status: 404 });
-    await expect(getVenue('v404')).rejects.toThrow('Failed to fetch venue: 404');
+    await expect(getVenue('v404')).rejects.toThrow('nope');
   });
 
   it('createVenue throws a status error when request fails', async () => {
@@ -131,7 +131,7 @@ describe('venueApi', () => {
     const { createVenue } = await import('./venueApi');
 
     await expect(createVenue({ name: 'Bad payload' })).rejects.toMatchObject({ status: 400 });
-    await expect(createVenue({ name: 'Bad payload' })).rejects.toThrow('Failed to create venue: 400');
+    await expect(createVenue({ name: 'Bad payload' })).rejects.toThrow('nope');
   });
 
   it('updateVenue throws a status error when request fails', async () => {
@@ -142,7 +142,7 @@ describe('venueApi', () => {
     const { updateVenue } = await import('./venueApi');
 
     await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toMatchObject({ status: 409 });
-    await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toThrow('Failed to update venue: 409');
+    await expect(updateVenue('v1', { name: 'Conflict' })).rejects.toThrow('nope');
   });
 
   it('deleteVenue throws a status error when request fails', async () => {
@@ -153,6 +153,6 @@ describe('venueApi', () => {
     const { deleteVenue } = await import('./venueApi');
 
     await expect(deleteVenue('v1')).rejects.toMatchObject({ status: 500 });
-    await expect(deleteVenue('v1')).rejects.toThrow('Failed to delete venue: 500');
+    await expect(deleteVenue('v1')).rejects.toThrow('nope');
   });
 });

@@ -482,7 +482,7 @@ describe('handleAdminRequest', () => {
 
     it('GET /venues returns venue list', async () => {
         const url = new URL('http://localhost/api/admin/venues');
-        mockPool.query.mockResolvedValueOnce({ rows: [{ name: 'Beaulieu College' }] });
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'v1', name: 'Beaulieu College', location: null, notes: null }] });
 
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
 
@@ -494,17 +494,23 @@ describe('handleAdminRequest', () => {
         );
     });
 
-    it('POST /venues returns method not allowed', async () => {
+    it('POST /venues creates venue', async () => {
         const url = new URL('http://localhost/api/admin/venues');
         mockReq.method = 'POST';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ name: 'beaulieu college', location: 'Johannesburg', notes: 'Indoor' })));
+            if (event === 'end') cb();
+        });
 
-        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'v1', name: 'Beaulieu College', location: 'Johannesburg', notes: 'Indoor' }] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'test@example.com' } });
 
         expect(mockSendJson).toHaveBeenCalledWith(
             mockReq,
             mockRes,
-            405,
-            expect.objectContaining({ error: expect.stringContaining('Method not allowed') })
+            201,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'v1', name: 'Beaulieu College' }) })
         );
     });
 
