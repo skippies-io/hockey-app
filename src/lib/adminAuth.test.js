@@ -81,17 +81,22 @@ describe("adminAuth", () => {
     await expect(mod.verifyMagicToken("magic")).rejects.toThrow("bad_token");
   });
 
-  it("adminFetch sets Authorization header", async () => {
+  it("adminFetch sets Authorization header and hits /api/admin/* URL", async () => {
     const mod = await import("./adminAuth.js");
     mod.setAdminSession({ token: "sess", email: "e", expiresAt: "x" });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => ({}) });
 
-    await mod.adminFetch("/api/admin/announcements", {
+    // Paths passed to adminFetch must NOT include the /api prefix — that comes from API_BASE.
+    // e.g. "/admin/announcements" → "http://localhost:8787/api/admin/announcements"
+    await mod.adminFetch("/admin/announcements", {
       headers: { "X-Test": "1" },
     });
 
-    const [, opts] = globalThis.fetch.mock.calls[0];
+    const [url, opts] = globalThis.fetch.mock.calls[0];
+    // Verify the URL ends with /api/admin/announcements (not /api/api/admin/...)
+    expect(String(url)).toMatch(/\/api\/admin\/announcements$/);
+    expect(String(url)).not.toMatch(/\/api\/api\//); // guard against double /api prefix
     expect(opts.headers.get("Authorization")).toBe("Bearer sess");
     expect(opts.headers.get("X-Test")).toBe("1");
   });
@@ -113,6 +118,23 @@ describe("adminAuth", () => {
     });
     expect(mod.getAdminToken()).toBe("");
     expect(mod.isAdminAuthed()).toBe(false);
+  });
+
+  it.each([
+    ["/admin/franchises", /\/api\/admin\/franchises$/],
+    ["/admin/venues", /\/api\/admin\/venues$/],
+    ["/admin/franchises/f1", /\/api\/admin\/franchises\/f1$/],
+    ["/admin/venues/v1", /\/api\/admin\/venues\/v1$/],
+  ])("adminFetch(%s) hits the correct /api/admin/* URL", async (path, expectedPattern) => {
+    const mod = await import("./adminAuth.js");
+    mod.setAdminSession({ token: "tok", email: "e", expiresAt: "2099-01-01T00:00:00.000Z" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+    await mod.adminFetch(path);
+
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(String(url)).toMatch(expectedPattern);
+    expect(String(url)).not.toMatch(/\/api\/api\//); // guard: no double /api prefix
   });
 
   it("adminFetch clears session and throws auth error on 401", async () => {
