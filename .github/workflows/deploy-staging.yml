@@ -61,7 +61,7 @@ jobs:
 
       - name: Connect runner to Tailscale (for staging deploy)
         if: steps.changes.outputs.code == 'true'
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.STAGING_TAILSCALE_AUTHKEY }}
 
