@@ -621,7 +621,7 @@ describe('handleAdminRequest', () => {
         const url = new URL('http://localhost/api/admin/venues/missing');
         mockReq.method = 'PATCH';
         mockReq.on = vi.fn((event, cb) => {
-            if (event === 'data') cb(Buffer.from(JSON.stringify({ notes: 'X' })));
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ name: 'Updated Name' })));
             if (event === 'end') cb();
         });
 
@@ -1274,6 +1274,86 @@ describe('handleAdminRequest', () => {
         expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
             ok: false,
             error: 'Failed to revoke share link',
+        }));
+    });
+
+    // ── Teams endpoint ──────────────────────────────────────────────────────
+
+    it('GET /teams returns teams for a tournament', async () => {
+        const url = new URL('http://localhost/api/admin/teams?tournamentId=t1');
+        mockPool.query.mockResolvedValueOnce({
+            rows: [
+                { id: 'team1', name: 'Alpha', pool: 'A', group_label: 'U11 Boys', group_id: 'U11B', franchise_name: 'Sharks' },
+                { id: 'team2', name: 'Beta', pool: 'B', group_label: 'U13 Girls', group_id: 'U13G', franchise_name: null },
+            ],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: expect.arrayContaining([
+                expect.objectContaining({ name: 'Alpha', group_label: 'U11 Boys' }),
+                expect.objectContaining({ name: 'Beta', group_label: 'U13 Girls' }),
+            ]),
+        }));
+    });
+
+    it('GET /teams returns empty array when no teams found', async () => {
+        const url = new URL('http://localhost/api/admin/teams?tournamentId=empty-t');
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: [],
+        }));
+    });
+
+    it('GET /teams returns 400 when tournamentId is missing', async () => {
+        const url = new URL('http://localhost/api/admin/teams');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({
+            ok: false,
+            error: 'tournamentId is required',
+        }));
+    });
+
+    it('GET /teams returns 501 when pool is not configured', async () => {
+        const url = new URL('http://localhost/api/admin/teams?tournamentId=t1');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({
+            ok: false,
+            error: 'DB not configured',
+        }));
+    });
+
+    it('GET /teams returns 500 when DB query fails', async () => {
+        const url = new URL('http://localhost/api/admin/teams?tournamentId=t1');
+        mockPool.query.mockRejectedValueOnce(new Error('Query failed'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
+            ok: false,
+            error: 'Failed to load teams',
+        }));
+    });
+
+    it('POST /teams returns 405 method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/teams?tournamentId=t1');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({
+            ok: false,
+            error: 'Method not allowed',
         }));
     });
 });

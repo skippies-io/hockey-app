@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminFetch } from '../../lib/adminAuth';
+import { getTournaments } from '../../lib/api';
 
 async function apiFetch(method, params = {}) {
   if (method === 'GET') {
@@ -39,6 +40,7 @@ export default function DigestPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [listErr, setListErr] = useState(null);
 
+  const [tournaments, setTournaments] = useState([]);
   const [formTournamentId, setFormTournamentId] = useState('');
   const [formAgeId, setFormAgeId] = useState('');
   const [formLabel, setFormLabel] = useState('');
@@ -59,6 +61,12 @@ export default function DigestPage() {
   };
 
   useEffect(() => { loadLinks(); }, []);
+
+  useEffect(() => {
+    getTournaments()
+      .then((data) => setTournaments(data || []))
+      .catch(() => {}); // silently ignore; admin can still see the form
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -119,22 +127,30 @@ export default function DigestPage() {
 
   return (
     <div style={containerStyle}>
-      <h1 style={{ marginBottom: 'var(--hj-space-4)' }}>Digest Share Links</h1>
+      <h1 style={{ marginBottom: 'var(--hj-space-2)' }}>Digest Share Links</h1>
+      <p style={{ marginBottom: 'var(--hj-space-4)', color: '#6b7280', fontSize: '0.9rem' }}>
+        Share links give read-only, time-limited access to fixtures, standings, and scores — no login required.
+        Links expire after 14 days and can be revoked at any time.
+      </p>
 
       <div style={cardStyle}>
         <h2 style={{ marginBottom: 'var(--hj-space-3)', fontSize: '1rem' }}>Create New Link</h2>
         <form onSubmit={handleCreate}>
           <label htmlFor="digest-tournament-id" style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem' }}>
-            Tournament ID *
+            Tournament *
           </label>
-          <input
+          <select
             id="digest-tournament-id"
             style={inputStyle}
             value={formTournamentId}
             onChange={(e) => setFormTournamentId(e.target.value)}
-            placeholder="e.g. hj-indoor-allstars-2025"
             required
-          />
+          >
+            <option value="">Select a tournament…</option>
+            {tournaments.map((t) => (
+              <option key={t.id} value={t.id}>{t.name || t.id}</option>
+            ))}
+          </select>
 
           <label htmlFor="digest-age-id" style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem' }}>
             Age Group (optional — leave blank for all ages)

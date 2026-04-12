@@ -34,6 +34,21 @@ const renderPage = (route = '/admin/franchises') => {
   );
 };
 
+// Uses the wildcard route pattern that App.jsx actually registers:
+//   <Route path="franchises/*" element={<FranchisesPage />} />
+// With this pattern useParams() returns { '*': 'new' } not { franchiseId: 'new' },
+// which is exactly the bug this test is guarding against.
+const renderPageWildcard = (route = '/admin/franchises') => {
+  window.history.pushState({}, 'Test page', route);
+  return render(
+    <BrowserRouter>
+      <Routes>
+        <Route path="/admin/franchises/*" element={<FranchisesPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
 describe('FranchisesPage', () => {
   const mockFranchises = [
     { id: 'f1', name: 'Alpha', manager_name: 'Coach A' },
@@ -128,6 +143,23 @@ describe('FranchisesPage', () => {
     });
 
     expect(await screen.findByText('Franchises')).toBeInTheDocument();
+  });
+
+  it('renders create form at /new via wildcard route (App.jsx pattern)', async () => {
+    // Regression test for the useParams() routing bug:
+    // App.jsx registers <Route path="franchises/*">, so useParams() returns { '*': 'new' }
+    // not { franchiseId: 'new' }. The fix reads params['*'] as fallback.
+    renderPageWildcard('/admin/franchises/new');
+
+    expect(await screen.findByText('Create Franchise')).toBeInTheDocument();
+  });
+
+  it('renders edit form at /:id via wildcard route (App.jsx pattern)', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+
+    renderPageWildcard('/admin/franchises/f1');
+
+    expect(await screen.findByText('Edit Franchise')).toBeInTheDocument();
   });
 
   it('delete confirmation cancel does not delete', async () => {
