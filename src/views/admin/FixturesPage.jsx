@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getGroups } from '../../lib/api';
+import { getGroups, getTournaments } from '../../lib/api';
 import { adminFetch } from '../../lib/adminAuth';
 import { useTournament } from '../../context/TournamentContext';
 import { isOverdue } from '../../lib/fixtureOverdue';
@@ -13,11 +13,13 @@ function normaliseScoreInput(value) {
 
 export default function FixturesPage() {
   const { activeTournament } = useTournament();
-  const tournamentId = activeTournament?.id || '';
 
+  const [tournaments, setTournaments] = useState([]);
+  const [tournamentId, setTournamentId] = useState(activeTournament?.id || '');
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState('');
   const [fixtures, setFixtures] = useState([]);
+  const [loadingTournaments, setLoadingTournaments] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loadingFixtures, setLoadingFixtures] = useState(false);
   const [err, setErr] = useState('');
@@ -32,6 +34,23 @@ export default function FixturesPage() {
     () => fixtures.filter((f) => isOverdue(f)).length,
     [fixtures]
   );
+
+  // Load all tournaments for the selector
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await getTournaments();
+        if (!alive) return;
+        setTournaments(data || []);
+      } catch {
+        // silently fall back to empty list; activeTournament still works
+      } finally {
+        if (alive) setLoadingTournaments(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -165,7 +184,27 @@ export default function FixturesPage() {
         </div>
       )}
 
-      <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <label>
+          Tournament:{' '}
+          <select
+            value={tournamentId}
+            onChange={(e) => {
+              setTournamentId(e.target.value);
+              setGroupId('');
+            }}
+            disabled={loadingTournaments}
+            aria-label="Tournament"
+          >
+            <option value="">Select tournament</option>
+            {tournaments.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name || t.id}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label>
           Group:{' '}
           <select

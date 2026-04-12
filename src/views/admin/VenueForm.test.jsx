@@ -12,15 +12,15 @@ describe('VenueForm', () => {
     render(<VenueForm onSave={onSave} onCancel={onCancel} />);
 
     fireEvent.change(screen.getByLabelText('Venue Name'), { target: { value: 'Rink A' } });
-    fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'Cape Town' } });
-    fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'Indoor court' } });
+    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Cape Town' } });
 
     fireEvent.submit(screen.getByRole('button', { name: 'Create Venue' }).closest('form'));
 
     expect(onSave).toHaveBeenCalledWith({
       name: 'Rink A',
       location: 'Cape Town',
-      notes: 'Indoor court',
+      location_map_url: '',
+      website_url: '',
     });
   });
 
@@ -30,15 +30,16 @@ describe('VenueForm', () => {
 
     render(
       <VenueForm
-        venue={{ id: 'v1', name: 'Old', location: 'Loc', notes: 'N' }}
+        venue={{ id: 'v1', name: 'Old', location: 'Loc', location_map_url: 'https://maps.google.com', website_url: 'https://example.com' }}
         onSave={onSave}
         onCancel={onCancel}
       />
     );
 
     expect(screen.getByLabelText('Venue Name').value).toBe('Old');
-    expect(screen.getByLabelText('Location').value).toBe('Loc');
-    expect(screen.getByLabelText('Notes').value).toBe('N');
+    expect(screen.getByLabelText('Address').value).toBe('Loc');
+    expect(screen.getByLabelText('Google Maps URL').value).toBe('https://maps.google.com');
+    expect(screen.getByLabelText('Website URL').value).toBe('https://example.com');
     expect(screen.getByRole('button', { name: 'Update Venue' })).toBeDefined();
   });
 
@@ -59,8 +60,9 @@ describe('VenueForm', () => {
     render(<VenueForm onSave={onSave} onCancel={onCancel} isLoading />);
 
     expect(screen.getByLabelText('Venue Name').disabled).toBe(true);
-    expect(screen.getByLabelText('Location').disabled).toBe(true);
-    expect(screen.getByLabelText('Notes').disabled).toBe(true);
+    expect(screen.getByLabelText('Address').disabled).toBe(true);
+    expect(screen.getByLabelText('Google Maps URL').disabled).toBe(true);
+    expect(screen.getByLabelText('Website URL').disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Saving…' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Cancel' }).disabled).toBe(true);
   });

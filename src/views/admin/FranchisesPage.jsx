@@ -10,7 +10,10 @@ import {
 } from '../../lib/franchiseApi';
 
 export default function FranchisesPage() {
-  const { franchiseId } = useParams();
+  const params = useParams();
+  // FranchisesPage is mounted under `/admin/franchises/*` in App.jsx, so React Router
+  // stores the trailing segment in the `*` param, not `franchiseId`.
+  const franchiseId = params.franchiseId || (params['*'] ? params['*'].split('/')[0] : undefined);
   const navigate = useNavigate();
 
   const [franchises, setFranchises] = useState([]);

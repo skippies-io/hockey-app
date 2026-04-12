@@ -4,7 +4,13 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DigestPage from "./DigestPage";
 
-vi.mock("../../lib/api", () => ({ API_BASE: "http://localhost:8787/api" }));
+vi.mock("../../lib/api", () => ({
+  API_BASE: "http://localhost:8787/api",
+  getTournaments: vi.fn().mockResolvedValue([
+    { id: "t1", name: "Test Tournament" },
+    { id: "t2", name: "Another Tournament" },
+  ]),
+}));
 
 beforeEach(() => {
   localStorage.clear();
@@ -227,7 +233,7 @@ describe("DigestPage – create form", () => {
     mockFetch([EMPTY_LIST]);
     renderPage();
     await screen.findByText(/No share links yet/i);
-    expect(screen.getByLabelText(/Tournament ID/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Tournament \*/i)).toBeTruthy();
   });
 
   it("create button is labelled 'Create share link'", async () => {
@@ -247,7 +253,7 @@ describe("DigestPage – create form", () => {
     renderPage();
     await screen.findByText(/No share links yet/i);
 
-    fireEvent.change(screen.getByLabelText(/Tournament ID/i), {
+    fireEvent.change(screen.getByLabelText(/Tournament \*/i), {
       target: { value: "my-tournament" },
     });
     fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
@@ -261,7 +267,7 @@ describe("DigestPage – create form", () => {
     renderPage();
     await screen.findByText(/No share links yet/i);
 
-    fireEvent.change(screen.getByLabelText(/Tournament ID/i), {
+    fireEvent.change(screen.getByLabelText(/Tournament \*/i), {
       target: { value: "t-x" },
     });
     fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
@@ -276,7 +282,7 @@ describe("DigestPage – create form", () => {
     renderPage();
     await screen.findByText(/No share links yet/i);
 
-    fireEvent.change(screen.getByLabelText(/Tournament ID/i), {
+    fireEvent.change(screen.getByLabelText(/Tournament \*/i), {
       target: { value: "t-x" },
     });
     fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
@@ -311,7 +317,7 @@ describe("DigestPage – create form", () => {
     ]);
     renderPage();
     await screen.findByText(/No share links yet/i);
-    fireEvent.change(screen.getByLabelText(/Tournament ID/i), { target: { value: "t-1" } });
+    fireEvent.change(screen.getByLabelText(/Tournament \*/i), { target: { value: "t-1" } });
     fireEvent.submit(screen.getByRole("button", { name: /Create share link/i }).closest("form"));
     await screen.findByText(/Copy it now/i);
     const urlInput = screen.getByLabelText("Share URL");
@@ -330,7 +336,7 @@ describe("DigestPage – create form", () => {
     renderPage();
     await screen.findByText(/No share links yet/i);
 
-    const tournamentInput = screen.getByLabelText(/Tournament ID/i);
+    const tournamentInput = screen.getByLabelText(/Tournament \*/i);
     fireEvent.change(tournamentInput, { target: { value: "my-tournament" } });
     fireEvent.submit(tournamentInput.closest("form"));
 
@@ -343,7 +349,7 @@ describe("DigestPage – create form", () => {
     renderPage();
     await screen.findByText(/No share links yet/i);
 
-    const tournamentInput = screen.getByLabelText(/Tournament ID/i);
+    const tournamentInput = screen.getByLabelText(/Tournament \*/i);
     fireEvent.change(tournamentInput, { target: { value: "my-tournament" } });
     fireEvent.submit(tournamentInput.closest("form"));
 
@@ -355,6 +361,31 @@ describe("DigestPage – create form", () => {
     localStorage.removeItem("hj_admin_session_expires_at");
     renderPage();
     expect(await screen.findByText(/Admin session expired. Please sign in again./i)).toBeTruthy();
+  });
+
+  it("shows description text explaining share links", async () => {
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    expect(screen.getByText(/read-only, time-limited access/i)).toBeTruthy();
+    expect(screen.getByText(/14 days/i)).toBeTruthy();
+    expect(screen.getByText(/revoked at any time/i)).toBeTruthy();
+  });
+
+  it("tournament selector is populated with options from getTournaments", async () => {
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    expect(screen.getByText("Test Tournament")).toBeTruthy();
+    expect(screen.getByText("Another Tournament")).toBeTruthy();
+  });
+
+  it("tournament selector is a <select> element", async () => {
+    mockFetch([EMPTY_LIST]);
+    renderPage();
+    await screen.findByText(/No share links yet/i);
+    const field = screen.getByLabelText(/Tournament \*/i);
+    expect(field.tagName.toLowerCase()).toBe("select");
   });
 
   it("formatExpiry returns raw iso string when toLocaleDateString throws", async () => {

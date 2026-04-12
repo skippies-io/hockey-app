@@ -4,6 +4,23 @@ import VenueForm from './VenueForm';
 import { getVenues, getVenue, createVenue, updateVenue, deleteVenue } from '../../lib/venueApi';
 
 /**
+ * Extract lat/lng from a Google Maps URL and return an embed src.
+ * Falls back to a search embed using the address if no coords are found.
+ */
+function mapEmbedUrl(venue) {
+  if (venue.location_map_url) {
+    const match = venue.location_map_url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (match) {
+      return `https://maps.google.com/maps?q=${match[1]},${match[2]}&zoom=15&output=embed`;
+    }
+  }
+  if (venue.location) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(venue.location)}&output=embed`;
+  }
+  return null;
+}
+
+/**
  * Venues Management Page
  * Routes:
  * - /admin/venues — list view (default)
@@ -12,8 +29,6 @@ import { getVenues, getVenue, createVenue, updateVenue, deleteVenue } from '../.
  */
 export default function VenuesPage() {
   const params = useParams();
-  // VenuesPage is mounted under `/admin/venues/*` in App.jsx, so React Router
-  // stores the trailing segment in the `*` param.
   const venueId = params.venueId || (params['*'] ? params['*'].split('/')[0] : undefined);
   const navigate = useNavigate();
 
@@ -26,7 +41,6 @@ export default function VenuesPage() {
   const isEditingVenue = venueId && venueId !== 'new';
   const showForm = isNewVenue || isEditingVenue;
 
-  // Load venues list on mount
   useEffect(() => {
     const loadVenues = async () => {
       try {
@@ -47,7 +61,6 @@ export default function VenuesPage() {
     }
   }, [showForm]);
 
-  // Load individual venue when editing
   useEffect(() => {
     if (!isEditingVenue) {
       setCurrentVenue(null);
@@ -82,7 +95,6 @@ export default function VenuesPage() {
         await updateVenue(venueId, formData);
       }
 
-      // Reload venues list and return to list view
       const data = await getVenues();
       setVenues(Array.isArray(data) ? data : []);
       setCurrentVenue(null);
@@ -104,7 +116,6 @@ export default function VenuesPage() {
       setError(null);
       await deleteVenue(id);
 
-      // Reload venues list
       const data = await getVenues();
       setVenues(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -174,86 +185,103 @@ export default function VenuesPage() {
               color: 'var(--hj-color-text-secondary)',
             }}
           >
-            <div style={{ marginBottom: 'var(--hj-space-2)' }}>
-              No venues yet.
-            </div>
-            <div>
-              Click <strong>“Add Venue”</strong> to create your first venue.
-            </div>
+            <div style={{ marginBottom: 'var(--hj-space-2)' }}>No venues yet.</div>
+            <div>Click <strong>"Add Venue"</strong> to create your first venue.</div>
           </div>
         )}
 
         {!loading && venues.length > 0 && (
-          <table
+          <div
             style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              marginTop: 'var(--hj-space-4)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: 'var(--hj-space-5)',
             }}
           >
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--hj-color-border)' }}>
-                <th
-                  style={{
-                    padding: 'var(--hj-space-3)',
-                    textAlign: 'left',
-                    fontWeight: 'var(--hj-font-weight-bold)',
-                  }}
-                >
-                  Name
-                </th>
-                <th
-                  style={{
-                    padding: 'var(--hj-space-3)',
-                    textAlign: 'left',
-                    fontWeight: 'var(--hj-font-weight-bold)',
-                  }}
-                >
-                  Location
-                </th>
-                <th
-                  style={{
-                    padding: 'var(--hj-space-3)',
-                    textAlign: 'right',
-                    fontWeight: 'var(--hj-font-weight-bold)',
-                  }}
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {venues.map((venue) => (
-                <tr
+            {venues.map((venue) => {
+              const embedSrc = mapEmbedUrl(venue);
+              return (
+                <div
                   key={venue.id}
                   style={{
-                    borderBottom: '1px solid var(--hj-color-border-subtle)',
+                    border: '1px solid var(--hj-color-border)',
+                    borderRadius: 'var(--hj-radius-lg)',
+                    overflow: 'hidden',
+                    backgroundColor: 'var(--hj-color-surface-2)',
+                    display: 'flex',
+                    flexDirection: 'column',
                   }}
                 >
-                  <td style={{ padding: 'var(--hj-space-3)' }}>{venue.name}</td>
-                  <td style={{ padding: 'var(--hj-space-3)' }}>
-                    {venue.location || '—'}
-                  </td>
-                  <td
+                  {/* Map snippet */}
+                  {embedSrc && (
+                    <iframe
+                      title={`Map of ${venue.name}`}
+                      src={embedSrc}
+                      style={{ width: '100%', height: '160px', border: 'none', display: 'block' }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  )}
+
+                  {/* Details */}
+                  <div style={{ padding: 'var(--hj-space-4)', flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--hj-space-2)' }}>
+                    <div style={{ fontWeight: 'var(--hj-font-weight-bold)', fontSize: 'var(--hj-font-size-lg)' }}>
+                      {venue.name}
+                    </div>
+
+                    {venue.location && (
+                      <div style={{ color: 'var(--hj-color-text-secondary)', fontSize: 'var(--hj-font-size-sm)' }}>
+                        {venue.location}
+                      </div>
+                    )}
+
+                    {/* Links row */}
+                    <div style={{ display: 'flex', gap: 'var(--hj-space-3)', marginTop: 'var(--hj-space-1)' }}>
+                      {venue.location_map_url && (
+                        <a
+                          href={venue.location_map_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--hj-color-brand-primary)', fontSize: 'var(--hj-font-size-sm)', textDecoration: 'none' }}
+                        >
+                          Open in Maps ↗
+                        </a>
+                      )}
+                      {venue.website_url && (
+                        <a
+                          href={venue.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--hj-color-text-secondary)', fontSize: 'var(--hj-font-size-sm)', textDecoration: 'none' }}
+                        >
+                          Website ↗
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div
                     style={{
-                      padding: 'var(--hj-space-3)',
-                      textAlign: 'right',
                       display: 'flex',
                       gap: 'var(--hj-space-2)',
-                      justifyContent: 'flex-end',
+                      padding: 'var(--hj-space-3) var(--hj-space-4)',
+                      borderTop: '1px solid var(--hj-color-border-subtle)',
                     }}
                   >
                     <button
                       type="button"
                       onClick={() => navigate(`/admin/venues/${venue.id}`)}
                       style={{
-                        padding: 'var(--hj-space-1) var(--hj-space-3)',
+                        flex: 1,
+                        padding: 'var(--hj-space-2)',
                         borderRadius: 'var(--hj-radius-sm)',
                         backgroundColor: 'var(--hj-color-brand-primary)',
                         color: 'var(--hj-color-inverse-text)',
                         border: 'none',
                         cursor: 'pointer',
                         fontSize: 'var(--hj-font-size-sm)',
+                        fontWeight: 'var(--hj-font-weight-bold)',
                       }}
                     >
                       Edit
@@ -262,7 +290,8 @@ export default function VenuesPage() {
                       type="button"
                       onClick={() => handleDelete(venue.id)}
                       style={{
-                        padding: 'var(--hj-space-1) var(--hj-space-3)',
+                        flex: 1,
+                        padding: 'var(--hj-space-2)',
                         borderRadius: 'var(--hj-radius-sm)',
                         backgroundColor: '#fee',
                         color: '#c00',
@@ -273,11 +302,11 @@ export default function VenuesPage() {
                     >
                       Delete
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     );

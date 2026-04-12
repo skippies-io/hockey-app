@@ -510,7 +510,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     if (method === "GET" && !venueId) {
       try {
         const result = await pool.query(
-          `SELECT id, name, location, notes, created_at, updated_at
+          `SELECT id, name, address AS location, location_map_url, website_url, created_at, updated_at
            FROM venue_directory
            ORDER BY name ASC`
         );
@@ -524,7 +524,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     if (method === "GET" && venueId) {
       try {
         const result = await pool.query(
-          `SELECT id, name, location, notes, created_at, updated_at
+          `SELECT id, name, address AS location, location_map_url, website_url, created_at, updated_at
            FROM venue_directory
            WHERE id = $1`,
           [venueId]
@@ -548,13 +548,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         if (!name) return sendJson(req, res, 400, { ok: false, error: "name is required" });
 
         const result = await pool.query(
-          `INSERT INTO venue_directory (name, location, notes)
-           VALUES ($1, $2, $3)
-           RETURNING id, name, location, notes, created_at, updated_at`,
+          `INSERT INTO venue_directory (name, address, location_map_url, website_url)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, name, address AS location, location_map_url, website_url, created_at, updated_at`,
           [
             name,
             body.location ? normalizeSpaces(body.location) : null,
-            body.notes ? normalizeSpaces(body.notes) : null,
+            body.location_map_url ? body.location_map_url.trim() : null,
+            body.website_url ? body.website_url.trim() : null,
           ]
         );
 
@@ -576,32 +577,28 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         const body = await readBody(req);
         if (!body) return sendJson(req, res, 400, { ok: false, error: "Invalid body" });
 
-        const updates = {
-          name: body.name ? toTitleCase(normalizeSpaces(body.name)) : null,
-          location: Object.prototype.hasOwnProperty.call(body, "location")
-            ? (body.location ? normalizeSpaces(body.location) : null)
-            : undefined,
-          notes: Object.prototype.hasOwnProperty.call(body, "notes")
-            ? (body.notes ? normalizeSpaces(body.notes) : null)
-            : undefined,
-        };
+        const has = (key) => Object.prototype.hasOwnProperty.call(body, key);
 
         // Build dynamic update set
         const set = [];
         const values = [];
         let idx = 1;
 
-        if (updates.name !== null) {
+        if (body.name) {
           set.push(`name = $${idx++}`);
-          values.push(updates.name);
+          values.push(toTitleCase(normalizeSpaces(body.name)));
         }
-        if (updates.location !== undefined) {
-          set.push(`location = $${idx++}`);
-          values.push(updates.location);
+        if (has("location")) {
+          set.push(`address = $${idx++}`);
+          values.push(body.location ? normalizeSpaces(body.location) : null);
         }
-        if (updates.notes !== undefined) {
-          set.push(`notes = $${idx++}`);
-          values.push(updates.notes);
+        if (has("location_map_url")) {
+          set.push(`location_map_url = $${idx++}`);
+          values.push(body.location_map_url ? body.location_map_url.trim() : null);
+        }
+        if (has("website_url")) {
+          set.push(`website_url = $${idx++}`);
+          values.push(body.website_url ? body.website_url.trim() : null);
         }
 
         if (set.length === 0) {
@@ -613,7 +610,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           `UPDATE venue_directory
            SET ${set.join(", ")}
            WHERE id = $${idx}
-           RETURNING id, name, location, notes, created_at, updated_at`,
+           RETURNING id, name, address AS location, location_map_url, website_url, created_at, updated_at`,
           values
         );
 
@@ -1290,6 +1287,41 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
       } catch (err) {
         console.error("digest_share DELETE error:", err);
         return sendJson(req, res, 500, { ok: false, error: "Failed to revoke share link" });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
+  // Teams (read-only view of tournament teams)
+  // - GET /api/admin/teams?tournamentId=X
+  if (path === "/teams") {
+    if (!pool) {
+      return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    }
+
+    if (method === "GET") {
+      const tournamentId = url.searchParams.get("tournamentId");
+      if (!tournamentId) {
+        return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+      }
+      try {
+        const result = await pool.query(
+          `SELECT t.id, t.name,
+                  g.label AS group_label, g.id AS group_id,
+                  f.name AS franchise_name
+           FROM team t
+           JOIN groups g ON g.id = t.group_id AND g.tournament_id = t.tournament_id
+           LEFT JOIN franchise f ON f.id = t.franchise_id AND f.tournament_id = t.tournament_id
+           WHERE t.tournament_id = $1
+             AND t.is_placeholder = false
+           ORDER BY g.label ASC, t.name ASC`,
+          [tournamentId]
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: "Failed to load teams" });
       }
     }
 
