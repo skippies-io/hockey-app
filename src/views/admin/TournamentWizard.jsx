@@ -219,9 +219,18 @@ export default function TournamentWizard() {
     [tournament.name, tournament.season]
   );
 
-  const invalidTournamentName = !tournament.name.trim();
-  const invalidTournamentSeason = !tournament.season.trim();
-  const invalidTournamentId = !(tournament.id || tournamentIdHint);
+  const [touched, setTouched] = useState({});
+
+  function touch(key) {
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  }
+  function touchAll(keys) {
+    setTouched((prev) => keys.reduce((acc, k) => ({ ...acc, [k]: true }), prev));
+  }
+
+  const invalidTournamentName = touched.name && !tournament.name.trim();
+  const invalidTournamentSeason = touched.season && !tournament.season.trim();
+  const invalidTournamentId = touched.id && !(tournament.id || tournamentIdHint);
 
   const groupOptions = useMemo(
     () => groups.map((g) => g.id).filter(Boolean),
@@ -448,6 +457,7 @@ export default function TournamentWizard() {
   function handleNext() {
     if (step === 0) {
       if (!tournament.name.trim() || !tournament.season.trim() || !(tournament.id || tournamentIdHint)) {
+        touchAll(["name", "season", "id"]);
         setSaveError("Please fill in all required fields before continuing.");
         return;
       }
@@ -458,6 +468,7 @@ export default function TournamentWizard() {
     }
     if (step === 1) {
       if (!groups.some((g) => g.id?.trim() && g.label?.trim())) {
+        touchAll(groups.flatMap((_, i) => [`group-${i}-id`, `group-${i}-label`]));
         setSaveError("Add at least one complete group before continuing.");
         return;
       }
@@ -617,6 +628,7 @@ export default function TournamentWizard() {
                 value={tournament.name}
                 className={invalidTournamentName ? "wizard-input invalid" : "wizard-input"}
                 onChange={(e) => updateTournament({ name: e.target.value })}
+                onBlur={() => touch("name")}
                 placeholder="HJ Indoor 2026"
               />
             </Field>
@@ -626,6 +638,7 @@ export default function TournamentWizard() {
                 value={tournament.season}
                 className={invalidTournamentSeason ? "wizard-input invalid" : "wizard-input"}
                 onChange={(e) => updateTournament({ season: e.target.value })}
+                onBlur={() => touch("season")}
                 placeholder="2026"
               />
             </Field>
@@ -641,6 +654,7 @@ export default function TournamentWizard() {
                   className={invalidTournamentId ? "wizard-input invalid" : "wizard-input"}
                   style={{ flex: 1 }}
                   onChange={(e) => updateTournament({ id: e.target.value })}
+                  onBlur={() => touch("id")}
                   placeholder={tournamentIdHint || "hj-indoor-2026"}
                 />
                 {tournamentIdHint && tournament.id !== tournamentIdHint && (
@@ -674,21 +688,23 @@ export default function TournamentWizard() {
           {groups.map((group, idx) => (
             <div className="wizard-block" key={group._key}>
               <div className="wizard-row">
-                <Field label="Group ID">
+                <Field label="Group ID" error={touched[`group-${idx}-id`] && !group.id.trim() ? "Required" : ""}>
                   <input
                     type="text"
                     value={group.id}
-                    className={group.id.trim() ? "wizard-input" : "wizard-input invalid"}
+                    className={(touched[`group-${idx}-id`] && !group.id.trim()) ? "wizard-input invalid" : "wizard-input"}
                     onChange={(e) => updateGroup(idx, { id: e.target.value })}
+                    onBlur={() => touch(`group-${idx}-id`)}
                     placeholder="U11B"
                   />
                 </Field>
-                <Field label="Label">
+                <Field label="Label" error={touched[`group-${idx}-label`] && !group.label.trim() ? "Required" : ""}>
                   <input
                     type="text"
                     value={group.label}
-                    className={group.label.trim() ? "wizard-input" : "wizard-input invalid"}
+                    className={(touched[`group-${idx}-label`] && !group.label.trim()) ? "wizard-input invalid" : "wizard-input"}
                     onChange={(e) => updateGroup(idx, { label: e.target.value })}
+                    onBlur={() => touch(`group-${idx}-label`)}
                     placeholder="U11 Boys"
                   />
                 </Field>

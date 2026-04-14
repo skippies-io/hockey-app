@@ -523,6 +523,31 @@ describe("TournamentWizard", () => {
     expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
   });
 
+  it("shows inline error on blur for empty required step-0 fields and clears when filled", async () => {
+    await renderWizard();
+
+    const nameInput = screen.getByPlaceholderText("HJ Indoor 2026");
+    const seasonInput = screen.getByPlaceholderText("2026");
+
+    // No error before blur
+    expect(screen.queryByText("Required")).toBeNull();
+
+    // Blur name empty → error appears
+    fireEvent.blur(nameInput);
+    expect(screen.getAllByText("Required").length).toBeGreaterThan(0);
+
+    // Type a value → error clears for that field
+    fireEvent.change(nameInput, { target: { value: "HJ Test" } });
+    // name is now filled; season is still empty but not yet blurred so only
+    // one field should be invalid — or possibly none if the single "Required"
+    // was for name and it cleared
+    fireEvent.blur(seasonInput);
+    fireEvent.change(seasonInput, { target: { value: "2026" } });
+
+    // Both filled → no Required errors remain
+    await waitFor(() => expect(screen.queryByText("Required")).toBeNull());
+  });
+
   it("handleNext blocks step 1 → 2 when no valid group exists, then advances when group is filled", async () => {
     await renderWizard();
 
