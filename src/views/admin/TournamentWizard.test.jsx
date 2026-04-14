@@ -236,12 +236,9 @@ describe("TournamentWizard", () => {
     if (!groupSection) throw new Error("Groups section not found");
     const groupScope = within(groupSection);
 
-    const venuesMultiSelect = groupScope.getByRole("listbox", { name: "Group Venues" });
-
-    // Select Venue A (JSDOM doesn't allow setting selectedOptions directly)
-    const venueAOption = within(venuesMultiSelect).getByRole("option", { name: "Venue A" });
-    venueAOption.selected = true;
-    fireEvent.change(venuesMultiSelect);
+    // Select Venue A via checkbox
+    const venueACheckbox = groupScope.getByRole("checkbox", { name: "Venue A" });
+    fireEvent.click(venueACheckbox);
 
     // Teams & Fixtures step: manage time slots
     fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
