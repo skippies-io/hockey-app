@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, within, act } from "@testing-library/react";
 import React from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { computeFormErrors } from "./tournamentWizardUtils";
 
@@ -35,7 +36,7 @@ describe("TournamentWizard", () => {
     const { default: TournamentWizard } = await import("./TournamentWizard");
     let result;
     await act(async () => {
-      result = render(<TournamentWizard />);
+      result = render(<MemoryRouter><TournamentWizard /></MemoryRouter>);
     });
     return result;
   }
@@ -45,10 +46,10 @@ describe("TournamentWizard", () => {
 
     expect(screen.getByText("Tournament Setup Wizard")).toBeDefined();
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
     expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
     expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
     expect(screen.getByRole("heading", { name: "Fixtures" })).toBeDefined();
   });
@@ -63,7 +64,7 @@ describe("TournamentWizard", () => {
       target: { value: "2026" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -71,7 +72,7 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
     if (!teamsSection) throw new Error("Teams section not found");
@@ -105,7 +106,7 @@ describe("TournamentWizard", () => {
   it("generates fixtures for a group", async () => {
     await renderWizard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -113,7 +114,7 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
     if (!teamsSection) throw new Error("Teams section not found");
@@ -158,7 +159,7 @@ describe("TournamentWizard", () => {
   it("updates and removes fixtures", async () => {
     await renderWizard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -166,7 +167,7 @@ describe("TournamentWizard", () => {
       target: { value: "U11 Boys" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
     if (!fixturesSection) throw new Error("Fixtures section not found");
@@ -222,7 +223,7 @@ describe("TournamentWizard", () => {
     await renderWizard();
 
     // Groups step: select venues (multi-select)
-    fireEvent.click(screen.getByRole("button", { name: /Groups & Pools/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
 
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
@@ -243,7 +244,7 @@ describe("TournamentWizard", () => {
     fireEvent.change(venuesMultiSelect);
 
     // Teams & Fixtures step: manage time slots
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const timeSlotsSection = screen.getByRole("heading", { name: "Time Slots" }).closest("section");
     if (!timeSlotsSection) throw new Error("Time Slots section not found");
@@ -270,7 +271,7 @@ describe("TournamentWizard", () => {
   it("supports imports and auto-assigning pools", async () => {
     await renderWizard();
 
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
@@ -280,7 +281,7 @@ describe("TournamentWizard", () => {
     const poolCountInput = screen.getByRole("spinbutton", { name: "Pool Count" });
     fireEvent.change(poolCountInput, { target: { value: "2" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
     if (!teamsSection) throw new Error("Teams section not found");
@@ -312,7 +313,7 @@ describe("TournamentWizard", () => {
 
   it("shows generator validation errors when required fields are missing", async () => {
     await renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
     if (!fixturesSection) throw new Error("Fixtures section not found");
@@ -346,14 +347,14 @@ describe("TournamentWizard", () => {
     fireEvent.change(screen.getByPlaceholderText("2026"), {
       target: { value: "2026" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Groups/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
     fireEvent.change(screen.getByPlaceholderText("U11B"), {
       target: { value: "U11B" },
     });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
     if (!teamsSection) throw new Error("Teams section not found");
@@ -395,7 +396,7 @@ describe("TournamentWizard", () => {
     });
 
     await renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     await waitFor(() => {
       const datalist = document.querySelector("datalist");
@@ -423,7 +424,7 @@ describe("TournamentWizard", () => {
     });
 
     await renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /Teams & Fixtures/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     await waitFor(() => {
       const datalist = document.querySelector("datalist");
