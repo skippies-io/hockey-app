@@ -1714,6 +1714,14 @@ select {
   border-color: var(--hj-color-brand);
 }
 
+.wizard-step.completed {
+  border-color: var(--hj-color-success);
+}
+
+.wizard-step.completed .wizard-step-index {
+  background: var(--hj-color-success);
+}
+
 .wizard-step-index {
   display: inline-flex;
   align-items: center;

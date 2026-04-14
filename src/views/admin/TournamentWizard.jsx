@@ -24,17 +24,19 @@ function slugForTournament(name, season) {
   return slug.startsWith("hj-") ? slug : `hj-${slug}`;
 }
 
-function WizardStepHeader({ step, onStepChange }) {
+function WizardStepHeader({ step, onStepChange, stepComplete }) {
   return (
     <div className="wizard-steps">
       {STEP_LABELS.map((label, idx) => (
         <button
           type="button"
           key={label}
-          className={`wizard-step ${idx === step ? "active" : ""}`}
+          className={`wizard-step ${idx === step ? "active" : ""} ${stepComplete?.[idx] ? "completed" : ""}`}
           onClick={() => onStepChange(idx)}
         >
-          <span className="wizard-step-index">{idx + 1}</span>
+          <span className="wizard-step-index">
+            {stepComplete?.[idx] ? "✓" : idx + 1}
+          </span>
           <span>{label}</span>
         </button>
       ))}
@@ -45,6 +47,11 @@ function WizardStepHeader({ step, onStepChange }) {
 WizardStepHeader.propTypes = {
   step: PropTypes.number.isRequired,
   onStepChange: PropTypes.func.isRequired,
+  stepComplete: PropTypes.arrayOf(PropTypes.bool),
+};
+
+WizardStepHeader.defaultProps = {
+  stepComplete: [],
 };
 
 function Field({ label, children, hint, error }) {
@@ -233,6 +240,12 @@ export default function TournamentWizard() {
   const allVenueOptions = useMemo(() => {
     return Array.from(new Set(venueOptions.map((v) => String(v).trim()).filter(Boolean)));
   }, [venueOptions]);
+
+  const stepComplete = useMemo(() => [
+    Boolean(tournament.name.trim() && tournament.season.trim() && (tournament.id || tournamentIdHint)),
+    groups.some((g) => g.id?.trim() && g.label?.trim()),
+    false,
+  ], [tournament, tournamentIdHint, groups]);
 
   const teamOptionsByGroup = useMemo(() => {
     const map = new Map();
@@ -593,7 +606,7 @@ export default function TournamentWizard() {
       ) : null}
       {saveSuccess ? <div className="wizard-alert success">{saveSuccess}</div> : null}
 
-      <WizardStepHeader step={step} onStepChange={setStep} />
+      <WizardStepHeader step={step} onStepChange={setStep} stepComplete={stepComplete} />
 
       {step === 0 && (
         <div className="wizard-grid">
@@ -705,24 +718,26 @@ export default function TournamentWizard() {
                 {allVenueOptions.length === 0 ? (
                   <span className="wizard-choice-empty">No venues available. <Link to="/admin/venues">Add them in Admin → Venues.</Link></span>
                 ) : (
-                  <select
-                    multiple
-                    aria-label="Group Venues"
-                    className="wizard-input"
-                    value={group.venues || []}
-                    onChange={(e) =>
-                      setGroupVenues(
-                        idx,
-                        Array.from(e.target.selectedOptions).map((opt) => opt.value)
-                      )
-                    }
-                  >
+                  <div className="wizard-choice-list" role="group" aria-label="Group Venues">
                     {allVenueOptions.map((venueName) => (
-                      <option key={`${group.id}-${venueName}`} value={venueName}>
+                      <label key={`${group.id}-${venueName}`} className="wizard-choice">
+                        <input
+                          type="checkbox"
+                          checked={(group.venues || []).includes(venueName)}
+                          onChange={(e) => {
+                            const current = group.venues || [];
+                            setGroupVenues(
+                              idx,
+                              e.target.checked
+                                ? [...current, venueName]
+                                : current.filter((v) => v !== venueName)
+                            );
+                          }}
+                        />
                         {venueName}
-                      </option>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 )}
               </div>
               <button type="button" onClick={() => removeGroup(idx)}>Remove Group</button>
