@@ -101,14 +101,14 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
   await page.getByLabel('Tournament ID').fill(tournamentId);
 
   // Step 2: Groups & Pools
-  await page.getByRole('button', { name: 'Groups & Pools' }).click();
+  await page.getByRole('button', { name: /^2\s*Groups & Pools/i }).click();
   await expect(page.getByRole('heading', { name: 'Groups' })).toBeVisible();
   await page.getByLabel('Group ID').first().fill('U11B');
   await page.getByLabel('Label').first().fill('U11 Boys');
   // Venues are optional; leave empty.
 
   // Step 3: Teams & Fixtures
-  await page.getByRole('button', { name: 'Teams & Fixtures' }).click();
+  await page.getByRole('button', { name: /^3\s*Teams & Fixtures/i }).click();
   await expect(page.getByRole('heading', { name: 'Teams' })).toBeVisible();
 
   const teamsSection = page.locator('section', { has: page.getByRole('heading', { name: 'Teams' }) });
