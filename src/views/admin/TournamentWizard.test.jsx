@@ -496,4 +496,52 @@ describe("TournamentWizard", () => {
       "Duplicate fixtures found (same teams/date/time/pool).",
     ]));
   });
+
+  it("handleNext blocks step 0 → 1 when required fields are missing, then advances when filled", async () => {
+    await renderWizard();
+
+    // Click Next without any fields filled — expect validation error
+    fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
+    expect(screen.getByText("Please fill in all required fields before continuing.")).toBeDefined();
+
+    // Fill required fields
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Test" } });
+    fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
+    fireEvent.change(screen.getByLabelText("Tournament ID"), { target: { value: "hj-test-2026" } });
+
+    // Now Next should advance to step 1
+    fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
+    expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
+  });
+
+  it("handleNext auto-applies suggested tournament ID when ID field is left empty", async () => {
+    await renderWizard();
+
+    // Fill name + season to generate a hint; leave ID blank
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Test" } });
+    fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
+
+    // Click Next — hint should be auto-applied and wizard advances to step 1
+    fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
+    expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
+  });
+
+  it("handleNext blocks step 1 → 2 when no valid group exists, then advances when group is filled", async () => {
+    await renderWizard();
+
+    // Jump to step 1 via header tab
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
+
+    // Click Next with the default empty group — expect validation error
+    fireEvent.click(screen.getByRole("button", { name: /Next: Teams/i }));
+    expect(screen.getByText("Add at least one complete group before continuing.")).toBeDefined();
+
+    // Fill in the default group's ID and label
+    fireEvent.change(screen.getByPlaceholderText("U11B"), { target: { value: "U11B" } });
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), { target: { value: "U11 Boys" } });
+
+    // Now Next should advance to step 2
+    fireEvent.click(screen.getByRole("button", { name: /Next: Teams/i }));
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
+  });
 });
