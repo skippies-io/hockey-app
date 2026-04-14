@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { Link, useNavigate } from "react-router-dom";
 // NOTE: franchises now come from the admin franchise directory (global)
 // import { getFranchises } from "../../lib/api";
 import { adminFetch } from "../../lib/adminAuth";
@@ -170,6 +171,7 @@ export default function TournamentWizard() {
     keyCounter.current += 1;
     return `${prefix}-${keyCounter.current}`;
   }, []);
+  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -430,6 +432,27 @@ export default function TournamentWizard() {
     setSaveSuccess(`Generated ${nextFixtures.length} fixtures.`);
   }
 
+  function handleNext() {
+    if (step === 0) {
+      if (!tournament.name.trim() || !tournament.season.trim() || !(tournament.id || tournamentIdHint)) {
+        setSaveError("Please fill in all required fields before continuing.");
+        return;
+      }
+      // Auto-apply suggested ID if left blank
+      if (!tournament.id && tournamentIdHint) {
+        updateTournament({ id: tournamentIdHint });
+      }
+    }
+    if (step === 1) {
+      if (!groups.some((g) => g.id?.trim() && g.label?.trim())) {
+        setSaveError("Add at least one complete group before continuing.");
+        return;
+      }
+    }
+    setSaveError("");
+    setStep((s) => Math.min(s + 1, STEP_LABELS.length - 1));
+  }
+
   async function handleSubmit() {
     setSaving(true);
     setSaveError("");
@@ -502,6 +525,7 @@ export default function TournamentWizard() {
         throw new Error(json.error || "Failed to save tournament");
       }
       setSaveSuccess(`Tournament created: ${json.tournament_id}`);
+      setTimeout(() => navigate("/admin/fixtures"), 1500);
     } catch (err) {
       setSaveError(err.message || "Failed to save tournament");
     } finally {
@@ -557,14 +581,6 @@ export default function TournamentWizard() {
             Build the tournament structure, teams, pools, and fixtures in one flow.
           </p>
         </div>
-        <button
-          type="button"
-          className="wizard-primary"
-          onClick={handleSubmit}
-          disabled={saving}
-        >
-          {saving ? "Saving..." : "Create Tournament"}
-        </button>
       </header>
 
       {saveError ? <div className="wizard-alert error">{saveError}</div> : null}
@@ -602,24 +618,42 @@ export default function TournamentWizard() {
             </Field>
             <Field
               label="Tournament ID"
-              hint={`Suggested: ${tournamentIdHint || "hj-..."}`}
+              hint={tournamentIdHint && !tournament.id ? undefined : `Suggested: ${tournamentIdHint || "hj-..."}`}
               error={invalidTournamentId ? "Required" : ""}
             >
-              <input
-                type="text"
-                value={tournament.id}
-                className={invalidTournamentId ? "wizard-input invalid" : "wizard-input"}
-                onChange={(e) => updateTournament({ id: e.target.value })}
-                placeholder={tournamentIdHint || "hj-indoor-2026"}
-              />
+              <div style={{ display: "flex", gap: "var(--hj-space-2)", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={tournament.id}
+                  className={invalidTournamentId ? "wizard-input invalid" : "wizard-input"}
+                  style={{ flex: 1 }}
+                  onChange={(e) => updateTournament({ id: e.target.value })}
+                  placeholder={tournamentIdHint || "hj-indoor-2026"}
+                />
+                {tournamentIdHint && tournament.id !== tournamentIdHint && (
+                  <button
+                    type="button"
+                    className="wizard-secondary"
+                    onClick={() => updateTournament({ id: tournamentIdHint })}
+                  >
+                    Use suggested
+                  </button>
+                )}
+              </div>
             </Field>
           </SectionCard>
 
-
+          <div className="wizard-step-nav">
+            <span />
+            <button type="button" className="wizard-primary" onClick={handleNext}>
+              Next: Groups &amp; Pools →
+            </button>
+          </div>
         </div>
       )}
 
       {step === 1 && (
+        <>
         <SectionCard
           title="Groups"
           actions={<button type="button" onClick={addGroup}>Add Group</button>}
@@ -669,7 +703,7 @@ export default function TournamentWizard() {
               <div className="wizard-choices">
                 <span className="wizard-field-label">Group Venues</span>
                 {allVenueOptions.length === 0 ? (
-                  <span className="wizard-choice-empty">No venues available. Add them in Admin → Venues.</span>
+                  <span className="wizard-choice-empty">No venues available. <Link to="/admin/venues">Add them in Admin → Venues.</Link></span>
                 ) : (
                   <select
                     multiple
@@ -695,6 +729,15 @@ export default function TournamentWizard() {
             </div>
           ))}
         </SectionCard>
+        <div className="wizard-step-nav">
+          <button type="button" className="wizard-secondary" onClick={() => { setSaveError(""); setStep(0); }}>
+            ← Back: Tournament
+          </button>
+          <button type="button" className="wizard-primary" onClick={handleNext}>
+            Next: Teams &amp; Fixtures →
+          </button>
+        </div>
+        </>
       )}
 
       {step === 2 && (
@@ -803,6 +846,7 @@ export default function TournamentWizard() {
       )}
 
       {step === 2 && (
+        <>
         <SectionCard
           title="Fixtures"
           actions={<button type="button" onClick={addFixture}>Add Fixture</button>}
@@ -850,10 +894,9 @@ export default function TournamentWizard() {
             <div className="wizard-row">
               <Field label="Default Time">
                 <input
-                  type="text"
+                  type="time"
                   value={generator.time}
                   onChange={(e) => setGenerator((prev) => ({ ...prev, time: e.target.value }))}
-                  placeholder="09:00"
                 />
               </Field>
               <Field label="Default Venue">
@@ -917,11 +960,10 @@ export default function TournamentWizard() {
                   </Field>
                   <Field label="Time">
                     <input
-                      type="text"
+                      type="time"
                       value={slot.time}
                       className={slotHasTime ? "wizard-input" : "wizard-input invalid"}
                       onChange={(e) => updateTimeSlot(idx, { time: e.target.value })}
-                      placeholder="09:00"
                     />
                   </Field>
                   <Field label="Venue">
@@ -986,11 +1028,10 @@ export default function TournamentWizard() {
                 </Field>
                 <Field label="Time (optional)">
                   <input
-                    type="text"
+                    type="time"
                     value={fixture.time}
                     className="wizard-input"
                     onChange={(e) => updateFixture(idx, { time: e.target.value })}
-                    placeholder="09:00"
                   />
                 </Field>
               </div>
@@ -1063,6 +1104,20 @@ export default function TournamentWizard() {
           );
           })}
         </SectionCard>
+        <div className="wizard-step-nav">
+          <button type="button" className="wizard-secondary" onClick={() => { setSaveError(""); setStep(1); }}>
+            ← Back: Groups &amp; Pools
+          </button>
+          <button
+            type="button"
+            className="wizard-primary"
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Create Tournament"}
+          </button>
+        </div>
+        </>
       )}
     </div>
   );
