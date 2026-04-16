@@ -40,6 +40,28 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function slugSimple(input) {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)/g, "");
+}
+
+function slugForTournament(name, season) {
+  const base = [name, season].filter(Boolean).join(" ");
+  const s = slugSimple(base);
+  if (!s) return "";
+  return s.startsWith("hj-") ? s : `hj-${s}`;
+}
+
+function abbreviateGroup(label) {
+  const parts = String(label || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0];
+  return parts[0] + parts.slice(1).map((p) => p.charAt(0).toUpperCase()).join("");
+}
+
 function parseScore(value) {
   if (value === "" || value == null) return null;
   if (typeof value === "number" && Number.isInteger(value)) return value;
@@ -117,19 +139,22 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         timeSlots = [],
       } = body;
 
-      if (!tournament || !isNonEmptyString(tournament.id) || !isNonEmptyString(tournament.name)) {
-        return sendJson(req, res, 400, { ok: false, error: "tournament.id and tournament.name are required" });
+      if (!tournament || !isNonEmptyString(tournament.name)) {
+        return sendJson(req, res, 400, { ok: false, error: "tournament.name is required" });
       }
 
       if (!Array.isArray(groups) || groups.length === 0) {
         return sendJson(req, res, 400, { ok: false, error: "At least one group is required" });
       }
 
-      const tournamentId = normalizeSpaces(tournament.id);
       const tournamentName = normalizeSpaces(tournament.name);
       const tournamentSeason = isNonEmptyString(tournament.season)
         ? normalizeSpaces(tournament.season)
         : null;
+      const rawId = isNonEmptyString(tournament.id)
+        ? normalizeSpaces(tournament.id)
+        : slugForTournament(tournamentName, tournamentSeason);
+      const tournamentId = rawId;
 
       const client = await pool.connect();
       try {
@@ -145,11 +170,13 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         }
 
         await client.query(
-          `INSERT INTO tournament (id, name, season)
-           VALUES ($1, $2, $3)`,
+          `INSERT INTO tournament (id, name, season, source)
+           VALUES ($1, $2, $3, 'App')`,
           [tournamentId, tournamentName, tournamentSeason]
         );
 
+        // venueMap: populated on-demand from venue_directory as groupVenues are processed.
+        // Explicit `venues` array in the payload is still supported for backwards compat.
         const venueMap = new Map();
         for (const venue of venues) {
           const name = normalizeSpaces(venue?.name);
@@ -166,12 +193,15 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
 
         const groupIds = new Set();
         for (const group of groups) {
-          const groupId = normalizeSpaces(group?.id);
           const label = normalizeSpaces(group?.label);
-          if (!groupId || !label) {
+          if (!label) {
             await client.query("ROLLBACK");
-            return sendJson(req, res, 400, { ok: false, error: "Each group requires id and label" });
+            return sendJson(req, res, 400, { ok: false, error: "Each group requires a label (Division/Age)" });
           }
+          const rawGroupId = isNonEmptyString(group?.id)
+            ? normalizeSpaces(group.id)
+            : abbreviateGroup(label);
+          const groupId = rawGroupId || slugSimple(label);
           if (groupIds.has(groupId)) {
             await client.query("ROLLBACK");
             return sendJson(req, res, 400, { ok: false, error: `Duplicate group id: ${groupId}` });
@@ -190,11 +220,33 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           const groupId = normalizeSpaces(link?.group_id);
           const venueName = normalizeSpaces(link?.venue_name);
           if (!groupId || !venueName) continue;
-          const venueEntry = venueMap.get(venueName.toLowerCase());
+
+          // Resolve venue from the in-memory map first (already created this request),
+          // then fall back to venue_directory (global registry), auto-creating the
+          // tournament-scoped venue record if found — same pattern as franchise resolution.
+          let venueEntry = venueMap.get(venueName.toLowerCase());
           if (!venueEntry) {
-            await client.query("ROLLBACK");
-            return sendJson(req, res, 400, { ok: false, error: `Unknown venue: ${venueName}` });
+            const dirRow = await client.query(
+              `SELECT id, name FROM venue_directory WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+              [venueName]
+            );
+            if (!dirRow.rows.length) {
+              // Venue not in directory — skip silently rather than failing the whole transaction.
+              // The venue name is still stored as free text on each fixture.
+              continue;
+            }
+            const dir = dirRow.rows[0];
+            const vId = slug(`${tournamentId}:${dir.name}`);
+            venueEntry = { id: vId, name: dir.name };
+            venueMap.set(venueName.toLowerCase(), venueEntry);
+            await client.query(
+              `INSERT INTO venue (tournament_id, id, name)
+               VALUES ($1, $2, $3)
+               ON CONFLICT (tournament_id, id) DO UPDATE SET name = EXCLUDED.name`,
+              [tournamentId, vId, dir.name]
+            );
           }
+
           await client.query(
             `INSERT INTO group_venue (tournament_id, group_id, venue_id)
              VALUES ($1, $2, $3)
@@ -265,10 +317,37 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           const franchiseNameRaw = normalizeSpaces(team?.franchise_name);
           let franchiseId = null;
           if (franchiseNameRaw) {
-            const franchiseEntry = franchiseMap.get(franchiseNameRaw.toLowerCase());
+            let franchiseEntry = franchiseMap.get(franchiseNameRaw.toLowerCase());
             if (!franchiseEntry) {
-              await client.query("ROLLBACK");
-              return sendJson(req, res, 400, { ok: false, error: `Unknown franchise: ${franchiseNameRaw}` });
+              // Resolve from franchise_directory (global) and create tournament-scoped entry
+              const dirRow = await client.query(
+                `SELECT id, name, logo_url, manager_name, manager_photo_url, description,
+                        contact_phone, location_map_url, contact_email
+                 FROM franchise_directory WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+                [franchiseNameRaw]
+              );
+              if (!dirRow.rows.length) {
+                await client.query("ROLLBACK");
+                return sendJson(req, res, 400, { ok: false, error: `Unknown franchise: ${franchiseNameRaw}` });
+              }
+              const dir = dirRow.rows[0];
+              const fName = toTitleCase(dir.name);
+              const fId = slug(`${tournamentId}:${fName}`);
+              franchiseEntry = { id: fId, name: fName };
+              franchiseMap.set(franchiseNameRaw.toLowerCase(), franchiseEntry);
+              await client.query(
+                `INSERT INTO franchise (tournament_id, id, name, logo_url, manager_name,
+                   manager_photo_url, description, contact_phone, location_map_url, contact_email)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                 ON CONFLICT (tournament_id, id) DO UPDATE SET
+                   name = EXCLUDED.name, logo_url = EXCLUDED.logo_url,
+                   manager_name = EXCLUDED.manager_name, manager_photo_url = EXCLUDED.manager_photo_url,
+                   description = EXCLUDED.description, contact_phone = EXCLUDED.contact_phone,
+                   location_map_url = EXCLUDED.location_map_url, contact_email = EXCLUDED.contact_email`,
+                [tournamentId, fId, fName, dir.logo_url, dir.manager_name,
+                 dir.manager_photo_url, dir.description, dir.contact_phone,
+                 dir.location_map_url, dir.contact_email]
+              );
             }
             franchiseId = franchiseEntry.id;
           }
@@ -429,6 +508,52 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
 
   // CORS headers for admin (if needed specifically, though index.mjs handles it generally, 
   // we might need to ensure OPTIONS passes through or headers conform)
+
+  if (path === "/divisions") {
+    if (method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const result = await pool.query(
+        `SELECT DISTINCT label FROM groups ORDER BY label`
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows.map((r) => r.label) });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  // GET /admin/franchise-teams?franchise=<name>
+  // Returns distinct team names previously used by this franchise across all tournaments.
+  // Used by the wizard to suggest team names after a franchise is selected.
+  if (path === "/franchise-teams") {
+    if (method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    try {
+      if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+      const franchiseName = url.searchParams.get("franchise");
+      if (!franchiseName?.trim()) {
+        return sendJson(req, res, 400, { ok: false, error: "franchise query param is required" });
+      }
+      const result = await pool.query(
+        `SELECT DISTINCT t.name
+         FROM team t
+         JOIN franchise f ON f.tournament_id = t.tournament_id AND f.id = t.franchise_id
+         JOIN franchise_directory fd ON LOWER(fd.name) = LOWER(f.name)
+         WHERE LOWER(fd.name) = LOWER($1)
+           AND t.is_placeholder = false
+         ORDER BY t.name`,
+        [franchiseName.trim()]
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows.map((r) => r.name) });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
 
   if (path === "/announcements") {
     if (method === "GET") {

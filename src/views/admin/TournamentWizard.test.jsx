@@ -22,6 +22,18 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, data: [{ name: "Venue A" }] }),
         });
       }
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [{ id: "f1", name: "Gryphons" }] }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/admin/divisions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: ["U11 Boys", "U11 Girls", "U13 Boys"] }),
+        });
+      }
       if (typeof url === "string" && url.includes("/admin/tournament-wizard")) {
         return Promise.resolve({
           ok: true,
@@ -65,9 +77,6 @@ describe("TournamentWizard", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
@@ -84,11 +93,10 @@ describe("TournamentWizard", () => {
     fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
-    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review →$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm & Create/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Create/i }));
 
     await waitFor(() => {
       const call = fetch.mock.calls.find(
@@ -107,9 +115,6 @@ describe("TournamentWizard", () => {
     await renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
@@ -126,9 +131,6 @@ describe("TournamentWizard", () => {
     fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
     fireEvent.click(teamsScope.getByRole("button", { name: /Add Team/i }));
     const teamInputs = teamsScope.getAllByPlaceholderText("PP Amber");
@@ -136,8 +138,6 @@ describe("TournamentWizard", () => {
 
     const teamGroupCombos = teamsScope.getAllByRole("combobox", { name: "Team Group" });
     fireEvent.change(teamGroupCombos[1], { target: { value: "U11B" } });
-    const poolCombos = teamsScope.getAllByRole("combobox", { name: "Pool" });
-    fireEvent.change(poolCombos[1], { target: { value: "A" } });
 
     const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
     if (!fixturesSection) throw new Error("Fixtures section not found");
@@ -160,9 +160,6 @@ describe("TournamentWizard", () => {
     await renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
@@ -219,15 +216,11 @@ describe("TournamentWizard", () => {
     });
   });
 
-  it("allows selecting group venues and managing time slots", async () => {
+  it("allows selecting group venues via checkboxes", async () => {
     await renderWizard();
 
-    // Groups step: select venues (multi-select)
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
 
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
@@ -236,46 +229,26 @@ describe("TournamentWizard", () => {
     if (!groupSection) throw new Error("Groups section not found");
     const groupScope = within(groupSection);
 
-    // Select Venue A via checkbox
-    const venueACheckbox = groupScope.getByRole("checkbox", { name: "Venue A" });
-    fireEvent.click(venueACheckbox);
-
-    // Teams & Fixtures step: manage time slots
-    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
-
-    const timeSlotsSection = screen.getByRole("heading", { name: "Time Slots" }).closest("section");
-    if (!timeSlotsSection) throw new Error("Time Slots section not found");
-    const timeSlotsScope = within(timeSlotsSection);
-
-    fireEvent.click(timeSlotsScope.getByRole("button", { name: /Add Slot/i }));
-    const slotDateInputs = timeSlotsScope.getAllByLabelText("Date");
-    const slotTimeInputs = timeSlotsScope.getAllByLabelText("Time");
-    const slotVenueSelects = timeSlotsScope.getAllByLabelText("Venue");
-
-    fireEvent.change(slotDateInputs[1], { target: { value: "2026-01-12" } });
-    fireEvent.change(slotTimeInputs[1], { target: { value: "10:30" } });
-    fireEvent.change(slotVenueSelects[1], { target: { value: "Venue A" } });
-    fireEvent.change(timeSlotsScope.getAllByLabelText("Label")[1], {
-      target: { value: "Court 2" },
-    });
-
-    fireEvent.click(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i })[1]);
     await waitFor(() => {
-      expect(timeSlotsScope.getAllByRole("button", { name: /Remove Slot/i }).length).toBe(1);
+      expect(groupScope.getByRole("checkbox", { name: "Venue A" })).toBeDefined();
     });
+
+    const venueACheckbox = groupScope.getByRole("checkbox", { name: "Venue A" });
+    expect(venueACheckbox.checked).toBe(false);
+    fireEvent.click(venueACheckbox);
+    expect(venueACheckbox.checked).toBe(true);
+    fireEvent.click(venueACheckbox);
+    expect(venueACheckbox.checked).toBe(false);
   });
 
-  it("supports imports and auto-assigning pools", async () => {
+  it("supports auto-assigning pools from the fixture generator", async () => {
     await renderWizard();
 
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
-    const poolCountInput = screen.getByRole("spinbutton", { name: "Pool Count" });
+    const poolCountInput = screen.getByRole("spinbutton", { name: /Number of Pools/i });
     fireEvent.change(poolCountInput, { target: { value: "2" } });
 
     fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
@@ -298,14 +271,19 @@ describe("TournamentWizard", () => {
     const groupCombos = teamsScope.getAllByRole("combobox", { name: "Team Group" });
     fireEvent.change(groupCombos[1], { target: { value: "U11B" } });
 
-    const autoAssignButtons = teamsScope.getAllByRole("button", { name: /Auto-assign pools/i });
-    fireEvent.click(autoAssignButtons[0]);
+    // Auto-assign is now in the fixture generator section after selecting a group
+    const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
+    if (!fixturesSection) throw new Error("Fixtures section not found");
+    const fixturesScope = within(fixturesSection);
 
-    const poolCombos = teamsScope.getAllByRole("combobox", { name: "Pool" });
-    expect(poolCombos[0].value).toBe("A");
-    expect(poolCombos[1].value).toBe("B");
+    fireEvent.change(fixturesScope.getByRole("combobox", { name: "Generator Group" }), {
+      target: { value: "U11B" },
+    });
 
-    // Franchise import removed in simplified wizard (#211).
+    const autoAssignBtn = fixturesScope.getByRole("button", { name: /Assign teams to pools/i });
+    expect(autoAssignBtn).toBeDefined();
+    fireEvent.click(autoAssignBtn);
+    // Pool assignment is now internal state used by the fixture generator — no UI pool fields on teams
   });
 
   it("shows generator validation errors when required fields are missing", async () => {
@@ -345,9 +323,6 @@ describe("TournamentWizard", () => {
       target: { value: "2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups/i }));
-    fireEvent.change(screen.getByPlaceholderText("U11B"), {
-      target: { value: "U11B" },
-    });
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), {
       target: { value: "U11 Boys" },
     });
@@ -363,18 +338,17 @@ describe("TournamentWizard", () => {
     fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), {
       target: { value: "PP Amber" },
     });
-    fireEvent.change(teamsScope.getByRole("combobox", { name: "Pool" }), {
-      target: { value: "A" },
-    });
 
-    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review →$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm & Create/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Create/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Save failed/i)).toBeDefined();
     });
   });
 
-  it("populates franchise datalist from API", async () => {
+  it("populates franchise dropdown from API", async () => {
     fetch.mockImplementation((url) => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
@@ -396,14 +370,14 @@ describe("TournamentWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     await waitFor(() => {
-      const datalist = document.querySelector("datalist");
-      const options = datalist ? Array.from(datalist.querySelectorAll("option")).map((o) => o.value) : [];
+      const franchiseSelect = screen.getByRole("combobox", { name: /franchise/i });
+      const options = Array.from(franchiseSelect.querySelectorAll("option")).map((o) => o.value);
       expect(options).toContain("Gryphons");
       expect(options).toContain("Dragons");
     });
   });
 
-  it("populates franchise datalist from API (no form merge in simplified wizard)", async () => {
+  it("populates franchise dropdown from API (single franchise)", async () => {
     fetch.mockImplementation((url) => {
       if (typeof url === "string" && url.includes("/admin/venues")) {
         return Promise.resolve({
@@ -424,8 +398,8 @@ describe("TournamentWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
 
     await waitFor(() => {
-      const datalist = document.querySelector("datalist");
-      const options = datalist ? Array.from(datalist.querySelectorAll("option")).map((o) => o.value) : [];
+      const franchiseSelect = screen.getByRole("combobox", { name: /franchise/i });
+      const options = Array.from(franchiseSelect.querySelectorAll("option")).map((o) => o.value);
       expect(options).toContain("Gryphons");
     });
   });
@@ -454,8 +428,8 @@ describe("TournamentWizard", () => {
       tournament: { id: "", name: "", season: "" },
       groups: [{ id: "", label: "" }],
       teams: [
-        { group_id: "", name: "PP Amber", pool: "" },
-        { group_id: "U11B", name: "PP Amber", pool: "" },
+        { group_id: "", name: "PP Amber" },
+        { group_id: "U11B", name: "PP Amber" },
       ],
       fixtures: [
         { group_id: "U11B", team1: "PP Amber", team2: "PP Amber", date: "", pool: "" },
@@ -470,17 +444,17 @@ describe("TournamentWizard", () => {
       "At least one group is required.",
       "All teams must be assigned to a valid group.",
       "Fixtures include an unknown group.",
-      "All non-placeholder teams should have a pool.",
       "All fixtures must have a date.",
       "All fixtures must have a pool.",
     ]));
+    expect(errors).not.toContain("All non-placeholder teams should have a pool.");
 
     const duplicateErrors = computeFormErrors({
       tournament: { id: "hj-test", name: "HJ", season: "2026" },
       groups: [{ id: "U11B", label: "U11 Boys" }],
       teams: [
-        { group_id: "U11B", name: "PP Amber", pool: "A" },
-        { group_id: "U11B", name: "PP Amber", pool: "B" },
+        { group_id: "U11B", name: "PP Amber" },
+        { group_id: "U11B", name: "PP Amber" },
       ],
       fixtures: [
         { group_id: "U11B", team1: "PP Amber", team2: "Knights", date: "2026-01-01", pool: "A" },
@@ -501,24 +475,27 @@ describe("TournamentWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
     expect(screen.getByText("Please fill in all required fields before continuing.")).toBeDefined();
 
-    // Fill required fields
+    // Fill required fields (no Tournament ID needed — auto-generated)
     fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Test" } });
     fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
-    fireEvent.change(screen.getByLabelText("Tournament ID"), { target: { value: "hj-test-2026" } });
 
     // Now Next should advance to step 1
     fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
     expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
   });
 
-  it("handleNext auto-applies suggested tournament ID when ID field is left empty", async () => {
+  it("shows a preview of the auto-generated tournament ID from name and season", async () => {
     await renderWizard();
 
-    // Fill name + season to generate a hint; leave ID blank
     fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Test" } });
     fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
 
-    // Click Next — hint should be auto-applied and wizard advances to step 1
+    // The ID preview text should appear
+    await waitFor(() => {
+      expect(screen.getByText(/hj-test-2026/i)).toBeDefined();
+    });
+
+    // Next should still advance to step 1
     fireEvent.click(screen.getByRole("button", { name: /Next: Groups/i }));
     expect(screen.getByRole("heading", { name: "Groups" })).toBeDefined();
   });
@@ -556,14 +533,85 @@ describe("TournamentWizard", () => {
 
     // Click Next with the default empty group — expect validation error
     fireEvent.click(screen.getByRole("button", { name: /Next: Teams/i }));
-    expect(screen.getByText("Add at least one complete group before continuing.")).toBeDefined();
+    expect(screen.getByText("Add at least one division before continuing.")).toBeDefined();
 
-    // Fill in the default group's ID and label
-    fireEvent.change(screen.getByPlaceholderText("U11B"), { target: { value: "U11B" } });
+    // Fill in the division label (Group ID is auto-generated)
     fireEvent.change(screen.getByPlaceholderText("U11 Boys"), { target: { value: "U11 Boys" } });
 
     // Now Next should advance to step 2
     fireEvent.click(screen.getByRole("button", { name: /Next: Teams/i }));
+    expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
+  });
+
+  it("review step shows 'No fixtures' and form errors when wizard is incomplete", async () => {
+    await renderWizard();
+
+    // Jump directly to the Review step via the step-header button
+    fireEvent.click(screen.getByRole("button", { name: /^4\s*Review/i }));
+
+    // No fixtures added → "No fixtures generated" placeholder
+    await waitFor(() => {
+      expect(screen.getByText(/No fixtures generated/i)).toBeDefined();
+    });
+
+    // Form errors are shown (name and season are still empty)
+    expect(screen.getByText(/Issues to fix before submitting/i)).toBeDefined();
+    // Confirm & Create is disabled when there are errors
+    const confirmBtn = screen.getByRole("button", { name: /Confirm & Create/i });
+    expect(confirmBtn.disabled).toBe(true);
+  });
+
+  it("review step shows fixture counts when fixtures exist", async () => {
+    await renderWizard();
+
+    // Step 1 — Tournament
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Indoor 2026" } });
+    fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
+
+    // Step 2 — Groups
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), { target: { value: "U11 Boys" } });
+
+    // Step 3 — Teams + generate fixtures
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    const teamsScope = within(teamsSection);
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Group" }), { target: { value: "U11B" } });
+    fireEvent.change(teamsScope.getByPlaceholderText("PP Amber"), { target: { value: "PP Amber" } });
+    fireEvent.click(teamsScope.getByRole("button", { name: /Add Team/i }));
+    const teamInputs = teamsScope.getAllByPlaceholderText("PP Amber");
+    fireEvent.change(teamInputs[1], { target: { value: "Knights Orange" } });
+    fireEvent.change(teamsScope.getAllByRole("combobox", { name: "Team Group" })[1], { target: { value: "U11B" } });
+
+    const fixturesSection = screen.getByRole("heading", { name: "Fixtures" }).closest("section");
+    const fixturesScope = within(fixturesSection);
+    fireEvent.change(fixturesScope.getByRole("combobox", { name: "Generator Group" }), { target: { value: "U11B" } });
+    fireEvent.change(fixturesScope.getAllByLabelText("Date")[0], { target: { value: "2026-04-20" } });
+    fireEvent.click(fixturesScope.getByRole("button", { name: /Generate Fixtures/i }));
+
+    await waitFor(() => {
+      expect(fixturesScope.getAllByLabelText("Team 1").length).toBeGreaterThan(0);
+    });
+
+    // Go to Review step
+    fireEvent.click(screen.getByRole("button", { name: /^Review →$/i }));
+
+    await waitFor(() => {
+      // Fixture count row for U11 Boys should appear in the review
+      expect(screen.getAllByText(/U11 Boys/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it("Back button on review step navigates to teams & fixtures step", async () => {
+    await renderWizard();
+
+    fireEvent.click(screen.getByRole("button", { name: /^4\s*Review/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Confirm & Create/i })).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /← Back: Teams/i }));
     expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
   });
 });

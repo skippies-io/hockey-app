@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'jsdom',
-      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+      exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'hockey-app/**'],
       environmentMatchGlobs: [
         ['test/server/**', 'node'],
       ],
@@ -60,6 +60,11 @@ export default defineConfig(({ mode }) => {
         provider: 'v8',
         reporter: ['text', 'lcov'],
         reportsDirectory: 'coverage',
+        thresholds: {
+          statements: 80,
+          lines: 80,
+          functions: 80,
+        },
       },
     },
     build: {
