@@ -1513,4 +1513,81 @@ describe('handleAdminRequest', () => {
             expect.objectContaining({ ok: true })
         );
     });
+
+    it('POST /tournament-wizard resolves venue from venue_directory when not in explicit venues', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        // No explicit venues array — venue must be resolved from venue_directory
+        const payload = buildWizardPayload({ venues: [] });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql.includes('SELECT 1 FROM tournament')) return { rowCount: 0, rows: [] };
+            if (sql.includes('FROM venue_directory')) return { rowCount: 1, rows: [{ id: 'bc', name: 'Beaulieu College' }] };
+            return { rowCount: 1, rows: [] };
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
+    });
+
+    it('POST /tournament-wizard skips group venue when not found in venue_directory', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({ venues: [] });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql.includes('SELECT 1 FROM tournament')) return { rowCount: 0, rows: [] };
+            if (sql.includes('FROM venue_directory')) return { rowCount: 0, rows: [] };
+            return { rowCount: 1, rows: [] };
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        // Venue not found — silently skipped, tournament still created
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
+    });
+
+    it('POST /tournament-wizard resolves franchise from franchise_directory when not in explicit list', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        // No explicit franchises — must be resolved from franchise_directory via team.franchise_name
+        const payload = buildWizardPayload({ franchises: [] });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql.includes('SELECT 1 FROM tournament')) return { rowCount: 0, rows: [] };
+            if (sql.includes('FROM franchise_directory')) return {
+                rowCount: 1,
+                rows: [{ id: 'pp', name: 'Purple Panthers', logo_url: null, manager_name: null,
+                         manager_photo_url: null, description: null, contact_phone: null,
+                         location_map_url: null, contact_email: null }],
+            };
+            return { rowCount: 1, rows: [] };
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 201, expect.objectContaining({ ok: true }));
+    });
+
+    it('POST /tournament-wizard returns 400 when franchise not found in franchise_directory', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({ franchises: [] });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockClient.query.mockImplementation(async (sql) => {
+            if (sql.includes('SELECT 1 FROM tournament')) return { rowCount: 0, rows: [] };
+            if (sql.includes('FROM franchise_directory')) return { rowCount: 0, rows: [] };
+            return { rowCount: 1, rows: [] };
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            400,
+            expect.objectContaining({ error: expect.stringContaining('Unknown franchise') })
+        );
+    });
 });

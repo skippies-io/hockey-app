@@ -110,7 +110,7 @@ function abbreviateGroup(label) {
   const parts = String(label || "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "";
   if (parts.length === 1) return parts[0];
-  return parts[0] + parts.slice(1).map((p) => p[0].toUpperCase()).join("");
+  return parts[0] + parts.slice(1).map((p) => p.charAt(0).toUpperCase()).join("");
 }
 
 function emptyGroup(key) {
