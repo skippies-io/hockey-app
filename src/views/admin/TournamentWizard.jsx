@@ -1143,7 +1143,7 @@ export default function TournamentWizard() {
                 const byGroup = groupOptions.map((g) => ({
                   ...g,
                   count: real.filter((f) => f.group_id === g.id).length,
-                  dates: [...new Set(real.filter((f) => f.group_id === g.id).map((f) => f.date))].sort(),
+                  dates: [...new Set(real.filter((f) => f.group_id === g.id).map((f) => f.date))].sort((a, b) => a.localeCompare(b)),
                 }));
                 return byGroup.filter((g) => g.count > 0).map((g) => (
                   <div key={g.id} className="wizard-review-row">
