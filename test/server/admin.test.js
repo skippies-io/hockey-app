@@ -300,7 +300,7 @@ describe('handleAdminRequest', () => {
     it('POST /tournament-wizard rejects missing tournament name', async () => {
         const url = new URL('http://localhost/api/admin/tournament-wizard');
         mockReq.method = 'POST';
-        const payload = buildWizardPayload({ tournament: { id: 'hj-test-2026', name: '' } });
+        const payload = buildWizardPayload({ tournament: { name: '' } });
         setReqBody(mockReq, JSON.stringify(payload));
 
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
@@ -309,7 +309,24 @@ describe('handleAdminRequest', () => {
             mockReq,
             mockRes,
             400,
-            expect.objectContaining({ error: expect.stringContaining('tournament.id and tournament.name') })
+            expect.objectContaining({ error: expect.stringContaining('tournament.name is required') })
+        );
+    });
+
+    it('POST /tournament-wizard auto-generates tournament ID from name and season', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({ tournament: { name: 'HJ Test 2026', season: '2026' } });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true, tournament_id: expect.stringMatching(/^hj-/) })
         );
     });
 
