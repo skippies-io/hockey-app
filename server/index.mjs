@@ -156,6 +156,12 @@ export function applyCors(req, res) {
     case "http://localhost:5173":
       allowedOrigin = "http://localhost:5173";
       break;
+    case "http://localhost:5174":
+      allowedOrigin = "http://localhost:5174";
+      break;
+    case "http://localhost:4173":
+      allowedOrigin = "http://localhost:4173";
+      break;
     default:
       return;
   }

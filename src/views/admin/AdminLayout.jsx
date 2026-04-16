@@ -28,8 +28,9 @@ export default function AdminLayout() {
     marginLeft: '250px',
     padding: 'var(--hj-space-6)',
     backgroundColor: 'var(--hj-color-surface-1)',
-    minHeight: '100vh',
+    height: '100dvh',
     overflowY: 'auto',
+    boxSizing: 'border-box',
     color: 'var(--hj-color-text-primary)'
   };
 
@@ -46,7 +47,7 @@ export default function AdminLayout() {
   });
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <nav style={sidebarStyle} aria-label="Admin Navigation">
         <h2 style={{ 
           marginBottom: 'var(--hj-space-3)', 

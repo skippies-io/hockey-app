@@ -509,6 +509,22 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   // CORS headers for admin (if needed specifically, though index.mjs handles it generally, 
   // we might need to ensure OPTIONS passes through or headers conform)
 
+  if (path === "/tournament-exists") {
+    if (method !== "GET") {
+      return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    }
+    const id = url.searchParams.get("id");
+    if (!id?.trim()) return sendJson(req, res, 200, { ok: true, exists: false });
+    if (!pool) return sendJson(req, res, 200, { ok: true, exists: false });
+    try {
+      const result = await pool.query("SELECT 1 FROM tournament WHERE id = $1", [id.trim()]);
+      return sendJson(req, res, 200, { ok: true, exists: result.rowCount > 0 });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
   if (path === "/divisions") {
     if (method !== "GET") {
       return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });

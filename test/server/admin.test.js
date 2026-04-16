@@ -1590,4 +1590,58 @@ describe('handleAdminRequest', () => {
             expect.objectContaining({ error: expect.stringContaining('Unknown franchise') })
         );
     });
+
+    // ── /tournament-exists endpoint ──────────────────────────────────────────
+
+    it('GET /tournament-exists returns exists:false when tournament not found', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists?id=hj-test-2026');
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, { ok: true, exists: false });
+    });
+
+    it('GET /tournament-exists returns exists:true when tournament found', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists?id=hj-existing-2026');
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{}] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, { ok: true, exists: true });
+    });
+
+    it('GET /tournament-exists returns exists:false when id param is missing', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, { ok: true, exists: false });
+    });
+
+    it('GET /tournament-exists returns exists:false when pool is not configured', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists?id=hj-test-2026');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, { ok: true, exists: false });
+    });
+
+    it('POST /tournament-exists returns 405 method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists?id=hj-test-2026');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /tournament-exists returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-exists?id=hj-test-2026');
+        mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({ ok: false }));
+    });
 });

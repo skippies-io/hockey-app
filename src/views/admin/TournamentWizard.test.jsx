@@ -40,6 +40,12 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, tournament_id: "hj-test-2026" }),
         });
       }
+      if (typeof url === "string" && url.includes("/admin/tournament-exists")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, exists: false }),
+        });
+      }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
     });
   });
@@ -613,5 +619,102 @@ describe("TournamentWizard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /← Back: Teams/i }));
     expect(screen.getByRole("heading", { name: "Teams" })).toBeDefined();
+  });
+
+  it("review step shows conflict warning and disables submit when tournament ID already exists", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/divisions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/tournament-exists")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, exists: true }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderWizard();
+
+    fireEvent.change(screen.getByPlaceholderText("HJ Indoor 2026"), { target: { value: "HJ Indoor 2026" } });
+    fireEvent.change(screen.getByPlaceholderText("2026"), { target: { value: "2026" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^4\s*Review/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/A tournament with this ID already exists/i)).toBeDefined();
+    });
+
+    const confirmBtn = screen.getByRole("button", { name: /Confirm & Create/i });
+    expect(confirmBtn.disabled).toBe(true);
+  });
+
+  it("Girls Day / Boys Day shortcut applies play dates to matching groups", async () => {
+    await renderWizard();
+
+    // Navigate to step 1 (Groups & Pools)
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
+
+    // Add a Girls group
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), { target: { value: "U11 Girls" } });
+
+    // Add a second Boys group
+    fireEvent.click(screen.getByRole("button", { name: /Add Group/i }));
+    const groupInputs = screen.getAllByPlaceholderText("U11 Boys");
+    fireEvent.change(groupInputs[1], { target: { value: "U11 Boys" } });
+
+    // Find the Scheduling Shortcuts section
+    const shortcutsSection = screen.getByRole("heading", { name: "Scheduling Shortcuts" }).closest("section");
+    const shortcutsScope = within(shortcutsSection);
+
+    // Set Girls Day date
+    const girlsDayInput = shortcutsScope.getByLabelText(/Girls Day/i);
+    fireEvent.change(girlsDayInput, { target: { value: "2026-05-10" } });
+
+    // Apply to Girls groups
+    fireEvent.click(shortcutsScope.getByRole("button", { name: /Apply to Girls groups/i }));
+
+    // The Girls group's play date should now be 2026-05-10
+    const groupsSection = screen.getByRole("heading", { name: "Groups" }).closest("section");
+    const groupsScope = within(groupsSection);
+    const playDateInputs = groupsScope.getAllByLabelText(/Play Date/i);
+    expect(playDateInputs[0].value).toBe("2026-05-10");
+    // Boys group should still be empty
+    expect(playDateInputs[1].value).toBe("");
+  });
+
+  it("Knockout placeholder quick-add inserts standard placeholder teams for a group", async () => {
+    await renderWizard();
+
+    // Step 1 — set a group with Knockout format
+    fireEvent.click(screen.getByRole("button", { name: /^2\s*Groups & Pools/i }));
+    fireEvent.change(screen.getByPlaceholderText("U11 Boys"), { target: { value: "U11 Boys" } });
+    const groupsSection = screen.getByRole("heading", { name: "Groups" }).closest("section");
+    const formatSelect = within(groupsSection).getByRole("combobox", { name: /Format/i });
+    fireEvent.change(formatSelect, { target: { value: "Knockout" } });
+
+    // Step 2 — Teams
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+
+    // "Add standard placeholders" button should be visible for the Knockout group
+    const addPlaceholdersBtn = within(teamsSection).getByRole("button", { name: /Add standard placeholders for U11 Boys/i });
+    expect(addPlaceholdersBtn).toBeDefined();
+
+    fireEvent.click(addPlaceholdersBtn);
+
+    // Placeholder teams should now appear in the team name inputs
+    await waitFor(() => {
+      const nameInputs = within(teamsSection).getAllByPlaceholderText("PP Amber");
+      const values = nameInputs.map((i) => i.value);
+      expect(values).toContain("SF1 Winner");
+      expect(values).toContain("SF2 Winner");
+      expect(values).toContain("SF1 Loser / 3rd Place");
+    });
   });
 });
