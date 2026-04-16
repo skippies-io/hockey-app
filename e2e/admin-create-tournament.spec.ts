@@ -17,7 +17,6 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
 
   const uniqueName = `PW-${Date.now()}`;
   const season = '2026';
-  const tournamentId = `hj-${uniqueName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${season}`;
 
   // In-memory tournaments list for this spec.
   const tournaments: Array<{ id: string; name: string; season: string }> = [];
@@ -46,17 +45,23 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
     return route.fulfill({ json: { ok: true, data: [{ id: 'f1', name: 'Gryphons' }] } });
   });
 
+  await page.route('**/api/admin/divisions', (route) => {
+    return route.fulfill({
+      json: { ok: true, data: ['U11 Boys', 'U11 Girls', 'U13 Boys', 'U13 Girls'] },
+    });
+  });
+
   await page.route('**/api/admin/tournament-wizard', async (route) => {
     const body = route.request().postDataJSON() as any;
+    const tournamentId = body?.tournament?.id || `hj-${uniqueName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${season}`;
 
-    // Keep it simple: append a tournament entry so the directory shows it.
     tournaments.push({
-      id: body?.tournament?.id || tournamentId,
+      id: tournamentId,
       name: body?.tournament?.name || uniqueName,
       season: body?.tournament?.season || season,
     });
 
-    return route.fulfill({ json: { ok: true, tournament_id: body?.tournament?.id || tournamentId } });
+    return route.fulfill({ json: { ok: true, tournament_id: tournamentId } });
   });
 
   // ---------------------------
@@ -95,16 +100,15 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
 
   await expect(page.getByRole('heading', { name: 'Tournament Setup Wizard' })).toBeVisible();
 
-  // Step 1: Tournament
+  // Step 1: Tournament details (ID is auto-generated — no field to fill)
   await page.getByLabel('Tournament Name').fill(uniqueName);
   await page.getByLabel('Season').fill(season);
-  await page.getByLabel('Tournament ID').fill(tournamentId);
 
   // Step 2: Groups & Pools
   await page.getByRole('button', { name: /^2\s*Groups & Pools/i }).click();
   await expect(page.getByRole('heading', { name: 'Groups' })).toBeVisible();
-  await page.getByLabel('Group ID').first().fill('U11B');
-  await page.getByLabel('Label').first().fill('U11 Boys');
+  // Division/Age replaces the old "Label" field; Group ID is auto-derived.
+  await page.getByLabel('Division / Age').first().fill('U11 Boys');
   // Venues are optional; leave empty.
 
   // Step 3: Teams & Fixtures
@@ -112,14 +116,16 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
   await expect(page.getByRole('heading', { name: 'Teams' })).toBeVisible();
 
   const teamsSection = page.locator('section', { has: page.getByRole('heading', { name: 'Teams' }) });
-  await teamsSection.getByLabel('Team Group').first().selectOption('U11B');
+  // Group select shows the division label; its value is the auto-derived ID (U11B).
+  await teamsSection.getByRole('combobox', { name: 'Team Group' }).first().selectOption({ label: 'U11 Boys' });
   await teamsSection.getByLabel('Team Name').first().fill('PP Amber');
-  await teamsSection.getByLabel('Franchise').first().fill('Gryphons');
-  await teamsSection.getByRole('combobox', { name: 'Pool' }).first().selectOption('A');
+  // Franchise is now a <select> dropdown populated from the API.
+  await teamsSection.getByRole('combobox', { name: 'Franchise' }).first().selectOption('Gryphons');
+  // Pool is no longer on teams — it lives only on fixtures.
 
   // Create tournament
   await page.getByRole('button', { name: 'Create Tournament' }).click();
-  await expect(page.getByText(new RegExp(`Tournament created: ${tournamentId}`))).toBeVisible();
+  await expect(page.getByText(/Tournament created:/)).toBeVisible();
 
   // ---------------------------
   // 4) Assert it appears in list (public tournament directory)
