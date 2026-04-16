@@ -1373,4 +1373,144 @@ describe('handleAdminRequest', () => {
             error: 'Method not allowed',
         }));
     });
+
+    it('GET /divisions returns distinct division labels', async () => {
+        const url = new URL('http://localhost/api/admin/divisions');
+        mockPool.query.mockResolvedValueOnce({
+            rows: [{ label: 'U11 Boys' }, { label: 'U11 Girls' }, { label: 'U13 Boys' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: ['U11 Boys', 'U11 Girls', 'U13 Boys'],
+        }));
+    });
+
+    it('POST /divisions returns 405 method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/divisions');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({
+            ok: false,
+            error: 'Method not allowed',
+        }));
+    });
+
+    it('GET /divisions returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/divisions');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({
+            ok: false,
+            error: 'DB not configured',
+        }));
+    });
+
+    it('GET /divisions returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/divisions');
+        mockPool.query.mockRejectedValueOnce(new Error('DB failure'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
+            ok: false,
+            error: 'DB failure',
+        }));
+    });
+
+    it('GET /franchise-teams returns team names for a franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams?franchise=BHA');
+        mockPool.query.mockResolvedValueOnce({
+            rows: [{ name: 'BHA Blue' }, { name: 'BHA Gold' }],
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: ['BHA Blue', 'BHA Gold'],
+        }));
+    });
+
+    it('GET /franchise-teams returns empty array when no prior teams found', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams?franchise=NewClub');
+        mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200, expect.objectContaining({
+            ok: true,
+            data: [],
+        }));
+    });
+
+    it('GET /franchise-teams returns 400 when franchise param is missing', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400, expect.objectContaining({
+            ok: false,
+            error: 'franchise query param is required',
+        }));
+    });
+
+    it('POST /franchise-teams returns 405 method not allowed', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams?franchise=BHA');
+        mockReq.method = 'POST';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({
+            ok: false,
+            error: 'Method not allowed',
+        }));
+    });
+
+    it('GET /franchise-teams returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams?franchise=BHA');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({
+            ok: false,
+            error: 'DB not configured',
+        }));
+    });
+
+    it('GET /franchise-teams returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/franchise-teams?franchise=BHA');
+        mockPool.query.mockRejectedValueOnce(new Error('Query failed'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({
+            ok: false,
+            error: 'Query failed',
+        }));
+    });
+
+    it('POST /tournament-wizard auto-generates group ID from label when group has no id', async () => {
+        const url = new URL('http://localhost/api/admin/tournament-wizard');
+        mockReq.method = 'POST';
+        const payload = buildWizardPayload({
+            groups: [{ label: 'U11 Boys', format: '' }],
+        });
+        setReqBody(mockReq, JSON.stringify(payload));
+        mockWizardDbHappyPath();
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            201,
+            expect.objectContaining({ ok: true })
+        );
+    });
 });

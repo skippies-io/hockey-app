@@ -38,6 +38,11 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: [/visual\.spec\.ts/, /\.live\.spec\.ts/],
+    },
+    {
+      name: 'watch',
+      use: { ...devices['Desktop Chrome'], channel: 'msedge', headless: false, launchOptions: { slowMo: 800 } },
       testIgnore: /visual\.spec\.ts/,
     },
     {
