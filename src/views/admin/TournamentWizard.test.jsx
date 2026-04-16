@@ -94,7 +94,9 @@ describe("TournamentWizard", () => {
       target: { value: "PP Amber" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review →$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm & Create/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Create/i }));
 
     await waitFor(() => {
       const call = fetch.mock.calls.find(
@@ -337,7 +339,9 @@ describe("TournamentWizard", () => {
       target: { value: "PP Amber" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Create Tournament/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^Review →$/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Confirm & Create/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Create/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Save failed/i)).toBeDefined();

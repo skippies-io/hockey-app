@@ -123,8 +123,10 @@ test('admin can create a tournament via the Tournament Wizard (smoke)', async ({
   await teamsSection.getByRole('combobox', { name: 'Franchise' }).first().selectOption('Gryphons');
   // Pool is no longer on teams — it lives only on fixtures.
 
-  // Create tournament
-  await page.getByRole('button', { name: 'Create Tournament' }).click();
+  // Advance to review step then submit
+  await page.getByRole('button', { name: 'Review →' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm & Create' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm & Create' }).click();
   await expect(page.getByText(/Tournament created:/)).toBeVisible();
 
   // ---------------------------

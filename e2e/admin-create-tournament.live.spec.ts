@@ -81,8 +81,10 @@ test('admin can create a tournament via the wizard (LIVE — writes to prod DB)'
     nFixtures = await page.getByRole('button', { name: /Remove Fixture/i }).count();
   }
 
-  // Create tournament — this POSTs to the real backend and inserts into the DB
-  await page.getByRole('button', { name: 'Create Tournament' }).click();
+  // Review & Submit — this POSTs to the real backend and inserts into the DB
+  await page.getByRole('button', { name: 'Review →' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm & Create' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm & Create' }).click();
   await expect(page.getByText(/Tournament created:/)).toBeVisible({ timeout: 15_000 });
 
   // 4) Verify the tournament appears in the public API (bypasses browser cache)

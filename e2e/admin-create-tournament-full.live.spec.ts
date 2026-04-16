@@ -144,8 +144,10 @@ test('admin creates a full tournament — HJ Indoor 2026 (LIVE)', async ({ page 
   // Remove the initial empty fixture row (no team1/team2 — it blocks the Pool field validation)
   await fixtureSection.getByRole('button', { name: /Remove Fixture/i }).first().click();
 
-  // ── Create tournament ─────────────────────────────────────────────────────
-  await page.getByRole('button', { name: 'Create Tournament' }).click();
+  // ── Review & Submit ───────────────────────────────────────────────────────
+  await page.getByRole('button', { name: 'Review →' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm & Create' })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm & Create' }).click();
   await expect(page.getByText(/Tournament created:/)).toBeVisible({ timeout: 20_000 });
 
   // ── Verify via API ────────────────────────────────────────────────────────
