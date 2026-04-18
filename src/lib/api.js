@@ -220,31 +220,6 @@ export async function getAnnouncements(tournamentId) {
 }
 
 
-export async function getDigestShare(token) {
-  if (!API_BASE) throw new Error('Missing API base');
-  const root = API_BASE.replace(/\/api$/, '');
-  const url = `${root}/api/share/${encodeURIComponent(token)}`;
-  return fetchJSON(url, { revalidate: false });
-}
-
-export async function createDigestShare({ tournamentId, ageId, label }) {
-  if (!API_BASE) throw new Error('Missing API base');
-  const token = typeof window !== 'undefined'
-    ? (window.__adminToken || sessionStorage.getItem('hj:admin:token') || '')
-    : '';
-  const res = await fetch(`${API_BASE}/admin/digests`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ tournament_id: tournamentId, age_id: ageId || null, label: label || null }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to create share link');
-  return json;
-}
-
 // Legacy helper (kept for any old imports)
 export async function getSheet(sheetName) {
   const url = `${API_BASE}?sheet=${encodeURIComponent(sheetName)}`;
