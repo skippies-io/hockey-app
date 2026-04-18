@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import reactPlugin from 'eslint-plugin-react'
 
 export default defineConfig([
-  globalIgnores(['dist', 'public', 'coverage', 'storybook-static']),
+  globalIgnores(['dist', 'public', 'coverage', 'storybook-static', '.claude', 'hockey-app']),
   {
     files: ['**/*.{js,jsx}'],
     plugins: {

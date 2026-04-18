@@ -1,13 +1,22 @@
 import { normalizeTeamName } from "../../lib/franchise";
 
+function abbreviateGroup(label) {
+  const parts = String(label || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0];
+  return parts[0] + parts.slice(1).map((p) => p[0].toUpperCase()).join("");
+}
+
 export function computeFormErrors({ tournament, groups, teams, fixtures }) {
   const errors = [];
   if (!tournament.name.trim()) errors.push("Tournament name is required.");
   if (!tournament.season.trim()) errors.push("Tournament season is required.");
-  if (!groups.some((g) => g.id && g.label)) {
+  if (!groups.some((g) => g.label?.trim())) {
     errors.push("At least one group is required.");
   }
-  const groupIds = new Set(groups.map((g) => g.id).filter(Boolean));
+  const groupIds = new Set(
+    groups.map((g) => abbreviateGroup(g.label)).filter(Boolean)
+  );
   const invalidTeams = teams.filter((t) => !t.group_id || !groupIds.has(t.group_id));
   if (invalidTeams.length) {
     errors.push("All teams must be assigned to a valid group.");
@@ -15,12 +24,6 @@ export function computeFormErrors({ tournament, groups, teams, fixtures }) {
   const invalidFixtures = fixtures.filter((f) => f.group_id && !groupIds.has(f.group_id));
   if (invalidFixtures.length) {
     errors.push("Fixtures include an unknown group.");
-  }
-  const teamsMissingPool = teams.filter(
-    (t) => t.group_id && !t.is_placeholder && !t.pool
-  );
-  if (teamsMissingPool.length) {
-    errors.push("All non-placeholder teams should have a pool.");
   }
   const fixturesMissingDate = fixtures.filter((f) => f.team1 && f.team2 && !f.date);
   if (fixturesMissingDate.length) {

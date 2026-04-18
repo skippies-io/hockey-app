@@ -32,6 +32,20 @@ describe("AdminLogin", () => {
     expect(screen.getByText(/Check your email/i)).toBeTruthy();
   });
 
+  it("submits when Enter is pressed in the email input", async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/admin/login"]}>
+        <AdminLogin />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "enter@example.com" } });
+    fireEvent.submit(container.querySelector("form"));
+
+    await waitFor(() => expect(requestMagicLink).toHaveBeenCalledWith("enter@example.com"));
+    expect(screen.getByText(/Check your email/i)).toBeTruthy();
+  });
+
   it("shows error when request fails", async () => {
     requestMagicLink.mockRejectedValueOnce(new Error("boom"));
 

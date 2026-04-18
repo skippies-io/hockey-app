@@ -1,5 +1,5 @@
 import { isAllowedEmail, issueMagicToken, verifyMagicToken, issueSession } from "./auth.mjs";
-import { sendMagicLink } from "./mailer.mjs";
+import { sendMagicLink, buildMagicLink } from "./mailer.mjs";
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -32,11 +32,16 @@ export async function handleMagicLinkRequest(req, res, { pool, sendJson }) {
       return sendJson(req, res, 400, { ok: false, error: "Email is required" });
     }
 
+    let devLink = null;
+
     // Issue + send only for allowlisted addresses; always return the same response.
     if (await isAllowedEmail(pool, email)) {
       try {
         const { token } = await issueMagicToken(pool, email);
         await sendMagicLink(email, token);
+        if (process.env.NODE_ENV !== 'production') {
+          devLink = buildMagicLink(token);
+        }
       } catch (err) {
         // Log but do not expose internals; the generic response is sent below.
         console.error("[auth] magic-link issue error:", err);
@@ -46,6 +51,7 @@ export async function handleMagicLinkRequest(req, res, { pool, sendJson }) {
     return sendJson(req, res, 200, {
       ok: true,
       message: "If that email is registered, you'll receive a sign-in link shortly.",
+      ...(devLink ? { devLink } : {}),
     });
   } catch (err) {
     console.error("[auth] magic-link error:", err);

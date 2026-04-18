@@ -1,43 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import FranchiseForm from './FranchiseForm';
 import {
   createFranchise,
   deleteFranchise,
   getFranchises,
-  importFranchises,
-  updateFranchise,
 } from '../../lib/franchiseApi';
 
 export default function FranchisesPage() {
-  const { franchiseId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isNew = location.pathname.endsWith('/new');
 
   const [franchises, setFranchises] = useState([]);
-  const [currentFranchise, setCurrentFranchise] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [importText, setImportText] = useState('');
-  const [importResult, setImportResult] = useState('');
-
-  const isNew = franchiseId === 'new';
-  const isEditing = Boolean(franchiseId && franchiseId !== 'new');
-  const showForm = isNew || isEditing;
-
-  const franchiseById = useMemo(() => {
-    const map = new Map(franchises.map((f) => [String(f.id), f]));
-    return map;
-  }, [franchises]);
 
   useEffect(() => {
-    if (showForm) return;
+    if (isNew) return;
 
     let alive = true;
     (async () => {
       try {
         setLoading(true);
         setError(null);
-        setImportResult('');
         const data = await getFranchises();
         if (!alive) return;
         setFranchises(Array.isArray(data) ? data : []);
@@ -50,34 +36,16 @@ export default function FranchisesPage() {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
-  }, [showForm]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setCurrentFranchise(null);
-      return;
-    }
-
-    setCurrentFranchise(franchiseById.get(String(franchiseId)) || null);
-  }, [isEditing, franchiseId, franchiseById]);
+    return () => { alive = false; };
+  }, [isNew]);
 
   const handleSave = async (formData) => {
     try {
       setLoading(true);
       setError(null);
-
-      if (isNew) {
-        await createFranchise(formData);
-      } else if (isEditing) {
-        await updateFranchise(franchiseId, formData);
-      }
-
+      await createFranchise(formData);
       const data = await getFranchises();
       setFranchises(Array.isArray(data) ? data : []);
-      setCurrentFranchise(null);
       navigate('/admin/franchises', { replace: true });
     } catch (err) {
       setError(`Failed to save franchise: ${err.message}`);
@@ -104,37 +72,16 @@ export default function FranchisesPage() {
     }
   };
 
-  const handleImport = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setImportResult('');
-
-      const inserted = await importFranchises(importText);
-      const count = inserted.length;
-      setImportResult(count === 0 ? 'No new franchises were added.' : `Added ${count} franchise${count === 1 ? '' : 's'}.`);
-      setImportText('');
-
-      const data = await getFranchises();
-      setFranchises(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(`Failed to import franchises: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCancel = () => {
-    setCurrentFranchise(null);
     navigate('/admin/franchises', { replace: true });
   };
 
-  if (showForm) {
+  if (isNew) {
     return (
       <div>
-        <h1 style={{ marginBottom: 'var(--hj-space-4)' }}>{isNew ? 'Create Franchise' : 'Edit Franchise'}</h1>
+        <h1 style={{ marginBottom: 'var(--hj-space-4)' }}>Create Franchise</h1>
         <FranchiseForm
-          franchise={currentFranchise}
+          franchise={null}
           onSave={handleSave}
           onCancel={handleCancel}
           isLoading={loading}
@@ -186,69 +133,6 @@ export default function FranchisesPage() {
           {error}
         </div>
       )}
-
-      {importResult && (
-        <div
-          style={{
-            padding: 'var(--hj-space-3)',
-            marginBottom: 'var(--hj-space-4)',
-            backgroundColor: 'var(--hj-color-surface-2)',
-            color: 'var(--hj-color-text-primary)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border-subtle)',
-          }}
-          role="status"
-        >
-          {importResult}
-        </div>
-      )}
-
-      <div
-        style={{
-          padding: 'var(--hj-space-4)',
-          borderRadius: 'var(--hj-radius-md)',
-          border: '1px solid var(--hj-color-border-subtle)',
-          backgroundColor: 'var(--hj-color-surface-2)',
-          marginBottom: 'var(--hj-space-6)',
-        }}
-      >
-        <h2 style={{ marginTop: 0, marginBottom: 'var(--hj-space-3)' }}>Bulk import</h2>
-        <p style={{ marginTop: 0, color: 'var(--hj-color-text-secondary)' }}>
-          Paste one franchise name per line (CSV supported — only the first column is used).
-        </p>
-        <textarea
-          value={importText}
-          onChange={(e) => setImportText(e.target.value)}
-          rows={5}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: 'var(--hj-space-2)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border)',
-            fontSize: 'var(--hj-font-size-base)',
-            marginBottom: 'var(--hj-space-3)',
-          }}
-          placeholder={'Example:\nAlpha\nBeta\nGamma'}
-        />
-        <button
-          type="button"
-          onClick={handleImport}
-          disabled={loading || !importText.trim()}
-          style={{
-            padding: 'var(--hj-space-2) var(--hj-space-4)',
-            borderRadius: 'var(--hj-radius-md)',
-            backgroundColor: 'var(--hj-color-brand-primary)',
-            color: 'var(--hj-color-inverse-text)',
-            border: 'none',
-            fontWeight: 'var(--hj-font-weight-bold)',
-            cursor: loading || !importText.trim() ? 'not-allowed' : 'pointer',
-            opacity: loading || !importText.trim() ? 0.6 : 1,
-          }}
-        >
-          {loading ? 'Importing…' : 'Import'}
-        </button>
-      </div>
 
       {loading && <div>Loading franchises…</div>}
 
@@ -309,7 +193,18 @@ export default function FranchisesPage() {
                 key={franchise.id}
                 style={{ borderBottom: '1px solid var(--hj-color-border-subtle)' }}
               >
-                <td style={{ padding: 'var(--hj-space-3)' }}>{franchise.name}</td>
+                <td style={{ padding: 'var(--hj-space-3)' }}>
+                  <Link
+                    to={`/admin/franchises/${franchise.id}`}
+                    style={{
+                      color: 'var(--hj-color-brand-primary)',
+                      textDecoration: 'none',
+                      fontWeight: 'var(--hj-font-weight-semibold)',
+                    }}
+                  >
+                    {franchise.name}
+                  </Link>
+                </td>
                 <td style={{ padding: 'var(--hj-space-3)' }}>{franchise.manager_name || '—'}</td>
                 <td
                   style={{
