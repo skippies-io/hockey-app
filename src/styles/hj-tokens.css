@@ -1961,7 +1961,6 @@ select {
 .admin-layout {
   display: flex;
   height: 100dvh;
-  overflow: hidden;
 }
 
 .admin-sidebar {
@@ -2036,6 +2035,8 @@ select {
 }
 
 .admin-content {
+  flex: 1;
+  min-width: 0;
   margin-left: 250px;
   padding: var(--hj-space-6);
   background-color: var(--hj-color-surface-1);
@@ -2043,6 +2044,19 @@ select {
   overflow-y: auto;
   box-sizing: border-box;
   color: var(--hj-color-text-primary);
+}
+
+/* Venue card grid */
+.venue-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--hj-space-5);
+}
+
+@media (max-width: 768px) {
+  .venue-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Teams list */
