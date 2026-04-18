@@ -1,35 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import FranchiseForm from './FranchiseForm';
 import {
   createFranchise,
   deleteFranchise,
   getFranchises,
-  updateFranchise,
 } from '../../lib/franchiseApi';
 
 export default function FranchisesPage() {
-  const params = useParams();
-  // FranchisesPage is mounted under `/admin/franchises/*` in App.jsx, so React Router
-  // stores the trailing segment in the `*` param, not `franchiseId`.
-  const franchiseId = params.franchiseId || (params['*'] ? params['*'].split('/')[0] : undefined);
+  const location = useLocation();
   const navigate = useNavigate();
+  const isNew = location.pathname.endsWith('/new');
 
   const [franchises, setFranchises] = useState([]);
-  const [currentFranchise, setCurrentFranchise] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const isNew = franchiseId === 'new';
-  const isEditing = Boolean(franchiseId && franchiseId !== 'new');
-  const showForm = isNew || isEditing;
-
-  const franchiseById = useMemo(() => {
-    const map = new Map(franchises.map((f) => [String(f.id), f]));
-    return map;
-  }, [franchises]);
 
   useEffect(() => {
-    if (showForm) return;
+    if (isNew) return;
 
     let alive = true;
     (async () => {
@@ -48,34 +36,16 @@ export default function FranchisesPage() {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
-  }, [showForm]);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setCurrentFranchise(null);
-      return;
-    }
-
-    setCurrentFranchise(franchiseById.get(String(franchiseId)) || null);
-  }, [isEditing, franchiseId, franchiseById]);
+    return () => { alive = false; };
+  }, [isNew]);
 
   const handleSave = async (formData) => {
     try {
       setLoading(true);
       setError(null);
-
-      if (isNew) {
-        await createFranchise(formData);
-      } else if (isEditing) {
-        await updateFranchise(franchiseId, formData);
-      }
-
+      await createFranchise(formData);
       const data = await getFranchises();
       setFranchises(Array.isArray(data) ? data : []);
-      setCurrentFranchise(null);
       navigate('/admin/franchises', { replace: true });
     } catch (err) {
       setError(`Failed to save franchise: ${err.message}`);
@@ -103,16 +73,15 @@ export default function FranchisesPage() {
   };
 
   const handleCancel = () => {
-    setCurrentFranchise(null);
     navigate('/admin/franchises', { replace: true });
   };
 
-  if (showForm) {
+  if (isNew) {
     return (
       <div>
-        <h1 style={{ marginBottom: 'var(--hj-space-4)' }}>{isNew ? 'Create Franchise' : 'Edit Franchise'}</h1>
+        <h1 style={{ marginBottom: 'var(--hj-space-4)' }}>Create Franchise</h1>
         <FranchiseForm
-          franchise={currentFranchise}
+          franchise={null}
           onSave={handleSave}
           onCancel={handleCancel}
           isLoading={loading}
@@ -224,7 +193,18 @@ export default function FranchisesPage() {
                 key={franchise.id}
                 style={{ borderBottom: '1px solid var(--hj-color-border-subtle)' }}
               >
-                <td style={{ padding: 'var(--hj-space-3)' }}>{franchise.name}</td>
+                <td style={{ padding: 'var(--hj-space-3)' }}>
+                  <Link
+                    to={`/admin/franchises/${franchise.id}`}
+                    style={{
+                      color: 'var(--hj-color-brand-primary)',
+                      textDecoration: 'none',
+                      fontWeight: 'var(--hj-font-weight-semibold)',
+                    }}
+                  >
+                    {franchise.name}
+                  </Link>
+                </td>
                 <td style={{ padding: 'var(--hj-space-3)' }}>{franchise.manager_name || '—'}</td>
                 <td
                   style={{

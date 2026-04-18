@@ -28,22 +28,7 @@ const renderPage = (route = '/admin/franchises') => {
     <BrowserRouter>
       <Routes>
         <Route path="/admin/franchises" element={<FranchisesPage />} />
-        <Route path="/admin/franchises/:franchiseId" element={<FranchisesPage />} />
-      </Routes>
-    </BrowserRouter>
-  );
-};
-
-// Uses the wildcard route pattern that App.jsx actually registers:
-//   <Route path="franchises/*" element={<FranchisesPage />} />
-// With this pattern useParams() returns { '*': 'new' } not { franchiseId: 'new' },
-// which is exactly the bug this test is guarding against.
-const renderPageWildcard = (route = '/admin/franchises') => {
-  window.history.pushState({}, 'Test page', route);
-  return render(
-    <BrowserRouter>
-      <Routes>
-        <Route path="/admin/franchises/*" element={<FranchisesPage />} />
+        <Route path="/admin/franchises/new" element={<FranchisesPage />} />
       </Routes>
     </BrowserRouter>
   );
@@ -72,6 +57,15 @@ describe('FranchisesPage', () => {
     expect(await screen.findByText('Franchises')).toBeInTheDocument();
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Coach A')).toBeInTheDocument();
+  });
+
+  it('franchise names render as links to the detail page', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+
+    renderPage('/admin/franchises');
+
+    const link = await screen.findByRole('link', { name: 'Alpha' });
+    expect(link).toHaveAttribute('href', '/admin/franchises/f1');
   });
 
   it('shows empty state when no franchises', async () => {
@@ -107,40 +101,6 @@ describe('FranchisesPage', () => {
     fireEvent.click(screen.getByText('Save'));
 
     expect(await screen.findByText(/Failed to save franchise: Create failed/)).toBeInTheDocument();
-  });
-
-  it('updates a franchise then returns to list view', async () => {
-    franchiseApi.updateFranchise.mockResolvedValue({ id: 'f1' });
-    franchiseApi.getFranchises.mockResolvedValueOnce(mockFranchises);
-    franchiseApi.getFranchises.mockResolvedValueOnce([{ id: 'f1', name: 'Test Franchise' }]);
-
-    renderPage('/admin/franchises/f1');
-
-    expect(await screen.findByText('Edit Franchise')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Save'));
-
-    await waitFor(() => {
-      expect(franchiseApi.updateFranchise).toHaveBeenCalledWith('f1', { name: 'Test Franchise' });
-    });
-
-    expect(await screen.findByText('Franchises')).toBeInTheDocument();
-  });
-
-  it('renders create form at /new via wildcard route (App.jsx pattern)', async () => {
-    // Regression test for the useParams() routing bug:
-    // App.jsx registers <Route path="franchises/*">, so useParams() returns { '*': 'new' }
-    // not { franchiseId: 'new' }. The fix reads params['*'] as fallback.
-    renderPageWildcard('/admin/franchises/new');
-
-    expect(await screen.findByText('Create Franchise')).toBeInTheDocument();
-  });
-
-  it('renders edit form at /:id via wildcard route (App.jsx pattern)', async () => {
-    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
-
-    renderPageWildcard('/admin/franchises/f1');
-
-    expect(await screen.findByText('Edit Franchise')).toBeInTheDocument();
   });
 
   it('delete confirmation cancel does not delete', async () => {

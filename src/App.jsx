@@ -42,6 +42,7 @@ import FixturesPage from "./views/admin/FixturesPage";
 import TechDesk from "./views/admin/TechDesk";
 import VenuesPage from "./views/admin/VenuesPage";
 import FranchisesPage from "./views/admin/FranchisesPage";
+import FranchiseDetailPage from "./views/admin/FranchiseDetailPage";
 import AdminTeamsPage from "./views/admin/AdminTeamsPage";
 
 // Filter out placeholder “teams” like 1st Place, Loser SF1, A1, etc.
@@ -539,7 +540,9 @@ export default function App() {
               <Route path="tournaments" element={<TournamentWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="venues/*" element={<VenuesPage />} />
-              <Route path="franchises/*" element={<FranchisesPage />} />
+              <Route path="franchises" element={<FranchisesPage />} />
+              <Route path="franchises/new" element={<FranchisesPage />} />
+              <Route path="franchises/:franchiseId" element={<FranchiseDetailPage />} />
               <Route path="teams" element={<AdminTeamsPage />} />
               <Route path="fixtures" element={<FixturesPage />} />
               <Route path="tech-desk/:matchId" element={<TechDesk />} />
