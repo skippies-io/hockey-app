@@ -13,6 +13,7 @@ export default function AdminLogin() {
   const [email, setEmail] = useState(q.get("email") || "");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [devLink, setDevLink] = useState(null);
   const [err, setErr] = useState("");
 
   const next = q.get("next") || "/admin";
@@ -21,6 +22,7 @@ export default function AdminLogin() {
     e.preventDefault();
     setErr("");
     setSent(false);
+    setDevLink(null);
 
     const trimmed = String(email || "").trim().toLowerCase();
     if (!trimmed) {
@@ -30,8 +32,9 @@ export default function AdminLogin() {
 
     setBusy(true);
     try {
-      await requestMagicLink(trimmed);
+      const result = await requestMagicLink(trimmed);
       setSent(true);
+      if (result.devLink) setDevLink(result.devLink);
     } catch (error_) {
       setErr(error_?.message || String(error_));
     } finally {
@@ -47,7 +50,7 @@ export default function AdminLogin() {
           Enter your email and we’ll send you a sign-in link.
         </p>
 
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <label htmlFor="admin-email" style={{ display: "block", marginBottom: 8 }}>
             Email
           </label>
@@ -56,6 +59,7 @@ export default function AdminLogin() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(e); } }}
             autoComplete="email"
             placeholder="you@example.com"
             style={{
@@ -91,7 +95,15 @@ export default function AdminLogin() {
 
         {sent && (
           <p style={{ marginTop: 12 }}>
-            Check your email for the sign-in link. You can close this tab.
+            {devLink ? (
+              <>
+                <strong>Dev mode — </strong>
+                <a href={devLink}>click here to sign in</a>
+                {' '}(single-use, expires in 15 min)
+              </>
+            ) : (
+              'Check your email for the sign-in link. You can close this tab.'
+            )}
           </p>
         )}
 

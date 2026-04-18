@@ -14,7 +14,8 @@ export default function VenueForm({
   const [formData, setFormData] = useState({
     name: '',
     location: '',
-    notes: '',
+    location_map_url: '',
+    website_url: '',
   });
 
   useEffect(() => {
@@ -22,7 +23,8 @@ export default function VenueForm({
       setFormData({
         name: venue.name || '',
         location: venue.location || '',
-        notes: venue.notes || '',
+        location_map_url: venue.location_map_url || '',
+        website_url: venue.website_url || '',
       });
     }
   }, [venue]);
@@ -42,6 +44,20 @@ export default function VenueForm({
 
   const isEditing = Boolean(venue);
 
+  const fieldStyle = {
+    width: '100%',
+    padding: 'var(--hj-space-2)',
+    borderRadius: 'var(--hj-radius-md)',
+    border: '1px solid var(--hj-color-border)',
+    fontSize: 'var(--hj-font-size-base)',
+  };
+
+  const labelStyle = {
+    display: 'block',
+    marginBottom: 'var(--hj-space-2)',
+    fontWeight: 'var(--hj-font-weight-bold)',
+  };
+
   return (
     <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
       {error && (
@@ -60,16 +76,7 @@ export default function VenueForm({
       )}
 
       <div style={{ marginBottom: 'var(--hj-space-4)' }}>
-        <label
-          htmlFor="name"
-          style={{
-            display: 'block',
-            marginBottom: 'var(--hj-space-2)',
-            fontWeight: 'var(--hj-font-weight-bold)',
-          }}
-        >
-          Venue Name
-        </label>
+        <label htmlFor="name" style={labelStyle}>Venue Name</label>
         <input
           id="name"
           name="name"
@@ -78,27 +85,12 @@ export default function VenueForm({
           onChange={handleChange}
           required
           disabled={isLoading}
-          style={{
-            width: '100%',
-            padding: 'var(--hj-space-2)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border)',
-            fontSize: 'var(--hj-font-size-base)',
-          }}
+          style={fieldStyle}
         />
       </div>
 
       <div style={{ marginBottom: 'var(--hj-space-4)' }}>
-        <label
-          htmlFor="location"
-          style={{
-            display: 'block',
-            marginBottom: 'var(--hj-space-2)',
-            fontWeight: 'var(--hj-font-weight-bold)',
-          }}
-        >
-          Location
-        </label>
+        <label htmlFor="location" style={labelStyle}>Address</label>
         <input
           id="location"
           name="location"
@@ -106,41 +98,35 @@ export default function VenueForm({
           value={formData.location}
           onChange={handleChange}
           disabled={isLoading}
-          style={{
-            width: '100%',
-            padding: 'var(--hj-space-2)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border)',
-            fontSize: 'var(--hj-font-size-base)',
-          }}
+          style={fieldStyle}
         />
       </div>
 
       <div style={{ marginBottom: 'var(--hj-space-4)' }}>
-        <label
-          htmlFor="notes"
-          style={{
-            display: 'block',
-            marginBottom: 'var(--hj-space-2)',
-            fontWeight: 'var(--hj-font-weight-bold)',
-          }}
-        >
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          value={formData.notes}
+        <label htmlFor="location_map_url" style={labelStyle}>Google Maps URL</label>
+        <input
+          id="location_map_url"
+          name="location_map_url"
+          type="url"
+          value={formData.location_map_url}
           onChange={handleChange}
           disabled={isLoading}
-          rows="4"
-          style={{
-            width: '100%',
-            padding: 'var(--hj-space-2)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border)',
-            fontSize: 'var(--hj-font-size-base)',
-          }}
+          placeholder="https://maps.google.com/..."
+          style={fieldStyle}
+        />
+      </div>
+
+      <div style={{ marginBottom: 'var(--hj-space-4)' }}>
+        <label htmlFor="website_url" style={labelStyle}>Website URL</label>
+        <input
+          id="website_url"
+          name="website_url"
+          type="url"
+          value={formData.website_url}
+          onChange={handleChange}
+          disabled={isLoading}
+          placeholder="https://..."
+          style={fieldStyle}
         />
       </div>
 
@@ -188,7 +174,8 @@ VenueForm.propTypes = {
     id: PropTypes.string,
     name: PropTypes.string,
     location: PropTypes.string,
-    notes: PropTypes.string,
+    location_map_url: PropTypes.string,
+    website_url: PropTypes.string,
   }),
   onSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
