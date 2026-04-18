@@ -28,7 +28,8 @@ const renderPage = (route = '/admin/franchises') => {
     <BrowserRouter>
       <Routes>
         <Route path="/admin/franchises" element={<FranchisesPage />} />
-        <Route path="/admin/franchises/:franchiseId" element={<FranchisesPage />} />
+        <Route path="/admin/franchises/new" element={<FranchisesPage />} />
+        <Route path="/admin/franchises/:id" element={<div>Franchise detail</div>} />
       </Routes>
     </BrowserRouter>
   );
@@ -49,6 +50,14 @@ describe('FranchisesPage', () => {
     vi.unstubAllGlobals();
   });
 
+  it('shows error when initial load fails', async () => {
+    franchiseApi.getFranchises.mockRejectedValue(new Error('Network down'));
+
+    renderPage('/admin/franchises');
+
+    expect(await screen.findByText(/Failed to load franchises: Network down/)).toBeInTheDocument();
+  });
+
   it('renders list on load', async () => {
     franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
 
@@ -59,31 +68,21 @@ describe('FranchisesPage', () => {
     expect(screen.getByText('Coach A')).toBeInTheDocument();
   });
 
+  it('franchise names render as links to the detail page', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+
+    renderPage('/admin/franchises');
+
+    const link = await screen.findByRole('link', { name: 'Alpha' });
+    expect(link).toHaveAttribute('href', '/admin/franchises/f1');
+  });
+
   it('shows empty state when no franchises', async () => {
     franchiseApi.getFranchises.mockResolvedValue([]);
 
     renderPage('/admin/franchises');
 
     expect(await screen.findByText(/No franchises yet/)).toBeInTheDocument();
-  });
-
-  it('imports franchises and refreshes list', async () => {
-    franchiseApi.getFranchises.mockResolvedValueOnce([]);
-    franchiseApi.importFranchises.mockResolvedValue([{ id: 'f1', name: 'Alpha' }]);
-    franchiseApi.getFranchises.mockResolvedValueOnce([{ id: 'f1', name: 'Alpha' }]);
-
-    renderPage('/admin/franchises');
-
-    const textarea = await screen.findByPlaceholderText(/Example:/);
-    fireEvent.change(textarea, { target: { value: 'Alpha' } });
-    fireEvent.click(screen.getByText('Import'));
-
-    await waitFor(() => {
-      expect(franchiseApi.importFranchises).toHaveBeenCalledWith('Alpha');
-      expect(franchiseApi.getFranchises).toHaveBeenCalledTimes(2);
-    });
-
-    expect(await screen.findByText(/Added 1 franchise/)).toBeInTheDocument();
   });
 
   it('creates a franchise then returns to list view', async () => {
@@ -113,23 +112,6 @@ describe('FranchisesPage', () => {
     expect(await screen.findByText(/Failed to save franchise: Create failed/)).toBeInTheDocument();
   });
 
-  it('updates a franchise then returns to list view', async () => {
-    franchiseApi.updateFranchise.mockResolvedValue({ id: 'f1' });
-    franchiseApi.getFranchises.mockResolvedValueOnce(mockFranchises);
-    franchiseApi.getFranchises.mockResolvedValueOnce([{ id: 'f1', name: 'Test Franchise' }]);
-
-    renderPage('/admin/franchises/f1');
-
-    expect(await screen.findByText('Edit Franchise')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Save'));
-
-    await waitFor(() => {
-      expect(franchiseApi.updateFranchise).toHaveBeenCalledWith('f1', { name: 'Test Franchise' });
-    });
-
-    expect(await screen.findByText('Franchises')).toBeInTheDocument();
-  });
-
   it('delete confirmation cancel does not delete', async () => {
     franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
     franchiseApi.deleteFranchise.mockResolvedValue();
@@ -143,5 +125,69 @@ describe('FranchisesPage', () => {
     fireEvent.click(deleteButtons[0]);
 
     expect(franchiseApi.deleteFranchise).not.toHaveBeenCalled();
+  });
+
+  it('deletes franchise and refreshes list on confirm', async () => {
+    franchiseApi.getFranchises
+      .mockResolvedValueOnce(mockFranchises)
+      .mockResolvedValueOnce([{ id: 'f2', name: 'Beta', manager_name: '' }]);
+    franchiseApi.deleteFranchise.mockResolvedValue();
+
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    renderPage('/admin/franchises');
+
+    expect(await screen.findByText('Alpha')).toBeInTheDocument();
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => expect(franchiseApi.deleteFranchise).toHaveBeenCalledWith('f1'));
+    expect(await screen.findByText('Beta')).toBeInTheDocument();
+  });
+
+  it('shows error when delete fails', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+    franchiseApi.deleteFranchise.mockRejectedValue(new Error('Delete failed'));
+
+    vi.stubGlobal('confirm', vi.fn(() => true));
+
+    renderPage('/admin/franchises');
+
+    expect(await screen.findByText('Alpha')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('Delete')[0]);
+
+    expect(await screen.findByText(/Failed to delete franchise: Delete failed/)).toBeInTheDocument();
+  });
+
+  it('Add Franchise button navigates to /new', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+
+    renderPage('/admin/franchises');
+
+    await screen.findByText('Alpha');
+    fireEvent.click(screen.getByText('+ Add Franchise'));
+
+    expect(await screen.findByText('Create Franchise')).toBeInTheDocument();
+  });
+
+  it('Edit button navigates to franchise detail page', async () => {
+    franchiseApi.getFranchises.mockResolvedValue(mockFranchises);
+
+    renderPage('/admin/franchises');
+
+    await screen.findByText('Alpha');
+    const editButtons = screen.getAllByText('Edit');
+    fireEvent.click(editButtons[0]);
+
+    expect(await screen.findByText('Franchise detail')).toBeInTheDocument();
+  });
+
+  it('cancel on new franchise form navigates back to list', async () => {
+    renderPage('/admin/franchises/new');
+
+    expect(await screen.findByText('Create Franchise')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Cancel'));
+
+    expect(await screen.findByText('Franchises')).toBeInTheDocument();
   });
 });

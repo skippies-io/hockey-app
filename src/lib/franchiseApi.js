@@ -22,6 +22,27 @@ export async function getFranchises() {
 }
 
 /**
+ * Fetch a single franchise by ID
+ * @param {string} id
+ */
+export async function getFranchise(id) {
+  const res = await adminFetch(`${endpoint()}/${id}`);
+  const json = await parseJson(res);
+  return json.data;
+}
+
+/**
+ * Fetch teams linked to a franchise, with tournament/season context
+ * @param {string} id
+ * @returns {Promise<Array>}
+ */
+export async function getFranchiseTeams(id) {
+  const res = await adminFetch(`${endpoint()}/${id}/teams`);
+  const json = await parseJson(res);
+  return json.data || [];
+}
+
+/**
  * Create a new franchise
  * @param {Object} franchiseData
  */
@@ -59,18 +80,4 @@ export async function deleteFranchise(id) {
     method: 'DELETE',
   });
   await parseJson(res);
-}
-
-/**
- * Bulk import franchises by name
- * @param {string} namesText - newline or CSV list
- */
-export async function importFranchises(namesText) {
-  const res = await adminFetch(`${endpoint()}/import`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ names: namesText }),
-  });
-  const json = await parseJson(res);
-  return json.data || [];
 }

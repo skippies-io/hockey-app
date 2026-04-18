@@ -29,19 +29,16 @@ describe('AdminLayout', () => {
     expect(screen.getByText('Outlet Content')).toBeTruthy();
   });
 
-  it('active vs inactive NavLink styling', () => {
+  it('active vs inactive NavLink uses CSS classes', () => {
     renderWithRoute(['/admin']);
 
     const dashboardLink = screen.getByRole('link', { name: 'Dashboard' });
     const tournamentsLink = screen.getByRole('link', { name: 'Tournaments' });
 
-    const dashboardStyle = dashboardLink.getAttribute('style') || '';
-    const tournamentsStyle = tournamentsLink.getAttribute('style') || '';
+    expect(dashboardLink.classList.contains('admin-nav-link')).toBe(true);
+    expect(dashboardLink.classList.contains('active')).toBe(true);
 
-    expect(dashboardStyle).toContain('background-color: var(--hj-color-brand-primary)');
-    expect(dashboardStyle).toContain('color: var(--hj-color-inverse-text)');
-
-    expect(tournamentsStyle).toContain('background-color: transparent');
-    expect(tournamentsStyle).toContain('color: var(--hj-color-text-secondary)');
+    expect(tournamentsLink.classList.contains('admin-nav-link')).toBe(true);
+    expect(tournamentsLink.classList.contains('active')).toBe(false);
   });
 });

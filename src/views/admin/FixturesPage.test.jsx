@@ -9,6 +9,10 @@ vi.mock('../../context/TournamentContext', () => ({
 
 vi.mock('../../lib/api', () => ({
   getGroups: vi.fn(async () => ([{ id: 'U11B', label: 'U11 Boys' }])),
+  getTournaments: vi.fn(async () => ([
+    { id: 't1', name: 'T1' },
+    { id: 't2', name: 'T2' },
+  ])),
 }));
 
 const adminFetchMock = vi.fn();
@@ -262,6 +266,48 @@ describe('FixturesPage', () => {
 
     expect(screen.getByLabelText('Alert status fx2').value).toBe('Delayed');
     expect(screen.getByLabelText('Alert message fx2').value).toBe('Start pushed back');
+  });
+
+  it('renders tournament selector with options', async () => {
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => {
+      const select = screen.getByLabelText('Tournament');
+      expect(select).toBeDefined();
+    });
+
+    expect(screen.getByText('T1')).toBeDefined();
+    expect(screen.getByText('T2')).toBeDefined();
+  });
+
+  it('defaults tournament selector to activeTournament', async () => {
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    await waitFor(() => {
+      const select = screen.getByLabelText('Tournament');
+      expect(select.value).toBe('t1');
+    });
+  });
+
+  it('resets group selector when tournament changes', async () => {
+    const { default: FixturesPage } = await import('./FixturesPage');
+    render(<FixturesPage />);
+
+    // Wait for initial groups to load
+    await waitFor(() => screen.getByText(/A vs B/));
+
+    const groupSelect = screen.getByLabelText('Group');
+    expect(groupSelect.value).toBe('U11B');
+
+    // Change tournament
+    fireEvent.change(screen.getByLabelText('Tournament'), { target: { value: 't2' } });
+
+    // Group should reset
+    await waitFor(() => {
+      expect(screen.getByLabelText('Group').value).toBe('');
+    });
   });
 
   // Note: we intentionally do not unit test the 1200ms UI timeout; it is a presentational detail.
