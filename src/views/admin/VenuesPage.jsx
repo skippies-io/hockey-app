@@ -191,13 +191,7 @@ export default function VenuesPage() {
         )}
 
         {!loading && venues.length > 0 && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: 'var(--hj-space-5)',
-            }}
-          >
+          <div className="venue-card-grid">
             {venues.map((venue) => {
               const embedSrc = mapEmbedUrl(venue);
               return (
