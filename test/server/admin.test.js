@@ -849,6 +849,76 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    it('GET /franchises/:id returns single franchise', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1');
+        mockPool.query.mockResolvedValueOnce({ rows: [{ id: 'f1', name: 'Alpha' }], rowCount: 1 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ id: 'f1' }) })
+        );
+    });
+
+    it('GET /franchises/:id returns 404 when not found', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/missing');
+        mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false, error: 'Franchise not found' })
+        );
+    });
+
+    it('GET /franchises/:id/teams returns team list', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1/teams');
+        const teams = [{ team_id: 't1', team_name: 'Alpha U9', season: '2024-25' }];
+        mockPool.query.mockResolvedValueOnce({ rows: teams });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            200,
+            expect.objectContaining({ ok: true, data: teams })
+        );
+    });
+
+    it('GET /franchises/:id/teams returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1/teams');
+        mockPool.query.mockRejectedValueOnce(new Error('Query failed'));
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            500,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
+    it('GET /franchises/:id/unknown-sub-path returns 404', async () => {
+        const url = new URL('http://localhost/api/admin/franchises/f1/bogus');
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(
+            mockReq,
+            mockRes,
+            404,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     it('GET /fixtures returns 400 when missing tournamentId', async () => {
         const url = new URL('http://localhost/api/admin/fixtures?groupId=U11B');
         await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
