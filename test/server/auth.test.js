@@ -313,6 +313,7 @@ vi.mock('../../server/admin.mjs', () => ({
 
 vi.mock('../../server/mailer.mjs', () => ({
   sendMagicLink: vi.fn().mockResolvedValue(undefined),
+  buildMagicLink: vi.fn((token) => `http://localhost:5173/admin/login/callback?token=${token}`),
 }));
 
 process.env.PROVIDER_MODE = 'db';

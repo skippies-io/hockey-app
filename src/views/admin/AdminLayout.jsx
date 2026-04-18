@@ -10,93 +10,40 @@ export default function AdminLayout() {
     clearAdminSession();
     navigate('/admin/login', { replace: true });
   };
-  const sidebarStyle = {
-    width: '250px',
-    backgroundColor: 'var(--hj-color-surface-2)',
-    borderRight: '1px solid var(--hj-color-border-subtle)',
-    padding: 'var(--hj-space-4)',
-    height: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    zIndex: 100,
-  };
 
-  const contentStyle = {
-    marginLeft: '250px',
-    padding: 'var(--hj-space-6)',
-    backgroundColor: 'var(--hj-color-surface-1)',
-    minHeight: '100vh',
-    overflowY: 'auto',
-    color: 'var(--hj-color-text-primary)'
-  };
-
-  const linkStyle = ({ isActive }) => ({
-    display: 'block',
-    padding: 'var(--hj-space-2) var(--hj-space-3)',
-    marginBottom: 'var(--hj-space-2)',
-    borderRadius: 'var(--hj-radius-md)',
-    textDecoration: 'none',
-    color: isActive ? 'var(--hj-color-inverse-text)' : 'var(--hj-color-text-secondary)',
-    backgroundColor: isActive ? 'var(--hj-color-brand-primary)' : 'transparent',
-    fontWeight: isActive ? 'var(--hj-font-weight-bold)' : 'var(--hj-font-weight-regular)',
-    transition: 'all 0.2s ease',
-  });
+  const navLinkClass = ({ isActive }) =>
+    `admin-nav-link${isActive ? ' active' : ''}`;
 
   return (
-    <div style={{ display: 'flex' }}>
-      <nav style={sidebarStyle} aria-label="Admin Navigation">
-        <h2 style={{ 
-          marginBottom: 'var(--hj-space-3)', 
-          color: 'var(--hj-color-text-primary)',
-          fontSize: 'var(--hj-font-size-lg)',
-          fontWeight: 'var(--hj-font-weight-bold)'
-        }}>
-          Admin Console
-        </h2>
+    <div className="admin-layout">
+      <nav className="admin-sidebar" aria-label="Admin Navigation">
+        <h2 className="admin-sidebar-title">Admin Console</h2>
 
         {email && (
-          <div style={{
-            marginBottom: 'var(--hj-space-4)',
-            color: 'var(--hj-color-text-secondary)',
-            fontSize: 'var(--hj-font-size-sm)',
-            wordBreak: 'break-word',
-          }}>
+          <div className="admin-sidebar-email">
             Signed in as<br />{email}
           </div>
         )}
-        
-        <NavLink to="/admin" end style={linkStyle}>Dashboard</NavLink>
-        <NavLink to="/admin/tournaments" style={linkStyle}>Tournaments</NavLink>
-        <NavLink to="/admin/announcements" style={linkStyle}>Announcements</NavLink>
-        <NavLink to="/admin/venues" style={linkStyle}>Venues</NavLink>
-        <NavLink to="/admin/franchises" style={linkStyle}>Franchises</NavLink>
-        <NavLink to="/admin/teams" style={linkStyle}>Teams</NavLink>
-        <NavLink to="/admin/fixtures" style={linkStyle}>Fixtures</NavLink>
-        <NavLink to="/admin/digests" style={linkStyle}>Share Digests</NavLink>
 
-        <div style={{ marginTop: 'auto' }}>
+        <NavLink to="/admin" end className={navLinkClass}>Dashboard</NavLink>
+        <NavLink to="/admin/tournaments" className={navLinkClass}>Tournaments</NavLink>
+        <NavLink to="/admin/announcements" className={navLinkClass}>Announcements</NavLink>
+        <NavLink to="/admin/venues" className={navLinkClass}>Venues</NavLink>
+        <NavLink to="/admin/franchises" className={navLinkClass}>Franchises</NavLink>
+        <NavLink to="/admin/teams" className={navLinkClass}>Teams</NavLink>
+        <NavLink to="/admin/fixtures" className={navLinkClass}>Fixtures</NavLink>
+        <div className="admin-sidebar-footer">
           <button
             type="button"
             onClick={logout}
-            style={{
-              width: '100%',
-              padding: 'var(--hj-space-2) var(--hj-space-3)',
-              borderRadius: 'var(--hj-radius-md)',
-              border: '1px solid var(--hj-color-border-subtle)',
-              background: 'transparent',
-              color: 'var(--hj-color-text-secondary)',
-              cursor: 'pointer',
-            }}
+            className="admin-logout-btn"
           >
             Logout
           </button>
         </div>
       </nav>
 
-      <main style={contentStyle}>
+      <main className="admin-content">
         <Outlet />
       </main>
     </div>

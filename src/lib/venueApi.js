@@ -4,13 +4,14 @@ import { adminFetch } from './adminAuth';
 
 const basePath = '/admin/venues';
 
-async function okJson(res, errPrefix) {
-  if (!res.ok) {
-    const err = new Error(`${errPrefix}: ${res.status}`);
+async function parseJson(res) {
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.ok === false) {
+    const err = new Error(json.error || `HTTP ${res.status}`);
     err.status = res.status;
     throw err;
   }
-  return res.json();
+  return json;
 }
 
 /**
@@ -20,7 +21,8 @@ async function okJson(res, errPrefix) {
 export async function getVenues() {
   if (!API_BASE) throw new Error('Missing API_BASE');
   const res = await adminFetch(basePath);
-  return okJson(res, 'Failed to fetch venues');
+  const json = await parseJson(res);
+  return json.data || [];
 }
 
 /**
@@ -31,7 +33,8 @@ export async function getVenues() {
 export async function getVenue(id) {
   if (!API_BASE) throw new Error('Missing API_BASE');
   const res = await adminFetch(`${basePath}/${id}`);
-  return okJson(res, 'Failed to fetch venue');
+  const json = await parseJson(res);
+  return json.data;
 }
 
 /**
@@ -46,7 +49,8 @@ export async function createVenue(venueData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(venueData),
   });
-  return okJson(res, 'Failed to create venue');
+  const json = await parseJson(res);
+  return json.data;
 }
 
 /**
@@ -62,7 +66,8 @@ export async function updateVenue(id, venueData) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(venueData),
   });
-  return okJson(res, 'Failed to update venue');
+  const json = await parseJson(res);
+  return json.data;
 }
 
 /**
@@ -75,9 +80,5 @@ export async function deleteVenue(id) {
   const res = await adminFetch(`${basePath}/${id}`, {
     method: 'DELETE',
   });
-  if (!res.ok) {
-    const err = new Error(`Failed to delete venue: ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
+  await parseJson(res);
 }

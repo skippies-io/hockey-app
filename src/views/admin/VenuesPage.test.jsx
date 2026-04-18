@@ -225,30 +225,31 @@ describe('VenuesPage', () => {
     });
   });
 
-  describe('Table Rendering', () => {
-    it('renders table with correct headers', async () => {
+  describe('Card Rendering', () => {
+    it('renders venue names as card headings', async () => {
       venueApi.getVenues.mockResolvedValue(mockVenues);
 
       renderVenuesPage('/admin/venues');
 
       await waitFor(() => {
-        expect(screen.getByText('Name')).toBeInTheDocument();
-        expect(screen.getByText('Location')).toBeInTheDocument();
-        expect(screen.getByText('Actions')).toBeInTheDocument();
+        expect(screen.getByText('Arena A')).toBeInTheDocument();
+        expect(screen.getByText('Arena B')).toBeInTheDocument();
       });
     });
 
-    it('shows em-dash for venues without location', async () => {
+    it('omits address line for venues without location', async () => {
       const venuesWithoutLocation = [
-        { id: '1', name: 'Arena A', location: '', notes: '' },
+        { id: '1', name: 'Arena A', location: '' },
       ];
       venueApi.getVenues.mockResolvedValue(venuesWithoutLocation);
 
       renderVenuesPage('/admin/venues');
 
       await waitFor(() => {
-        expect(screen.getByText('—')).toBeInTheDocument();
+        expect(screen.getByText('Arena A')).toBeInTheDocument();
       });
+      // No address text or em-dash rendered when location is empty
+      expect(screen.queryByText('—')).not.toBeInTheDocument();
     });
   });
 
