@@ -33,6 +33,39 @@ describe('franchiseApi', () => {
     vi.unstubAllGlobals();
   });
 
+  it('getFranchise fetches single franchise by id', async () => {
+    adminFetch.mockResolvedValueOnce(okJson({ id: 'f1', name: 'Alpha' }));
+
+    const api = await import('./franchiseApi');
+    const result = await api.getFranchise('f1');
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/f1');
+    expect(result).toEqual({ id: 'f1', name: 'Alpha' });
+  });
+
+  it('getFranchiseTeams fetches teams for a franchise', async () => {
+    const teams = [{ team_id: 't1', team_name: 'Alpha U9', season: '2024-25' }];
+    adminFetch.mockResolvedValueOnce(okJson(teams));
+
+    const api = await import('./franchiseApi');
+    const result = await api.getFranchiseTeams('f1');
+
+    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/f1/teams');
+    expect(result).toEqual(teams);
+  });
+
+  it('getFranchiseTeams returns empty array when data is absent', async () => {
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true }),
+    }));
+
+    const api = await import('./franchiseApi');
+    const result = await api.getFranchiseTeams('f1');
+    expect(result).toEqual([]);
+  });
+
   it('getFranchises calls admin endpoint and returns data', async () => {
     adminFetch.mockResolvedValueOnce(okJson([{ id: 'f1', name: 'Alpha' }]));
 

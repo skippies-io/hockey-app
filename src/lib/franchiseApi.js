@@ -22,6 +22,27 @@ export async function getFranchises() {
 }
 
 /**
+ * Fetch a single franchise by ID
+ * @param {string} id
+ */
+export async function getFranchise(id) {
+  const res = await adminFetch(`${endpoint()}/${id}`);
+  const json = await parseJson(res);
+  return json.data;
+}
+
+/**
+ * Fetch teams linked to a franchise, with tournament/season context
+ * @param {string} id
+ * @returns {Promise<Array>}
+ */
+export async function getFranchiseTeams(id) {
+  const res = await adminFetch(`${endpoint()}/${id}/teams`);
+  const json = await parseJson(res);
+  return json.data || [];
+}
+
+/**
  * Create a new franchise
  * @param {Object} franchiseData
  */

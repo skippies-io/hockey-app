@@ -809,8 +809,8 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     if (method === "GET") {
       try {
         const result = await pool.query(
-          `SELECT id, name, logo_url, manager_name, manager_photo_url, description,
-                  contact_phone, location_map_url, contact_email, created_at, updated_at
+          `SELECT id, name, logo_url, manager_name, manager_photo_url, manager_bio, description,
+                  contact_phone, location_map_url, contact_email, home_venue_id, created_at, updated_at
            FROM franchise_directory
            ORDER BY name ASC`
         );
@@ -830,21 +830,23 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
 
         const result = await pool.query(
           `INSERT INTO franchise_directory (
-             name, logo_url, manager_name, manager_photo_url, description,
-             contact_phone, location_map_url, contact_email
+             name, logo_url, manager_name, manager_photo_url, manager_bio, description,
+             contact_phone, location_map_url, contact_email, home_venue_id
            )
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-           RETURNING id, name, logo_url, manager_name, manager_photo_url, description,
-                     contact_phone, location_map_url, contact_email, created_at, updated_at`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           RETURNING id, name, logo_url, manager_name, manager_photo_url, manager_bio, description,
+                     contact_phone, location_map_url, contact_email, home_venue_id, created_at, updated_at`,
           [
             name,
             body.logo_url || null,
             body.manager_name || null,
             body.manager_photo_url || null,
+            body.manager_bio || null,
             body.description || null,
             body.contact_phone || null,
             body.location_map_url || null,
             body.contact_email || null,
+            body.home_venue_id || null,
           ]
         );
 
@@ -866,8 +868,55 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
       return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
     }
 
-    const id = normalizeSpaces(path.replace("/franchises/", ""));
+    const afterPrefix = path.replace("/franchises/", "");
+    const slashIdx = afterPrefix.indexOf("/");
+    const id = normalizeSpaces(slashIdx === -1 ? afterPrefix : afterPrefix.slice(0, slashIdx));
+    const subPath = slashIdx === -1 ? "" : afterPrefix.slice(slashIdx + 1);
+
     if (!id) return sendJson(req, res, 400, { ok: false, error: "Missing id" });
+
+    // GET /admin/franchises/:id/teams
+    if (subPath === "teams" && method === "GET") {
+      try {
+        const result = await pool.query(
+          `SELECT t.id AS team_id, t.name AS team_name, t.group_id,
+                  tr.id AS tournament_id, tr.name AS tournament_name, tr.season
+           FROM team t
+           JOIN tournament tr ON t.tournament_id = tr.id
+           JOIN franchise f ON f.tournament_id = t.tournament_id AND f.id = t.franchise_id
+           JOIN franchise_directory fd ON LOWER(fd.name) = LOWER(f.name)
+           WHERE fd.id = $1
+             AND t.is_placeholder = false
+           ORDER BY tr.season DESC NULLS LAST, t.group_id ASC, t.name ASC`,
+          [id]
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows || [] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    if (subPath) return sendJson(req, res, 404, { ok: false, error: "Not found" });
+
+    // GET /admin/franchises/:id
+    if (method === "GET") {
+      try {
+        const result = await pool.query(
+          `SELECT id, name, logo_url, manager_name, manager_photo_url, manager_bio, description,
+                  contact_phone, location_map_url, contact_email, home_venue_id, created_at, updated_at
+           FROM franchise_directory WHERE id = $1`,
+          [id]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Franchise not found" });
+        }
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
 
     if (method === "PATCH") {
       try {
@@ -879,10 +928,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
           logo_url: body.logo_url != null ? body.logo_url : null,
           manager_name: body.manager_name != null ? body.manager_name : null,
           manager_photo_url: body.manager_photo_url != null ? body.manager_photo_url : null,
+          manager_bio: body.manager_bio != null ? body.manager_bio : null,
           description: body.description != null ? body.description : null,
           contact_phone: body.contact_phone != null ? body.contact_phone : null,
           location_map_url: body.location_map_url != null ? body.location_map_url : null,
           contact_email: body.contact_email != null ? body.contact_email : null,
+          home_venue_id: body.home_venue_id != null ? body.home_venue_id : null,
         };
 
         const name = patch.name;
@@ -896,23 +947,27 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
                   logo_url = COALESCE($3, logo_url),
                   manager_name = COALESCE($4, manager_name),
                   manager_photo_url = COALESCE($5, manager_photo_url),
-                  description = COALESCE($6, description),
-                  contact_phone = COALESCE($7, contact_phone),
-                  location_map_url = COALESCE($8, location_map_url),
-                  contact_email = COALESCE($9, contact_email)
+                  manager_bio = COALESCE($6, manager_bio),
+                  description = COALESCE($7, description),
+                  contact_phone = COALESCE($8, contact_phone),
+                  location_map_url = COALESCE($9, location_map_url),
+                  contact_email = COALESCE($10, contact_email),
+                  home_venue_id = COALESCE($11, home_venue_id)
             WHERE id = $1
-        RETURNING id, name, logo_url, manager_name, manager_photo_url, description,
-                  contact_phone, location_map_url, contact_email, created_at, updated_at`,
+        RETURNING id, name, logo_url, manager_name, manager_photo_url, manager_bio, description,
+                  contact_phone, location_map_url, contact_email, home_venue_id, created_at, updated_at`,
           [
             id,
             patch.name,
             patch.logo_url,
             patch.manager_name,
             patch.manager_photo_url,
+            patch.manager_bio,
             patch.description,
             patch.contact_phone,
             patch.location_map_url,
             patch.contact_email,
+            patch.home_venue_id,
           ]
         );
 
