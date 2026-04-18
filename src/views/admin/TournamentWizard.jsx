@@ -332,7 +332,7 @@ export default function TournamentWizard() {
   }
 
   async function loadFranchiseTeamNames(franchiseName) {
-    if (!franchiseName || franchiseTeamNames[franchiseName] !== undefined) return;
+    if (!franchiseName || franchiseName in franchiseTeamNames) return;
     try {
       const res = await adminFetch(`/admin/franchise-teams?franchise=${encodeURIComponent(franchiseName)}`);
       if (!res.ok) return;
@@ -891,23 +891,40 @@ export default function TournamentWizard() {
                   </Field>
                 </div>
                 <div className="wizard-row">
-                  <Field label="Team Name" hint={team.franchise_name && (franchiseTeamNames[team.franchise_name] || []).length > 0 ? "Select a known name or type a new one" : undefined}>
-                    <input
-                      type="text"
-                      value={team.name}
-                      className={teamHasName ? "wizard-input" : "wizard-input invalid"}
-                      onChange={(e) => updateTeam(idx, { name: e.target.value })}
-                      placeholder="PP Amber"
-                      list={`franchise-team-names-${idx}`}
-                    />
-                    {team.franchise_name && (franchiseTeamNames[team.franchise_name] || []).length > 0 && (
-                      <datalist id={`franchise-team-names-${idx}`}>
-                        {(franchiseTeamNames[team.franchise_name] || []).map((n) => (
-                          <option key={`${idx}-ftn-${n}`} value={n} />
-                        ))}
-                      </datalist>
-                    )}
-                  </Field>
+                  {(() => {
+                    const knownNames = team.franchise_name
+                      ? (franchiseTeamNames[team.franchise_name] ?? null)
+                      : [];
+                    const loaded = knownNames !== null;
+                    const hasKnown = loaded && knownNames.length > 0;
+                    return (
+                      <Field
+                        label="Team Name"
+                        hint={!team.franchise_name ? "Select a franchise first" : !loaded ? "Loading…" : !hasKnown ? "No prior teams — type a name" : undefined}
+                      >
+                        {hasKnown ? (
+                          <select
+                            value={team.name}
+                            className={teamHasName ? "wizard-input" : "wizard-input invalid"}
+                            onChange={(e) => updateTeam(idx, { name: e.target.value })}
+                          >
+                            <option value="">— Select team —</option>
+                            {knownNames.map((n) => (
+                              <option key={`${idx}-ftn-${n}`} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={team.name}
+                            className={teamHasName ? "wizard-input" : "wizard-input invalid"}
+                            onChange={(e) => updateTeam(idx, { name: e.target.value })}
+                            placeholder="PP Amber"
+                          />
+                        )}
+                      </Field>
+                    );
+                  })()}
                   <Field label="Placeholder">
                     <input
                       type="checkbox"

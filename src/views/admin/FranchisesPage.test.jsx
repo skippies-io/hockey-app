@@ -82,25 +82,6 @@ describe('FranchisesPage', () => {
     expect(await screen.findByText(/No franchises yet/)).toBeInTheDocument();
   });
 
-  it('imports franchises and refreshes list', async () => {
-    franchiseApi.getFranchises.mockResolvedValueOnce([]);
-    franchiseApi.importFranchises.mockResolvedValue([{ id: 'f1', name: 'Alpha' }]);
-    franchiseApi.getFranchises.mockResolvedValueOnce([{ id: 'f1', name: 'Alpha' }]);
-
-    renderPage('/admin/franchises');
-
-    const textarea = await screen.findByPlaceholderText(/Example:/);
-    fireEvent.change(textarea, { target: { value: 'Alpha' } });
-    fireEvent.click(screen.getByText('Import'));
-
-    await waitFor(() => {
-      expect(franchiseApi.importFranchises).toHaveBeenCalledWith('Alpha');
-      expect(franchiseApi.getFranchises).toHaveBeenCalledTimes(2);
-    });
-
-    expect(await screen.findByText(/Added 1 franchise/)).toBeInTheDocument();
-  });
-
   it('creates a franchise then returns to list view', async () => {
     franchiseApi.createFranchise.mockResolvedValue({ id: 'f3' });
     franchiseApi.getFranchises.mockResolvedValue([{ id: 'f3', name: 'Test Franchise' }]);

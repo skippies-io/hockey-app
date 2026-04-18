@@ -5,7 +5,6 @@ import {
   createFranchise,
   deleteFranchise,
   getFranchises,
-  importFranchises,
   updateFranchise,
 } from '../../lib/franchiseApi';
 
@@ -20,9 +19,6 @@ export default function FranchisesPage() {
   const [currentFranchise, setCurrentFranchise] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [importText, setImportText] = useState('');
-  const [importResult, setImportResult] = useState('');
-
   const isNew = franchiseId === 'new';
   const isEditing = Boolean(franchiseId && franchiseId !== 'new');
   const showForm = isNew || isEditing;
@@ -40,7 +36,6 @@ export default function FranchisesPage() {
       try {
         setLoading(true);
         setError(null);
-        setImportResult('');
         const data = await getFranchises();
         if (!alive) return;
         setFranchises(Array.isArray(data) ? data : []);
@@ -102,26 +97,6 @@ export default function FranchisesPage() {
       setFranchises(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(`Failed to delete franchise: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImport = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setImportResult('');
-
-      const inserted = await importFranchises(importText);
-      const count = inserted.length;
-      setImportResult(count === 0 ? 'No new franchises were added.' : `Added ${count} franchise${count === 1 ? '' : 's'}.`);
-      setImportText('');
-
-      const data = await getFranchises();
-      setFranchises(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(`Failed to import franchises: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -189,69 +164,6 @@ export default function FranchisesPage() {
           {error}
         </div>
       )}
-
-      {importResult && (
-        <div
-          style={{
-            padding: 'var(--hj-space-3)',
-            marginBottom: 'var(--hj-space-4)',
-            backgroundColor: 'var(--hj-color-surface-2)',
-            color: 'var(--hj-color-text-primary)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border-subtle)',
-          }}
-          role="status"
-        >
-          {importResult}
-        </div>
-      )}
-
-      <div
-        style={{
-          padding: 'var(--hj-space-4)',
-          borderRadius: 'var(--hj-radius-md)',
-          border: '1px solid var(--hj-color-border-subtle)',
-          backgroundColor: 'var(--hj-color-surface-2)',
-          marginBottom: 'var(--hj-space-6)',
-        }}
-      >
-        <h2 style={{ marginTop: 0, marginBottom: 'var(--hj-space-3)' }}>Bulk import</h2>
-        <p style={{ marginTop: 0, color: 'var(--hj-color-text-secondary)' }}>
-          Paste one franchise name per line (CSV supported — only the first column is used).
-        </p>
-        <textarea
-          value={importText}
-          onChange={(e) => setImportText(e.target.value)}
-          rows={5}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: 'var(--hj-space-2)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-color-border)',
-            fontSize: 'var(--hj-font-size-base)',
-            marginBottom: 'var(--hj-space-3)',
-          }}
-          placeholder={'Example:\nAlpha\nBeta\nGamma'}
-        />
-        <button
-          type="button"
-          onClick={handleImport}
-          disabled={loading || !importText.trim()}
-          style={{
-            padding: 'var(--hj-space-2) var(--hj-space-4)',
-            borderRadius: 'var(--hj-radius-md)',
-            backgroundColor: 'var(--hj-color-brand-primary)',
-            color: 'var(--hj-color-inverse-text)',
-            border: 'none',
-            fontWeight: 'var(--hj-font-weight-bold)',
-            cursor: loading || !importText.trim() ? 'not-allowed' : 'pointer',
-            opacity: loading || !importText.trim() ? 0.6 : 1,
-          }}
-        >
-          {loading ? 'Importing…' : 'Import'}
-        </button>
-      </div>
 
       {loading && <div>Loading franchises…</div>}
 

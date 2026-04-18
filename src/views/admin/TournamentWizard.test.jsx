@@ -40,6 +40,12 @@ describe("TournamentWizard", () => {
           json: () => Promise.resolve({ ok: true, tournament_id: "hj-test-2026" }),
         });
       }
+      if (typeof url === "string" && url.includes("/admin/franchise-teams")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: [] }),
+        });
+      }
       if (typeof url === "string" && url.includes("/admin/tournament-exists")) {
         return Promise.resolve({
           ok: true,
@@ -685,6 +691,53 @@ describe("TournamentWizard", () => {
     expect(playDateInputs[0].value).toBe("2026-05-10");
     // Boys group should still be empty
     expect(playDateInputs[1].value).toBe("");
+  });
+
+  it("team name shows a select when franchise has known teams, free-text otherwise", async () => {
+    fetch.mockImplementation((url) => {
+      if (typeof url === "string" && url.includes("/admin/venues")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/franchises")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [{ id: "f1", name: "Gryphons" }] }) });
+      }
+      if (typeof url === "string" && url.includes("/admin/franchise-teams")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ok: true, data: ["Gryphons Gold", "Gryphons Blue"] }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) });
+    });
+
+    await renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /^3\s*Teams & Fixtures/i }));
+
+    const teamsSection = screen.getByRole("heading", { name: "Teams" }).closest("section");
+    const teamsScope = within(teamsSection);
+
+    // Before franchise is selected — text input (free-text)
+    expect(teamsScope.getByPlaceholderText("PP Amber")).toBeDefined();
+
+    // Select a franchise
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Franchise" }), {
+      target: { value: "Gryphons" },
+    });
+
+    // After fetch resolves — select dropdown replaces text input
+    await waitFor(() => {
+      const teamNameSelect = teamsScope.getByRole("combobox", { name: "Team Name" });
+      expect(teamNameSelect).toBeDefined();
+      const options = Array.from(teamNameSelect.querySelectorAll("option")).map((o) => o.value);
+      expect(options).toContain("Gryphons Gold");
+      expect(options).toContain("Gryphons Blue");
+    });
+
+    // Selecting a team name from the dropdown works
+    fireEvent.change(teamsScope.getByRole("combobox", { name: "Team Name" }), {
+      target: { value: "Gryphons Gold" },
+    });
+    expect(teamsScope.getByRole("combobox", { name: "Team Name" }).value).toBe("Gryphons Gold");
   });
 
   it("Knockout placeholder quick-add inserts standard placeholder teams for a group", async () => {

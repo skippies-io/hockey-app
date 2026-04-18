@@ -72,16 +72,6 @@ describe('franchiseApi', () => {
     expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/f1', expect.objectContaining({ method: 'DELETE' }));
   });
 
-  it('importFranchises POSTs names and returns inserted rows', async () => {
-    adminFetch.mockResolvedValueOnce(okJson([{ id: 'f1', name: 'Alpha' }]));
-
-    const api = await import('./franchiseApi');
-    const inserted = await api.importFranchises('Alpha');
-
-    expect(adminFetch).toHaveBeenCalledWith('/admin/franchises/import', expect.objectContaining({ method: 'POST' }));
-    expect(inserted).toEqual([{ id: 'f1', name: 'Alpha' }]);
-  });
-
   it('throws when server responds not ok', async () => {
     adminFetch.mockResolvedValueOnce(failJson(400, 'Bad request'));
 

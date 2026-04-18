@@ -726,54 +726,6 @@ export const requestHandler = async (req, res) => {
       return;
     }
 
-
-    // Public digest share lookup
-    if (url.pathname.startsWith("/api/share/")) {
-      applyCors(req, res);
-      if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
-      if (req.method !== "GET" && !isHead) {
-        sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-        return;
-      }
-      if (!pool) { sendJson(req, res, 501, { ok: false, error: "DB not configured" }); return; }
-
-      const rawToken = url.pathname.slice("/api/share/".length);
-      if (!rawToken || rawToken.length !== 64) {
-        sendJson(req, res, 404, { ok: false, error: "Not found" });
-        return;
-      }
-
-      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-      try {
-        const result = await pool.query(
-          `SELECT tournament_id, age_id, label, expires_at
-           FROM digest_share
-           WHERE token_hash = $1
-             AND revoked_at IS NULL
-             AND expires_at > NOW()`,
-          [tokenHash]
-        );
-        if (result.rows.length === 0) {
-          sendJson(req, res, 404, { ok: false, error: "Not found" });
-          return;
-        }
-        const row = result.rows[0];
-        sendJson(req, res, 200, {
-          ok: true,
-          config: {
-            tournament_id: row.tournament_id,
-            age_id: row.age_id || null,
-            label: row.label || null,
-            expires_at: row.expires_at,
-          },
-        }, { cache: { maxAge: 60, swr: 300 } });
-      } catch (err) {
-        console.error("digest share lookup error:", err);
-        sendJson(req, res, 500, { ok: false, error: "Internal error" });
-      }
-      return;
-    }
-
     // Tournaments List (New)
     if (url.pathname === "/api/tournaments") {
       applyCors(req, res);

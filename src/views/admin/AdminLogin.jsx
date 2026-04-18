@@ -47,7 +47,7 @@ export default function AdminLogin() {
           Enter your email and we’ll send you a sign-in link.
         </p>
 
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <label htmlFor="admin-email" style={{ display: "block", marginBottom: 8 }}>
             Email
           </label>
