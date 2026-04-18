@@ -60,17 +60,3 @@ export async function deleteFranchise(id) {
   });
   await parseJson(res);
 }
-
-/**
- * Bulk import franchises by name
- * @param {string} namesText - newline or CSV list
- */
-export async function importFranchises(namesText) {
-  const res = await adminFetch(`${endpoint()}/import`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ names: namesText }),
-  });
-  const json = await parseJson(res);
-  return json.data || [];
-}

@@ -14,8 +14,6 @@ const apiMocks = vi.hoisted(() => ({
   getStandingsRows: vi.fn(),
   getFranchises: vi.fn(),
   getFixturesIcsUrl: vi.fn(() => ''),
-  getDigestShare: vi.fn(),
-  createDigestShare: vi.fn(),
   API_BASE: 'http://localhost:8787/api',
 }));
 

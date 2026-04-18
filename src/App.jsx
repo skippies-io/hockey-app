@@ -40,8 +40,6 @@ import AnnouncementsPage from "./views/admin/AnnouncementsPage";
 import TournamentWizard from "./views/admin/TournamentWizard";
 import FixturesPage from "./views/admin/FixturesPage";
 import TechDesk from "./views/admin/TechDesk";
-import DigestPage from "./views/admin/DigestPage";
-import DigestShare from "./views/DigestShare";
 import VenuesPage from "./views/admin/VenuesPage";
 import FranchisesPage from "./views/admin/FranchisesPage";
 import AdminTeamsPage from "./views/admin/AdminTeamsPage";
@@ -544,7 +542,6 @@ export default function App() {
               <Route path="franchises/*" element={<FranchisesPage />} />
               <Route path="teams" element={<AdminTeamsPage />} />
               <Route path="fixtures" element={<FixturesPage />} />
-              <Route path="digests" element={<DigestPage />} />
               <Route path="tech-desk/:matchId" element={<TechDesk />} />
               <Route
                 path="*"
@@ -553,9 +550,6 @@ export default function App() {
             </Route>
           </Route>
         </Route>
-
-        {/* Public digest share view — outside AppShell (no nav) */}
-        <Route path="share/:token" element={<DigestShare />} />
 
         {/* Public App Section */}
         <Route element={<AppShell groups={groupsWithAll} />}>
