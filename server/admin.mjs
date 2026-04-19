@@ -89,6 +89,16 @@ function requireGetWithDb(method, pool, req, res, sendJson) {
   return true;
 }
 
+function requireTournamentGetDb(method, pool, url, req, res, sendJson) {
+  if (!requireGetWithDb(method, pool, req, res, sendJson)) return null;
+  const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+  if (!tournamentId) {
+    sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    return null;
+  }
+  return tournamentId;
+}
+
 async function writeAuditLog(pool, entry) {
   if (!pool) return;
   if (!entry?.actor_email || !entry?.action) return;
@@ -580,12 +590,9 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   // GET /api/admin/groups?tournamentId=X
-  // Returns groups for a tournament with their team counts (non-placeholder only).
   if (path === "/groups") {
-    if (method !== "GET") return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-    const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
-    if (!tournamentId) return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    const tournamentId = requireTournamentGetDb(method, pool, url, req, res, sendJson);
+    if (!tournamentId) return;
     try {
       const result = await pool.query(
         `SELECT g.id, g.label,
@@ -607,21 +614,14 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   }
 
   // GET /api/admin/unscored-fixtures?tournamentId=X
-  // Returns fixtures whose scheduled date+time has passed (server NOW()) and have no scores entered.
   if (path === "/unscored-fixtures") {
-    if (method !== "GET") return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
-    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
-    const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
-    if (!tournamentId) return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    const tournamentId = requireTournamentGetDb(method, pool, url, req, res, sendJson);
+    if (!tournamentId) return;
     try {
       const result = await pool.query(
-        `SELECT
-           f.id AS fixture_id,
-           f.group_id,
-           to_char(f.date, 'YYYY-MM-DD') AS date,
-           f.time,
-           t1.name AS team1,
-           t2.name AS team2
+        `SELECT f.id AS fixture_id, f.group_id,
+                to_char(f.date, 'YYYY-MM-DD') AS date, f.time,
+                t1.name AS team1, t2.name AS team2
          FROM fixture f
          JOIN team t1 ON t1.tournament_id = f.tournament_id AND t1.id = f.team1_id
          JOIN team t2 ON t2.tournament_id = f.tournament_id AND t2.id = f.team2_id
@@ -633,11 +633,7 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
          ORDER BY f.date DESC, f.time DESC`,
         [tournamentId]
       );
-      return sendJson(req, res, 200, {
-        ok: true,
-        data: result.rows,
-        server_time: new Date().toISOString(),
-      });
+      return sendJson(req, res, 200, { ok: true, data: result.rows, server_time: new Date().toISOString() });
     } catch (err) {
       console.error("Admin API Error:", err);
       return sendJson(req, res, 500, { ok: false, error: err.message });

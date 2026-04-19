@@ -12,6 +12,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "verify": "npm run lint && npm run test:coverage",
+    "sonar:check": "sonar-scanner -Dsonar.organization=lbdc -Dsonar.projectKey=skippies-io_hockey-app -Dsonar.host.url=https://sonarcloud.io -Dsonar.token=$SONAR_TOKEN -Dsonar.pullrequest.key=$(gh pr view --json number -q .number) -Dsonar.pullrequest.branch=$(git branch --show-current) -Dsonar.pullrequest.base=main -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=180",
     "prepare": "node scripts/install-hooks.mjs",
     "smoke:apps": "node scripts/smoke.mjs --provider apps",
     "smoke:db": "node scripts/smoke.mjs --provider db",
