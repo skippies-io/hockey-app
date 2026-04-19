@@ -89,6 +89,16 @@ function requireGetWithDb(method, pool, req, res, sendJson) {
   return true;
 }
 
+function requireTournamentGetDb(method, pool, url, req, res, sendJson) {
+  if (!requireGetWithDb(method, pool, req, res, sendJson)) return null;
+  const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+  if (!tournamentId) {
+    sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    return null;
+  }
+  return tournamentId;
+}
+
 async function writeAuditLog(pool, entry) {
   if (!pool) return;
   if (!entry?.actor_email || !entry?.action) return;
@@ -509,6 +519,60 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   // CORS headers for admin (if needed specifically, though index.mjs handles it generally, 
   // we might need to ensure OPTIONS passes through or headers conform)
 
+  // GET  /api/admin/tournaments          — list all tournaments (optional ?active=true filter)
+  // PATCH /api/admin/tournaments/:id     — update is_active flag
+  if (path === "/tournaments" || path.startsWith("/tournaments/")) {
+    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+
+    // GET /api/admin/tournaments
+    if (path === "/tournaments" && method === "GET") {
+      try {
+        const activeOnly = url.searchParams.get("active") === "true";
+        const result = await pool.query(
+          `SELECT id, name, season, is_active, logo_url, created_at
+           FROM tournament
+           ${activeOnly ? "WHERE is_active = true" : ""}
+           ORDER BY is_active DESC, created_at DESC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    // PATCH /api/admin/tournaments/:id
+    const tournamentMatch = path.match(/^\/tournaments\/([^/]+)$/);
+    if (tournamentMatch && method === "PATCH") {
+      const id = tournamentMatch[1];
+      try {
+        const body = await readBody(req);
+        if (!body || typeof body.is_active !== "boolean") {
+          return sendJson(req, res, 400, { ok: false, error: "is_active (boolean) is required" });
+        }
+        const result = await pool.query(
+          `UPDATE tournament SET is_active = $2 WHERE id = $1
+           RETURNING id, name, season, is_active, logo_url`,
+          [id, body.is_active]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Tournament not found" });
+        }
+        logAudit("tournament.update_active", {
+          entity_type: "tournament",
+          entity_id: id,
+          meta: { is_active: body.is_active },
+        });
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
   if (path === "/tournament-exists") {
     if (method !== "GET") {
       return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
@@ -519,6 +583,57 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     try {
       const result = await pool.query("SELECT 1 FROM tournament WHERE id = $1", [id.trim()]);
       return sendJson(req, res, 200, { ok: true, exists: result.rowCount > 0 });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  // GET /api/admin/groups?tournamentId=X
+  if (path === "/groups") {
+    const tournamentId = requireTournamentGetDb(method, pool, url, req, res, sendJson);
+    if (!tournamentId) return;
+    try {
+      const result = await pool.query(
+        `SELECT g.id, g.label,
+                COUNT(t.id) FILTER (WHERE t.is_placeholder = false) AS team_count,
+                COUNT(f.id) AS fixture_count
+         FROM groups g
+         LEFT JOIN team t ON t.group_id = g.id AND t.tournament_id = g.tournament_id
+         LEFT JOIN fixture f ON f.group_id = g.id AND f.tournament_id = g.tournament_id
+         WHERE g.tournament_id = $1
+         GROUP BY g.id, g.label
+         ORDER BY g.label`,
+        [tournamentId]
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  // GET /api/admin/unscored-fixtures?tournamentId=X
+  if (path === "/unscored-fixtures") {
+    const tournamentId = requireTournamentGetDb(method, pool, url, req, res, sendJson);
+    if (!tournamentId) return;
+    try {
+      const result = await pool.query(
+        `SELECT f.id AS fixture_id, f.group_id,
+                to_char(f.date, 'YYYY-MM-DD') AS date, f.time,
+                t1.name AS team1, t2.name AS team2
+         FROM fixture f
+         JOIN team t1 ON t1.tournament_id = f.tournament_id AND t1.id = f.team1_id
+         JOIN team t2 ON t2.tournament_id = f.tournament_id AND t2.id = f.team2_id
+         LEFT JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
+         WHERE f.tournament_id = $1
+           AND t1.is_placeholder = false AND t2.is_placeholder = false
+           AND (f.date::timestamp + f.time::time) < NOW()
+           AND (r.score1 IS NULL AND r.score2 IS NULL)
+         ORDER BY f.date DESC, f.time DESC`,
+        [tournamentId]
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows, server_time: new Date().toISOString() });
     } catch (err) {
       console.error("Admin API Error:", err);
       return sendJson(req, res, 500, { ok: false, error: err.message });

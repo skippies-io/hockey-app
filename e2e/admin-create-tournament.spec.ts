@@ -105,7 +105,7 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
 
   // ── Navigate to wizard ────────────────────────────────────────────────────
 
-  await page.goto('admin/tournaments');
+  await page.goto('admin/tournaments/new');
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'Tournament Setup Wizard' })).toBeVisible();
 
