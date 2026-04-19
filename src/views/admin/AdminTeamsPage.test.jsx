@@ -227,4 +227,61 @@ describe('AdminTeamsPage', () => {
       expect(screen.getByText(/Failed to load tournaments/)).toBeInTheDocument();
     });
   });
+
+  it('groups teams with no group_label under Ungrouped', async () => {
+    adminFetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        data: [{ id: 'team4', name: 'Delta', pool: 'A', group_label: null, group_id: null, franchise_name: null, franchise_dir_id: null }],
+      }),
+    });
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('Delta')).toBeInTheDocument();
+      expect(screen.getAllByText('Ungrouped').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows em-dash in pool column for teams without a pool', async () => {
+    adminFetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        data: [{ id: 'team4', name: 'Delta', pool: null, group_label: 'U11 Boys', group_id: 'U11B', franchise_name: null, franchise_dir_id: null }],
+      }),
+    });
+    await renderPage();
+    await waitFor(() => screen.getByText('Delta'));
+    const dashes = screen.getAllByText('—');
+    expect(dashes.length).toBeGreaterThan(0);
+  });
+
+  it('uses tournament id as label when tournament has no name', async () => {
+    api.getTournaments.mockResolvedValue([{ id: 't-no-name' }]);
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByText('t-no-name')).toBeInTheDocument();
+    });
+  });
+
+  it('returns empty filtered view when division filter no longer matches after tournament switch', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Alpha'));
+
+    fireEvent.change(screen.getByLabelText('Division'), { target: { value: 'U11 Boys' } });
+
+    adminFetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ok: true,
+        data: [{ id: 'team5', name: 'Omega', pool: 'A', group_label: 'U13 Girls', group_id: 'U13G', franchise_name: null, franchise_dir_id: null }],
+      }),
+    });
+    fireEvent.change(screen.getByLabelText('Tournament'), { target: { value: 't2' } });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Omega')).not.toBeInTheDocument();
+    });
+  });
 });
