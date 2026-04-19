@@ -9,7 +9,7 @@ export default function Tournaments() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { activeTournamentId, setActiveTournamentId } = useTournament() || {};
+  const { activeTournamentId: selectedTournamentId, setActiveTournamentId: setSelectedTournamentId } = useTournament() || {};
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,8 +48,8 @@ export default function Tournaments() {
   }
 
   function handleView(tournamentId) {
-    if (setActiveTournamentId) {
-      setActiveTournamentId(tournamentId);
+    if (setSelectedTournamentId) {
+      setSelectedTournamentId(tournamentId);
     }
     navigate('/');
   }
@@ -64,7 +64,7 @@ export default function Tournaments() {
 
       <div style={{ display: 'grid', gap: 'var(--hj-space-4)', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
         {items.map((t) => {
-          const isActive = t.id === activeTournamentId;
+          const isActive = t.id === selectedTournamentId;
           return (
             <div key={t.id} className="hj-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--hj-space-2)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--hj-space-3)' }}>
