@@ -51,6 +51,21 @@ function EmptyState({ children }) {
   return <p style={{ margin: 0, color: 'var(--hj-color-text-secondary)', fontSize: 'var(--hj-font-size-sm)' }}>{children}</p>;
 }
 
+StatBlock.propTypes = { count: PropTypes.number.isRequired, label: PropTypes.string.isRequired, to: PropTypes.string.isRequired };
+function StatBlock({ count, label, to }) {
+  return (
+    <div>
+      <span style={{ fontSize: 'var(--hj-font-size-xl)', fontWeight: 'var(--hj-font-weight-bold)' }}>{count}</span>
+      <span style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-text-secondary)', marginLeft: 'var(--hj-space-1)' }}>
+        {label}{count !== 1 ? 's' : ''}
+      </span>
+      <Link to={to} style={{ display: 'block', fontSize: 'var(--hj-font-size-xs)', color: 'var(--hj-color-brand-primary)' }}>
+        View {label}s
+      </Link>
+    </div>
+  );
+}
+
 // ── Widget 1: Live Tournaments ───────────────────────────────────────────────
 
 function LiveTournamentsWidget() {
@@ -304,24 +319,8 @@ function TeamsWidget({ tournaments }) {
                 </div>
               )}
               <div style={{ display: 'flex', gap: 'var(--hj-space-5)' }}>
-                <div>
-                  <span style={{ fontSize: 'var(--hj-font-size-xl)', fontWeight: 'var(--hj-font-weight-bold)' }}>{s.franchiseCount}</span>
-                  <span style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-text-secondary)', marginLeft: 'var(--hj-space-1)' }}>
-                    franchise{s.franchiseCount !== 1 ? 's' : ''}
-                  </span>
-                  <Link to="/admin/franchises" style={{ display: 'block', fontSize: 'var(--hj-font-size-xs)', color: 'var(--hj-color-brand-primary)' }}>
-                    View franchises
-                  </Link>
-                </div>
-                <div>
-                  <span style={{ fontSize: 'var(--hj-font-size-xl)', fontWeight: 'var(--hj-font-weight-bold)' }}>{s.teamCount}</span>
-                  <span style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-text-secondary)', marginLeft: 'var(--hj-space-1)' }}>
-                    team{s.teamCount !== 1 ? 's' : ''}
-                  </span>
-                  <Link to="/admin/teams" style={{ display: 'block', fontSize: 'var(--hj-font-size-xs)', color: 'var(--hj-color-brand-primary)' }}>
-                    View teams
-                  </Link>
-                </div>
+                <StatBlock count={s.franchiseCount} label="franchise" to="/admin/franchises" />
+                <StatBlock count={s.teamCount} label="team" to="/admin/teams" />
               </div>
             </div>
           ))}

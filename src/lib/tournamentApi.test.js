@@ -14,6 +14,12 @@ function okJson(data) {
   });
 }
 
+function noDataJson() {
+  return Promise.resolve({
+    ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
+  });
+}
+
 function failJson(status, error) {
   return Promise.resolve({
     ok: false,
@@ -42,11 +48,7 @@ describe('tournamentApi', () => {
   });
 
   it('getAdminTournaments returns empty array when data absent', async () => {
-    adminFetch.mockResolvedValueOnce(Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ ok: true }),
-    }));
+    adminFetch.mockResolvedValueOnce(noDataJson());
     const api = await import('./tournamentApi');
     const result = await api.getAdminTournaments();
     expect(result).toEqual([]);
@@ -84,9 +86,7 @@ describe('tournamentApi', () => {
   });
 
   it('getAdminAnnouncements returns empty array when data absent', async () => {
-    adminFetch.mockResolvedValueOnce(Promise.resolve({
-      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
-    }));
+    adminFetch.mockResolvedValueOnce(noDataJson());
     const api = await import('./tournamentApi');
     expect(await api.getAdminAnnouncements()).toEqual([]);
   });
@@ -100,9 +100,7 @@ describe('tournamentApi', () => {
   });
 
   it('getAdminTeams returns empty array when data absent', async () => {
-    adminFetch.mockResolvedValueOnce(Promise.resolve({
-      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
-    }));
+    adminFetch.mockResolvedValueOnce(noDataJson());
     const api = await import('./tournamentApi');
     expect(await api.getAdminTeams('t1')).toEqual([]);
   });
@@ -116,9 +114,7 @@ describe('tournamentApi', () => {
   });
 
   it('getAdminGroups returns empty array when data absent', async () => {
-    adminFetch.mockResolvedValueOnce(Promise.resolve({
-      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
-    }));
+    adminFetch.mockResolvedValueOnce(noDataJson());
     const api = await import('./tournamentApi');
     expect(await api.getAdminGroups('t1')).toEqual([]);
   });
@@ -136,9 +132,7 @@ describe('tournamentApi', () => {
   });
 
   it('getUnscoredFixtures returns empty fixtures when data absent', async () => {
-    adminFetch.mockResolvedValueOnce(Promise.resolve({
-      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
-    }));
+    adminFetch.mockResolvedValueOnce(noDataJson());
     const api = await import('./tournamentApi');
     const result = await api.getUnscoredFixtures('t1');
     expect(result).toEqual({ fixtures: [], serverTime: undefined });
