@@ -74,4 +74,73 @@ describe('tournamentApi', () => {
     const api = await import('./tournamentApi');
     await expect(api.setTournamentActive('missing', false)).rejects.toThrow('Tournament not found');
   });
+
+  it('getAdminAnnouncements fetches announcements', async () => {
+    adminFetch.mockResolvedValueOnce(okJson([{ id: 'a1', title: 'Notice' }]));
+    const api = await import('./tournamentApi');
+    const result = await api.getAdminAnnouncements();
+    expect(adminFetch).toHaveBeenCalledWith('/admin/announcements');
+    expect(result).toEqual([{ id: 'a1', title: 'Notice' }]);
+  });
+
+  it('getAdminAnnouncements returns empty array when data absent', async () => {
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
+    }));
+    const api = await import('./tournamentApi');
+    expect(await api.getAdminAnnouncements()).toEqual([]);
+  });
+
+  it('getAdminTeams fetches teams for a tournament', async () => {
+    adminFetch.mockResolvedValueOnce(okJson([{ id: 'tm1', name: 'Alpha' }]));
+    const api = await import('./tournamentApi');
+    const result = await api.getAdminTeams('t1');
+    expect(adminFetch).toHaveBeenCalledWith('/admin/teams?tournamentId=t1');
+    expect(result).toEqual([{ id: 'tm1', name: 'Alpha' }]);
+  });
+
+  it('getAdminTeams returns empty array when data absent', async () => {
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
+    }));
+    const api = await import('./tournamentApi');
+    expect(await api.getAdminTeams('t1')).toEqual([]);
+  });
+
+  it('getAdminGroups fetches groups for a tournament', async () => {
+    adminFetch.mockResolvedValueOnce(okJson([{ id: 'g1', label: 'U9' }]));
+    const api = await import('./tournamentApi');
+    const result = await api.getAdminGroups('t1');
+    expect(adminFetch).toHaveBeenCalledWith('/admin/groups?tournamentId=t1');
+    expect(result).toEqual([{ id: 'g1', label: 'U9' }]);
+  });
+
+  it('getAdminGroups returns empty array when data absent', async () => {
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
+    }));
+    const api = await import('./tournamentApi');
+    expect(await api.getAdminGroups('t1')).toEqual([]);
+  });
+
+  it('getUnscoredFixtures fetches unscored fixtures', async () => {
+    const serverTime = new Date().toISOString();
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ ok: true, data: [{ fixture_id: 'f1' }], server_time: serverTime }),
+    }));
+    const api = await import('./tournamentApi');
+    const result = await api.getUnscoredFixtures('t1');
+    expect(adminFetch).toHaveBeenCalledWith('/admin/unscored-fixtures?tournamentId=t1');
+    expect(result).toEqual({ fixtures: [{ fixture_id: 'f1' }], serverTime });
+  });
+
+  it('getUnscoredFixtures returns empty fixtures when data absent', async () => {
+    adminFetch.mockResolvedValueOnce(Promise.resolve({
+      ok: true, status: 200, json: () => Promise.resolve({ ok: true }),
+    }));
+    const api = await import('./tournamentApi');
+    const result = await api.getUnscoredFixtures('t1');
+    expect(result).toEqual({ fixtures: [], serverTime: undefined });
+  });
 });

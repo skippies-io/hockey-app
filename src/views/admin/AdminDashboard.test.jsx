@@ -60,7 +60,7 @@ describe('AdminDashboard', () => {
 
   it('renders the Dashboard heading', () => {
     renderDashboard();
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeInTheDocument();
   });
 
   // Widget 1
