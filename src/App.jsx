@@ -38,6 +38,8 @@ import AdminLogin from "./views/admin/AdminLogin";
 import AdminLoginCallback from "./views/admin/AdminLoginCallback";
 import AnnouncementsPage from "./views/admin/AnnouncementsPage";
 import TournamentWizard from "./views/admin/TournamentWizard";
+import AdminTournamentsPage from "./views/admin/AdminTournamentsPage";
+import AdminDashboard from "./views/admin/AdminDashboard";
 import FixturesPage from "./views/admin/FixturesPage";
 import TechDesk from "./views/admin/TechDesk";
 import VenuesPage from "./views/admin/VenuesPage";
@@ -528,16 +530,9 @@ export default function App() {
           {/* Protected admin routes */}
           <Route element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
-              <Route
-                index
-                element={
-                  <div style={{ padding: '2rem' }}>
-                    <h1>Admin Dashboard</h1>
-                    <p>Welcome to the Hockey Admin Console.</p>
-                  </div>
-                }
-              />
-              <Route path="tournaments" element={<TournamentWizard />} />
+              <Route index element={<AdminDashboard />} />
+              <Route path="tournaments" element={<AdminTournamentsPage />} />
+              <Route path="tournaments/new" element={<TournamentWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="venues/*" element={<VenuesPage />} />
               <Route path="franchises" element={<FranchisesPage />} />
