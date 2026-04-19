@@ -75,7 +75,7 @@ export default function AdminTeamsPage() {
     return map;
   }, [teams]);
 
-  const divisions = useMemo(() => [...grouped.keys()].sort(), [grouped]);
+  const divisions = useMemo(() => [...grouped.keys()].sort((a, b) => a.localeCompare(b)), [grouped]);
 
   const filteredGrouped = useMemo(() => {
     if (!divisionFilter) return grouped;
