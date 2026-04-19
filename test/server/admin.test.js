@@ -1638,6 +1638,80 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    // ── /groups endpoint ─────────────────────────────────────────────────────
+
+    it('GET /groups returns groups with team and fixture counts', async () => {
+        const url = new URL('http://localhost/api/admin/groups?tournamentId=t1');
+        const rows = [
+            { id: 'g1', label: 'U9', team_count: '4', fixture_count: '6' },
+        ];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: rows })
+        );
+    });
+
+    it('GET /groups returns 400 when tournamentId missing', async () => {
+        const url = new URL('http://localhost/api/admin/groups');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('tournamentId') })
+        );
+    });
+
+    it('GET /groups returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/groups?tournamentId=t1');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /groups returns 405 for non-GET', async () => {
+        const url = new URL('http://localhost/api/admin/groups?tournamentId=t1');
+        mockReq.method = 'POST';
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405, expect.objectContaining({ ok: false }));
+    });
+
+    // ── /unscored-fixtures endpoint ───────────────────────────────────────────
+
+    it('GET /unscored-fixtures returns past unscored fixtures', async () => {
+        const url = new URL('http://localhost/api/admin/unscored-fixtures?tournamentId=t1');
+        const rows = [
+            { fixture_id: 'f1', group_id: 'g1', date: '2024-03-01', time: '10:00', team1: 'Alpha', team2: 'Beta' },
+        ];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: rows, server_time: expect.any(String) })
+        );
+    });
+
+    it('GET /unscored-fixtures returns 400 when tournamentId missing', async () => {
+        const url = new URL('http://localhost/api/admin/unscored-fixtures');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('tournamentId') })
+        );
+    });
+
+    it('GET /unscored-fixtures returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/unscored-fixtures?tournamentId=t1');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /unscored-fixtures returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/unscored-fixtures?tournamentId=t1');
+        mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({ ok: false }));
+    });
+
     // ── /tournament-exists endpoint ──────────────────────────────────────────
 
     it('GET /tournament-exists returns exists:false when tournament not found', async () => {

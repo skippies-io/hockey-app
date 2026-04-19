@@ -17,6 +17,30 @@ export async function getAdminTournaments({ activeOnly = false } = {}) {
   return json.data || [];
 }
 
+export async function getAdminAnnouncements() {
+  const res = await adminFetch(`/admin/announcements`);
+  const json = await parseJson(res);
+  return json.data || [];
+}
+
+export async function getAdminTeams(tournamentId) {
+  const res = await adminFetch(`/admin/teams?tournamentId=${encodeURIComponent(tournamentId)}`);
+  const json = await parseJson(res);
+  return json.data || [];
+}
+
+export async function getAdminGroups(tournamentId) {
+  const res = await adminFetch(`/admin/groups?tournamentId=${encodeURIComponent(tournamentId)}`);
+  const json = await parseJson(res);
+  return json.data || [];
+}
+
+export async function getUnscoredFixtures(tournamentId) {
+  const res = await adminFetch(`/admin/unscored-fixtures?tournamentId=${encodeURIComponent(tournamentId)}`);
+  const json = await parseJson(res);
+  return { fixtures: json.data || [], serverTime: json.server_time };
+}
+
 export async function setTournamentActive(id, isActive) {
   const res = await adminFetch(`${endpoint()}/${id}`, {
     method: 'PATCH',

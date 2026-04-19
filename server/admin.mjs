@@ -579,6 +579,71 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
     }
   }
 
+  // GET /api/admin/groups?tournamentId=X
+  // Returns groups for a tournament with their team counts (non-placeholder only).
+  if (path === "/groups") {
+    if (method !== "GET") return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+    if (!tournamentId) return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    try {
+      const result = await pool.query(
+        `SELECT g.id, g.label,
+                COUNT(t.id) FILTER (WHERE t.is_placeholder = false) AS team_count,
+                COUNT(f.id) AS fixture_count
+         FROM groups g
+         LEFT JOIN team t ON t.group_id = g.id AND t.tournament_id = g.tournament_id
+         LEFT JOIN fixture f ON f.group_id = g.id AND f.tournament_id = g.tournament_id
+         WHERE g.tournament_id = $1
+         GROUP BY g.id, g.label
+         ORDER BY g.label`,
+        [tournamentId]
+      );
+      return sendJson(req, res, 200, { ok: true, data: result.rows });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
+  // GET /api/admin/unscored-fixtures?tournamentId=X
+  // Returns fixtures whose scheduled date+time has passed (server NOW()) and have no scores entered.
+  if (path === "/unscored-fixtures") {
+    if (method !== "GET") return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+    const tournamentId = normalizeSpaces(url.searchParams.get("tournamentId"));
+    if (!tournamentId) return sendJson(req, res, 400, { ok: false, error: "tournamentId is required" });
+    try {
+      const result = await pool.query(
+        `SELECT
+           f.id AS fixture_id,
+           f.group_id,
+           to_char(f.date, 'YYYY-MM-DD') AS date,
+           f.time,
+           t1.name AS team1,
+           t2.name AS team2
+         FROM fixture f
+         JOIN team t1 ON t1.tournament_id = f.tournament_id AND t1.id = f.team1_id
+         JOIN team t2 ON t2.tournament_id = f.tournament_id AND t2.id = f.team2_id
+         LEFT JOIN result r ON r.tournament_id = f.tournament_id AND r.fixture_id = f.id
+         WHERE f.tournament_id = $1
+           AND t1.is_placeholder = false AND t2.is_placeholder = false
+           AND (f.date::timestamp + f.time::time) < NOW()
+           AND (r.score1 IS NULL AND r.score2 IS NULL)
+         ORDER BY f.date DESC, f.time DESC`,
+        [tournamentId]
+      );
+      return sendJson(req, res, 200, {
+        ok: true,
+        data: result.rows,
+        server_time: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Admin API Error:", err);
+      return sendJson(req, res, 500, { ok: false, error: err.message });
+    }
+  }
+
   if (path === "/divisions") {
     if (method !== "GET") {
       return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
