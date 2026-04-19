@@ -59,7 +59,6 @@ export default function AdminLogin() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(e); } }}
             autoComplete="email"
             placeholder="you@example.com"
             style={{
