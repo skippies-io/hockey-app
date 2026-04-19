@@ -1515,6 +1515,129 @@ describe('handleAdminRequest', () => {
         );
     });
 
+    // ── /tournaments admin endpoint ──────────────────────────────────────────
+
+    it('GET /tournaments returns all tournaments', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments');
+        const rows = [
+            { id: 't1', name: 'Spring Cup', season: '2024-25', is_active: true, logo_url: null, created_at: '2024-01-01' },
+            { id: 't2', name: 'Fall Classic', season: '2023-24', is_active: false, logo_url: null, created_at: '2023-01-01' },
+        ];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: rows })
+        );
+    });
+
+    it('GET /tournaments?active=true returns only active tournaments', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments?active=true');
+        const rows = [{ id: 't1', name: 'Spring Cup', season: '2024-25', is_active: true, logo_url: null, created_at: '2024-01-01' }];
+        mockPool.query.mockResolvedValueOnce({ rows });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE is_active = true'));
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: rows })
+        );
+    });
+
+    it('GET /tournaments returns 501 when DB not configured', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments');
+        await handleAdminRequest(mockReq, mockRes, { url, pool: null, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 501, expect.objectContaining({ ok: false }));
+    });
+
+    it('GET /tournaments returns 500 on DB error', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments');
+        mockPool.query.mockRejectedValueOnce(new Error('DB down'));
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 500, expect.objectContaining({ ok: false }));
+    });
+
+    it('PATCH /tournaments/:id sets is_active to false', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments/t1');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ is_active: false })));
+            if (event === 'end') cb();
+        });
+        mockPool.query.mockResolvedValueOnce({
+            rows: [{ id: 't1', name: 'Spring Cup', season: '2024-25', is_active: false, logo_url: null }],
+            rowCount: 1,
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'admin@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ is_active: false }) })
+        );
+    });
+
+    it('PATCH /tournaments/:id sets is_active to true', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments/t2');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ is_active: true })));
+            if (event === 'end') cb();
+        });
+        mockPool.query.mockResolvedValueOnce({
+            rows: [{ id: 't2', name: 'Fall Classic', season: '2023-24', is_active: true, logo_url: null }],
+            rowCount: 1,
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson, caches: { actorEmail: 'admin@example.com' } });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 200,
+            expect.objectContaining({ ok: true, data: expect.objectContaining({ is_active: true }) })
+        );
+    });
+
+    it('PATCH /tournaments/:id returns 400 when is_active not boolean', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments/t1');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ is_active: 'yes' })));
+            if (event === 'end') cb();
+        });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 400,
+            expect.objectContaining({ ok: false, error: expect.stringContaining('is_active') })
+        );
+    });
+
+    it('PATCH /tournaments/:id returns 404 when tournament not found', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments/missing');
+        mockReq.method = 'PATCH';
+        mockReq.on = vi.fn((event, cb) => {
+            if (event === 'data') cb(Buffer.from(JSON.stringify({ is_active: false })));
+            if (event === 'end') cb();
+        });
+        mockPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 404,
+            expect.objectContaining({ ok: false, error: 'Tournament not found' })
+        );
+    });
+
+    it('PATCH /tournaments/:id returns 405 for unsupported method', async () => {
+        const url = new URL('http://localhost/api/admin/tournaments/t1');
+        mockReq.method = 'DELETE';
+
+        await handleAdminRequest(mockReq, mockRes, { url, pool: mockPool, sendJson: mockSendJson });
+
+        expect(mockSendJson).toHaveBeenCalledWith(mockReq, mockRes, 405,
+            expect.objectContaining({ ok: false })
+        );
+    });
+
     // ── /tournament-exists endpoint ──────────────────────────────────────────
 
     it('GET /tournament-exists returns exists:false when tournament not found', async () => {

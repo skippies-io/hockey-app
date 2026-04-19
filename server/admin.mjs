@@ -509,6 +509,60 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
   // CORS headers for admin (if needed specifically, though index.mjs handles it generally, 
   // we might need to ensure OPTIONS passes through or headers conform)
 
+  // GET  /api/admin/tournaments          — list all tournaments (optional ?active=true filter)
+  // PATCH /api/admin/tournaments/:id     — update is_active flag
+  if (path === "/tournaments" || path.startsWith("/tournaments/")) {
+    if (!pool) return sendJson(req, res, 501, { ok: false, error: "DB not configured" });
+
+    // GET /api/admin/tournaments
+    if (path === "/tournaments" && method === "GET") {
+      try {
+        const activeOnly = url.searchParams.get("active") === "true";
+        const result = await pool.query(
+          `SELECT id, name, season, is_active, logo_url, created_at
+           FROM tournament
+           ${activeOnly ? "WHERE is_active = true" : ""}
+           ORDER BY is_active DESC, created_at DESC`
+        );
+        return sendJson(req, res, 200, { ok: true, data: result.rows });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    // PATCH /api/admin/tournaments/:id
+    const tournamentMatch = path.match(/^\/tournaments\/([^/]+)$/);
+    if (tournamentMatch && method === "PATCH") {
+      const id = tournamentMatch[1];
+      try {
+        const body = await readBody(req);
+        if (!body || typeof body.is_active !== "boolean") {
+          return sendJson(req, res, 400, { ok: false, error: "is_active (boolean) is required" });
+        }
+        const result = await pool.query(
+          `UPDATE tournament SET is_active = $2 WHERE id = $1
+           RETURNING id, name, season, is_active, logo_url`,
+          [id, body.is_active]
+        );
+        if (result.rowCount === 0) {
+          return sendJson(req, res, 404, { ok: false, error: "Tournament not found" });
+        }
+        logAudit("tournament.update_active", {
+          entity_type: "tournament",
+          entity_id: id,
+          meta: { is_active: body.is_active },
+        });
+        return sendJson(req, res, 200, { ok: true, data: result.rows[0] });
+      } catch (err) {
+        console.error("Admin API Error:", err);
+        return sendJson(req, res, 500, { ok: false, error: err.message });
+      }
+    }
+
+    return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
+  }
+
   if (path === "/tournament-exists") {
     if (method !== "GET") {
       return sendJson(req, res, 405, { ok: false, error: "Method not allowed" });
