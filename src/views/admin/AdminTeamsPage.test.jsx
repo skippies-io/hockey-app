@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import * as api from '../../lib/api';
+import AdminTeamsPage from './AdminTeamsPage';
 
 vi.mock('../../context/TournamentContext', () => ({
   useTournament: () => ({ activeTournament: { id: 't1', name: 'Tournament 1' } }),
@@ -22,10 +24,18 @@ const mockTournaments = [
 ];
 
 const mockTeams = [
-  { id: 'team1', name: 'Alpha', pool: 'A', group_label: 'U11 Boys', group_id: 'U11B', franchise_name: 'Sharks' },
-  { id: 'team2', name: 'Beta', pool: 'A', group_label: 'U11 Boys', group_id: 'U11B', franchise_name: null },
-  { id: 'team3', name: 'Gamma', pool: 'B', group_label: 'U13 Girls', group_id: 'U13G', franchise_name: 'Eagles' },
+  { id: 'team1', name: 'Alpha', pool: 'A', group_label: 'U11 Boys', group_id: 'U11B', franchise_name: 'Sharks', franchise_dir_id: 'fd1' },
+  { id: 'team2', name: 'Beta', pool: 'A', group_label: 'U11 Boys', group_id: 'U11B', franchise_name: null, franchise_dir_id: null },
+  { id: 'team3', name: 'Gamma', pool: 'B', group_label: 'U13 Girls', group_id: 'U13G', franchise_name: 'Eagles', franchise_dir_id: 'fd2' },
 ];
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/admin/teams']}>
+      <AdminTeamsPage />
+    </MemoryRouter>
+  );
+}
 
 describe('AdminTeamsPage', () => {
   beforeEach(() => {
@@ -43,18 +53,21 @@ describe('AdminTeamsPage', () => {
   });
 
   it('renders the tournament selector', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
-
+    await renderPage();
     await waitFor(() => {
       expect(screen.getByLabelText('Tournament')).toBeInTheDocument();
     });
   });
 
-  it('populates tournament dropdown with options', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+  it('renders the division selector', async () => {
+    await renderPage();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Division')).toBeInTheDocument();
+    });
+  });
 
+  it('populates tournament dropdown with options', async () => {
+    await renderPage();
     await waitFor(() => {
       expect(screen.getByText('Tournament 1')).toBeInTheDocument();
       expect(screen.getByText('Tournament 2')).toBeInTheDocument();
@@ -62,9 +75,7 @@ describe('AdminTeamsPage', () => {
   });
 
   it('defaults to activeTournament on mount', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
-
+    await renderPage();
     await waitFor(() => {
       const select = screen.getByLabelText('Tournament');
       expect(select.value).toBe('t1');
@@ -72,22 +83,49 @@ describe('AdminTeamsPage', () => {
   });
 
   it('loads and displays teams grouped by age group', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
-
+    await renderPage();
     await waitFor(() => {
-      expect(screen.getByText('U11 Boys')).toBeInTheDocument();
-      expect(screen.getByText('U13 Girls')).toBeInTheDocument();
+      expect(screen.getAllByText('U11 Boys').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('U13 Girls').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Alpha')).toBeInTheDocument();
       expect(screen.getByText('Beta')).toBeInTheDocument();
       expect(screen.getByText('Gamma')).toBeInTheDocument();
     });
   });
 
-  it('displays franchise name for teams that have one', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+  it('populates division dropdown from loaded teams', async () => {
+    await renderPage();
+    await waitFor(() => {
+      const divSelect = screen.getByLabelText('Division');
+      const options = [...divSelect.options].map((o) => o.value);
+      expect(options).toContain('U11 Boys');
+      expect(options).toContain('U13 Girls');
+    });
+  });
 
+  it('filters teams by selected division', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Alpha'));
+
+    fireEvent.change(screen.getByLabelText('Division'), { target: { value: 'U11 Boys' } });
+
+    expect(screen.getByText('Alpha')).toBeInTheDocument();
+    expect(screen.getByText('Beta')).toBeInTheDocument();
+    expect(screen.queryByText('Gamma')).not.toBeInTheDocument();
+  });
+
+  it('shows all teams when division filter is cleared', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Alpha'));
+
+    fireEvent.change(screen.getByLabelText('Division'), { target: { value: 'U11 Boys' } });
+    fireEvent.change(screen.getByLabelText('Division'), { target: { value: '' } });
+
+    expect(screen.getByText('Gamma')).toBeInTheDocument();
+  });
+
+  it('displays franchise name for teams that have one', async () => {
+    await renderPage();
     await waitFor(() => {
       expect(screen.getByText('Sharks')).toBeInTheDocument();
       expect(screen.getByText('Eagles')).toBeInTheDocument();
@@ -95,23 +133,43 @@ describe('AdminTeamsPage', () => {
   });
 
   it('shows em-dash for teams without a franchise', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
-
+    await renderPage();
     await waitFor(() => {
-      // Beta has no franchise — should show em-dash in franchise column
       const cells = screen.getAllByText('—');
       expect(cells.length).toBeGreaterThan(0);
     });
   });
 
+  it('franchise name is a link when franchise_dir_id is present', async () => {
+    await renderPage();
+    await waitFor(() => {
+      const sharksLink = screen.getByRole('link', { name: 'Sharks' });
+      expect(sharksLink).toHaveAttribute('href', '/admin/franchises/fd1');
+    });
+  });
+
+  it('franchise name is plain text when franchise_dir_id is absent', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Alpha'));
+    // Beta has no franchise_dir_id — franchise cell shows '—', not a link
+    const links = screen.getAllByRole('link');
+    const franchiseLinks = links.filter((l) => l.getAttribute('href')?.startsWith('/admin/franchises'));
+    expect(franchiseLinks.every((l) => l.textContent !== '—')).toBe(true);
+  });
+
+  it('team name is a link to the public team profile', async () => {
+    await renderPage();
+    await waitFor(() => {
+      const alphaLink = screen.getByRole('link', { name: 'Alpha' });
+      expect(alphaLink.getAttribute('href')).toContain('Alpha');
+    });
+  });
+
   it('shows loading state while fetching teams', async () => {
-    adminFetchMock.mockImplementation(() => new Promise(() => {})); // never resolves
+    adminFetchMock.mockImplementation(() => new Promise(() => {}));
 
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+    await renderPage();
 
-    // Wait for tournament dropdown to populate, then for loading indicator to appear
     await waitFor(() => screen.getByText('Tournament 1'));
     await waitFor(() => expect(screen.getByText('Loading teams…')).toBeInTheDocument());
   });
@@ -122,8 +180,7 @@ describe('AdminTeamsPage', () => {
       json: () => Promise.resolve({ ok: true, data: [] }),
     });
 
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+    await renderPage();
 
     await waitFor(() => {
       expect(screen.getByText(/No teams found/)).toBeInTheDocument();
@@ -137,8 +194,7 @@ describe('AdminTeamsPage', () => {
       json: () => Promise.resolve({ ok: false, error: 'DB error' }),
     });
 
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+    await renderPage();
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -147,13 +203,10 @@ describe('AdminTeamsPage', () => {
   });
 
   it('reloads teams when tournament selection changes', async () => {
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+    await renderPage();
 
-    // Wait for initial load
     await waitFor(() => screen.getByText('Alpha'));
 
-    // Change to tournament 2
     const select = screen.getByLabelText('Tournament');
     fireEvent.change(select, { target: { value: 't2' } });
 
@@ -167,8 +220,7 @@ describe('AdminTeamsPage', () => {
   it('shows error when tournament list fails to load', async () => {
     api.getTournaments.mockRejectedValue(new Error('Network error'));
 
-    const { default: AdminTeamsPage } = await import('./AdminTeamsPage');
-    render(<AdminTeamsPage />);
+    await renderPage();
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();

@@ -1488,10 +1488,12 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         const result = await pool.query(
           `SELECT t.id, t.name,
                   g.label AS group_label, g.id AS group_id,
-                  f.name AS franchise_name
+                  f.name AS franchise_name,
+                  fd.id AS franchise_dir_id
            FROM team t
            JOIN groups g ON g.id = t.group_id AND g.tournament_id = t.tournament_id
            LEFT JOIN franchise f ON f.id = t.franchise_id AND f.tournament_id = t.tournament_id
+           LEFT JOIN franchise_directory fd ON LOWER(fd.name) = LOWER(f.name)
            WHERE t.tournament_id = $1
              AND t.is_placeholder = false
            ORDER BY g.label ASC, t.name ASC`,
