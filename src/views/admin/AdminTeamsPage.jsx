@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { adminFetch } from '../../lib/adminAuth';
 import { getTournaments } from '../../lib/api';
 import { useTournament } from '../../context/TournamentContext';
+import { teamProfilePath } from '../../lib/routes';
 
 export default function AdminTeamsPage() {
   const { activeTournament } = useTournament();
@@ -12,8 +14,8 @@ export default function AdminTeamsPage() {
   const [loadingTournaments, setLoadingTournaments] = useState(true);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [error, setError] = useState('');
+  const [divisionFilter, setDivisionFilter] = useState('');
 
-  // Load tournament list on mount
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -34,7 +36,6 @@ export default function AdminTeamsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load teams whenever selected tournament changes
   useEffect(() => {
     if (!tournamentId) {
       setTeams([]);
@@ -64,7 +65,6 @@ export default function AdminTeamsPage() {
     return () => { alive = false; };
   }, [tournamentId]);
 
-  // Group teams by group_label
   const grouped = useMemo(() => {
     const map = new Map();
     for (const team of teams) {
@@ -74,6 +74,15 @@ export default function AdminTeamsPage() {
     }
     return map;
   }, [teams]);
+
+  const divisions = useMemo(() => [...grouped.keys()].sort((a, b) => a.localeCompare(b)), [grouped]);
+
+  const filteredGrouped = useMemo(() => {
+    if (!divisionFilter) return grouped;
+    const m = new Map();
+    if (grouped.has(divisionFilter)) m.set(divisionFilter, grouped.get(divisionFilter));
+    return m;
+  }, [grouped, divisionFilter]);
 
   return (
     <div>
@@ -103,30 +112,50 @@ export default function AdminTeamsPage() {
         </div>
       )}
 
-      <div style={{ marginBottom: 'var(--hj-space-4)' }}>
-        <label htmlFor="teams-tournament-select" style={{ marginRight: 'var(--hj-space-2)' }}>
-          Tournament:
-        </label>
-        <select
-          id="teams-tournament-select"
-          aria-label="Tournament"
-          value={tournamentId}
-          onChange={(e) => setTournamentId(e.target.value)}
-          disabled={loadingTournaments}
-        >
-          {loadingTournaments ? (
-            <option value="">Loading…</option>
-          ) : (
-            <>
-              <option value="">Select tournament</option>
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name || t.id}
-                </option>
-              ))}
-            </>
-          )}
-        </select>
+      <div style={{ display: 'flex', gap: 'var(--hj-space-4)', marginBottom: 'var(--hj-space-4)', flexWrap: 'wrap' }}>
+        <div>
+          <label htmlFor="teams-tournament-select" style={{ marginRight: 'var(--hj-space-2)' }}>
+            Tournament:
+          </label>
+          <select
+            id="teams-tournament-select"
+            aria-label="Tournament"
+            value={tournamentId}
+            onChange={(e) => setTournamentId(e.target.value)}
+            disabled={loadingTournaments}
+          >
+            {loadingTournaments ? (
+              <option value="">Loading…</option>
+            ) : (
+              <>
+                <option value="">Select tournament</option>
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name || t.id}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="teams-division-select" style={{ marginRight: 'var(--hj-space-2)' }}>
+            Division:
+          </label>
+          <select
+            id="teams-division-select"
+            aria-label="Division"
+            value={divisionFilter}
+            onChange={(e) => setDivisionFilter(e.target.value)}
+            disabled={loadingTeams || divisions.length === 0}
+          >
+            <option value="">All divisions</option>
+            {divisions.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loadingTeams && <div>Loading teams…</div>}
@@ -143,46 +172,23 @@ export default function AdminTeamsPage() {
         </div>
       )}
 
-      {!loadingTeams && grouped.size > 0 && (
+      {!loadingTeams && filteredGrouped.size > 0 && (
         <div>
-          {[...grouped.entries()].map(([groupLabel, groupTeams]) => (
+          {[...filteredGrouped.entries()].map(([groupLabel, groupTeams]) => (
             <div key={groupLabel} style={{ marginBottom: 'var(--hj-space-6)' }}>
               <h2 style={{ marginBottom: 'var(--hj-space-3)', fontSize: '1.1rem' }}>
                 {groupLabel}
               </h2>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                }}
-              >
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--hj-color-border)' }}>
-                    <th
-                      style={{
-                        padding: 'var(--hj-space-3)',
-                        textAlign: 'left',
-                        fontWeight: 'var(--hj-font-weight-bold)',
-                      }}
-                    >
+                    <th style={{ padding: 'var(--hj-space-3)', textAlign: 'left', fontWeight: 'var(--hj-font-weight-bold)' }}>
                       Name
                     </th>
-                    <th
-                      style={{
-                        padding: 'var(--hj-space-3)',
-                        textAlign: 'left',
-                        fontWeight: 'var(--hj-font-weight-bold)',
-                      }}
-                    >
+                    <th style={{ padding: 'var(--hj-space-3)', textAlign: 'left', fontWeight: 'var(--hj-font-weight-bold)' }}>
                       Pool
                     </th>
-                    <th
-                      style={{
-                        padding: 'var(--hj-space-3)',
-                        textAlign: 'left',
-                        fontWeight: 'var(--hj-font-weight-bold)',
-                      }}
-                    >
+                    <th style={{ padding: 'var(--hj-space-3)', textAlign: 'left', fontWeight: 'var(--hj-font-weight-bold)' }}>
                       Franchise
                     </th>
                   </tr>
@@ -193,9 +199,27 @@ export default function AdminTeamsPage() {
                       key={team.id}
                       style={{ borderBottom: '1px solid var(--hj-color-border-subtle)' }}
                     >
-                      <td style={{ padding: 'var(--hj-space-3)' }}>{team.name}</td>
+                      <td style={{ padding: 'var(--hj-space-3)' }}>
+                        <Link
+                          to={teamProfilePath(groupLabel, team.name)}
+                          style={{ color: 'var(--hj-color-brand-primary)', textDecoration: 'none' }}
+                        >
+                          {team.name}
+                        </Link>
+                      </td>
                       <td style={{ padding: 'var(--hj-space-3)' }}>{team.pool || '—'}</td>
-                      <td style={{ padding: 'var(--hj-space-3)' }}>{team.franchise_name || '—'}</td>
+                      <td style={{ padding: 'var(--hj-space-3)' }}>
+                        {team.franchise_dir_id ? (
+                          <Link
+                            to={`/admin/franchises/${team.franchise_dir_id}`}
+                            style={{ color: 'var(--hj-color-brand-primary)', textDecoration: 'none' }}
+                          >
+                            {team.franchise_name}
+                          </Link>
+                        ) : (
+                          team.franchise_name || '—'
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

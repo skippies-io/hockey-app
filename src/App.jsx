@@ -87,6 +87,7 @@ export function TeamsPage({ ageId, ageGroups = [] }) {
   const [err, setErr] = useState(null);
   const { isFollowing, toggleFollow, size: followCount } = useFollows();
   const [onlyFollowing, setOnlyFollowing] = useShowFollowedPreference("teams");
+  const [divisionFilter, setDivisionFilter] = useState("");
   const { activeTournament } = useTournament();
   const tournamentId = activeTournament?.id;
 
@@ -201,8 +202,31 @@ export function TeamsPage({ ageId, ageGroups = [] }) {
   const filterTeams = (list, teamAgeId) =>
     onlyFollowing ? list.filter((t) => isFav(t.name, teamAgeId)) : list;
 
+  const divisionSelect =
+    isAllAges && teams.length > 1 ? (
+      <label className="hj-filter-row" style={{ gap: "var(--hj-space-2)" }}>
+        <span style={{ fontSize: "var(--hj-font-size-sm)", color: "var(--hj-color-ink-muted)", whiteSpace: "nowrap" }}>
+          Division
+        </span>
+        <select
+          aria-label="Filter by division"
+          value={divisionFilter}
+          onChange={(e) => setDivisionFilter(e.target.value)}
+          style={{ fontSize: "var(--hj-font-size-sm)" }}
+        >
+          <option value="">All</option>
+          {teams.map((b) => (
+            <option key={b.ageId} value={b.ageId}>
+              {b.ageLabel}
+            </option>
+          ))}
+        </select>
+      </label>
+    ) : null;
+
   const filterBar = (
     <FilterBar
+      rightSlot={divisionSelect}
       showFavourites={onlyFollowing}
       onToggleFavourites={setOnlyFollowing}
       favouritesCount={followCount}
@@ -239,6 +263,7 @@ export function TeamsPage({ ageId, ageGroups = [] }) {
 
   if (isAllAges) {
     const filteredBuckets = teams
+      .filter((bucket) => !divisionFilter || bucket.ageId === divisionFilter)
       .map((bucket) => ({
         ...bucket,
         teams: filterTeams(bucket.teams || [], bucket.ageId),
