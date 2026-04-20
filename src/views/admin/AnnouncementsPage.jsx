@@ -267,6 +267,34 @@ export default function AnnouncementsPage() {
     }
   }
 
+  async function handleUnpublish(id, e) {
+    e.stopPropagation();
+    try {
+      const announcement = announcements.find(a => a.id === id);
+      if (!announcement) return;
+      const res = await adminFetch(`/admin/announcements/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: announcement.title,
+          body: announcement.body,
+          severity: announcement.severity,
+          tournament_id: announcement.tournament_id || null,
+          is_published: false,
+        }),
+      });
+      if (res.ok) {
+        setAnnouncements(prev =>
+          prev.map(a => a.id === id ? { ...a, is_published: false } : a)
+        );
+      } else {
+        alert(await readErrorMessage(res, "Failed to unpublish."));
+      }
+    } catch (err) {
+      alert(err?.message || "Error unpublishing.");
+    }
+  }
+
   function resetForm() {
     setEditingId(null);
     setFormData({ title: '', body: '', severity: 'info', tournament_id: '' });
@@ -541,14 +569,23 @@ export default function AnnouncementsPage() {
                          role="group"
                          tabIndex={-1}
                        >
-                         <button 
+                         <button
                            onClick={(e) => { e.stopPropagation(); handleClone(a); }}
                            title="Clone / Reuse"
                            style={{ padding: '4px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#6b7280', fontSize: '0.75rem' }}
                          >
                            Clone
                          </button>
-                         <button 
+                         {a.is_published && (
+                           <button
+                             onClick={(e) => handleUnpublish(a.id, e)}
+                             title="Unpublish"
+                             style={{ padding: '4px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#d97706', fontSize: '0.75rem' }}
+                           >
+                             Unpublish
+                           </button>
+                         )}
+                         <button
                            onClick={(e) => handleDelete(a.id, e)}
                            title="Delete"
                            style={{ padding: '4px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', color: '#ef4444' }}
