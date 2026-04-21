@@ -61,6 +61,9 @@ export APPS_SCRIPT_BASE_URL=https://...
 npm run dev:full
 ```
 
+## Agent operating mandate
+Your job is to ensure PRs pass all quality gates and auto-merge. If SonarCloud fails, pull the report and fix every failing condition before re-triggering CI.
+
 ## Non‑negotiables (high impact)
 1) **Verify before proposing changes**
 ```bash
