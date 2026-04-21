@@ -352,6 +352,81 @@ describe('AnnouncementsPage', () => {
     expect(screen.getByPlaceholderText(/headline/i).value).toBe('');
   });
 
+  it('unpublishes an announcement on success', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    const unpublishBtns = screen.getAllByTitle('Unpublish');
+    fireEvent.click(unpublishBtns[0]);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        'http://localhost:8787/api/admin/announcements/1',
+        expect.objectContaining({ method: 'PUT', body: expect.stringContaining('"is_published":false') })
+      );
+    });
+  });
+
+  it('shows alert when unpublish API returns an error', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'PUT') {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ error: 'Unpublish failed' }) });
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    fireEvent.click(screen.getAllByTitle('Unpublish')[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Unpublish failed');
+    });
+  });
+
+  it('marks item as draft in the UI after successful unpublish', async () => {
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    // Pub 1 is published — should have Unpublish button, no Draft badge
+    expect(screen.getAllByTitle('Unpublish').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByTitle('Unpublish')[0]);
+
+    await waitFor(() => {
+      // After unpublish, item is a draft — Unpublish button for item 1 should be gone
+      // (only item 3 / Pub 2 remains published)
+      expect(screen.getAllByTitle('Unpublish').length).toBe(1);
+    });
+  });
+
+  it('shows alert when unpublish request throws a network error', async () => {
+    window.alert = vi.fn();
+    fetch.mockImplementation((url, opt) => {
+      if (opt?.method === 'PUT') {
+        return Promise.reject(new Error('Network error'));
+      }
+      if (url.includes('http://localhost:8787/api/admin/announcements')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: mockAnnouncements }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true, data: [] }) });
+    });
+
+    await renderPage();
+    await waitFor(() => screen.getByText('Pub 1'));
+
+    fireEvent.click(screen.getAllByTitle('Unpublish')[0]);
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Network error');
+    });
+  });
+
   it('supports keyboard navigation for accessibility', async () => {
     await renderPage();
     await waitFor(() => screen.getByText('Pub 1'));
