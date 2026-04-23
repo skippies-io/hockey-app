@@ -69,8 +69,8 @@
   --hj-radius-pill: 999px;
 
   /* ===== Typography ===== */
-  --hj-font-family-sans: system-ui, -apple-system, BlinkMacSystemFont,
-    "SF Pro Text", "Segoe UI", sans-serif;
+  --hj-font-family-sans: "DM Sans", system-ui, -apple-system,
+    BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   --hj-font-size-xs: 12px;
   --hj-font-size-sm: 14px;
