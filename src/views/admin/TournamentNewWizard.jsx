@@ -9,6 +9,165 @@ const STEPS = [
   "Review & Submit",
 ];
 
+const FRANCHISE_COLOUR_ROTATION = [
+  "#2E5BFF",
+  "#22C55E",
+  "#F97316",
+  "#A855F7",
+  "#EF4444",
+  "#06B6D4",
+  "#F59E0B",
+  "#10B981",
+  "#6366F1",
+  "#EC4899",
+];
+
+function normaliseId(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 64);
+}
+
+function Step2Franchises({ value, onChange, onValidityChange }) {
+  const filtered = useMemo(() => {
+    const q = value.query.trim().toLowerCase();
+    if (!q) return value.directory;
+    return value.directory.filter((f) => f.name.toLowerCase().includes(q));
+  }, [value.directory, value.query]);
+
+  const selectedCount = value.selectedIds.length;
+  const isValid = selectedCount >= 2;
+
+  React.useEffect(() => {
+    onValidityChange(isValid);
+  }, [isValid, onValidityChange]);
+
+  const toggle = (id) => {
+    const has = value.selectedIds.includes(id);
+    onChange({
+      ...value,
+      selectedIds: has ? value.selectedIds.filter((x) => x !== id) : [...value.selectedIds, id],
+    });
+  };
+
+  const nextColour = () => {
+    const used = new Set(value.directory.map((f) => f.colour));
+    for (const c of FRANCHISE_COLOUR_ROTATION) {
+      if (!used.has(c)) return c;
+    }
+    return FRANCHISE_COLOUR_ROTATION[value.directory.length % FRANCHISE_COLOUR_ROTATION.length];
+  };
+
+  const addFranchise = () => {
+    const name = value.draftName.trim();
+    if (!name) return;
+    if (value.directory.some((f) => f.name.toLowerCase() === name.toLowerCase())) return;
+
+    const idBase = normaliseId(name) || "franchise";
+    let id = `f-${idBase}`;
+    let i = 2;
+    while (value.directory.some((f) => f.id === id)) {
+      id = `f-${idBase}-${i++}`;
+    }
+
+    const entry = { id, name, colour: nextColour() };
+    onChange({
+      ...value,
+      directory: [...value.directory, entry],
+      selectedIds: [...value.selectedIds, entry.id],
+      draftName: "",
+    });
+  };
+
+  const selected = value.selectedIds
+    .map((id) => value.directory.find((f) => f.id === id))
+    .filter(Boolean);
+
+  return (
+    <section className="hj-tw2-main" aria-label="Step 2 Franchises">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 2 of 5, Franchises</div>
+      </header>
+
+      <div className="hj-tw2-card">
+        <div className="hj-tw2-card-title">Franchises</div>
+
+        <label className="hj-tw2-field">
+          <div className="hj-tw2-label">Search</div>
+          <input
+            className="hj-tw2-input"
+            aria-label="Search franchises"
+            placeholder="Search"
+            value={value.query}
+            onChange={(e) => onChange({ ...value, query: e.target.value })}
+          />
+        </label>
+
+        <div className="hj-tw2-fr-grid" role="list" aria-label="Franchise directory">
+          {filtered.map((f) => {
+            const isSelected = value.selectedIds.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                type="button"
+                role="listitem"
+                className={`hj-tw2-fr-card ${isSelected ? "is-selected" : ""}`}
+                onClick={() => toggle(f.id)}
+                aria-pressed={isSelected}
+              >
+                <span className="hj-tw2-fr-swatch" style={{ background: f.colour }} aria-hidden="true" />
+                <span className="hj-tw2-fr-name">{f.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="hj-tw2-add">
+          <input
+            className="hj-tw2-input"
+            aria-label="Add franchise"
+            placeholder="Add franchise"
+            value={value.draftName}
+            onChange={(e) => onChange({ ...value, draftName: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addFranchise();
+              }
+            }}
+          />
+          <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={addFranchise}>
+            Add
+          </button>
+        </div>
+
+        {!isValid ? <div className="hj-tw2-error">Select at least two franchises</div> : null}
+      </div>
+
+      <div className="hj-tw2-summarybar" role="status" aria-label="Franchises selected summary">
+        <div className="hj-tw2-summarybar-left">
+          <div className="hj-tw2-summarybar-count">{selectedCount} selected</div>
+          <div className="hj-tw2-summarybar-chips" aria-label="Selected franchises">
+            {selected.map((f) => (
+              <span key={f.id} className="hj-tw2-chip" style={{ borderColor: f.colour }}>
+                <span className="hj-tw2-chip-dot" style={{ background: f.colour }} aria-hidden="true" />
+                {f.name}
+              </span>
+            ))}
+          </div>
+        </div>
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--primary" disabled={!isValid}>
+          Save & Continue
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function StepRail({ step }) {
   return (
     <nav className="hj-tw2-stepper" aria-label="Tournament wizard steps">
@@ -72,6 +231,12 @@ function Step1({ value, onChange, onValidityChange }) {
   React.useEffect(() => {
     onValidityChange(isValid);
   }, [isValid, onValidityChange]);
+
+  React.useEffect(() => {
+    if (!isValid) return;
+    if (!value._continue) return;
+    onValidityChange(true);
+  }, [isValid, onValidityChange, value._continue]);
 
   const addVenue = () => {
     const name = value.customVenueDraft.trim();
@@ -444,7 +609,15 @@ function Step1({ value, onChange, onValidityChange }) {
       </div>
 
       <div className="hj-tw2-footer">
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--primary" disabled={!isValid}>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          disabled={!isValid}
+          onClick={() => {
+            if (!isValid) return;
+            onChange({ ...value, _continue: (value._continue || 0) + 1 });
+          }}
+        >
           Next
         </button>
       </div>
@@ -456,6 +629,7 @@ export default function TournamentNewWizard() {
   const [step, setStep] = useState(0);
   const [canProceed, setCanProceed] = useState(false);
   const [step1, setStep1] = useState({
+    _continue: 0,
     name: "",
     season: String(new Date().getFullYear()),
     seasonOptions: [
@@ -486,6 +660,20 @@ export default function TournamentNewWizard() {
     points: { win: 3, draw: 1, loss: 0 },
   });
 
+  const [step2, setStep2] = useState({
+    directory: [
+      { id: "f-beaulieu", name: "Beaulieu College", colour: "#2E5BFF" },
+      { id: "f-stithians", name: "St Stithians", colour: "#22C55E" },
+      { id: "f-kings", name: "King Edward VII", colour: "#F97316" },
+      { id: "f-randpark", name: "Rand Park", colour: "#A855F7" },
+      { id: "f-stdavids", name: "St David's", colour: "#EF4444" },
+      { id: "f-westerford", name: "Westerford", colour: "#06B6D4" },
+    ],
+    selectedIds: [],
+    query: "",
+    draftName: "",
+  });
+
   const activeDivisions = useMemo(() => {
     const next = [];
     for (const age of step1.ageGroups) {
@@ -498,10 +686,21 @@ export default function TournamentNewWizard() {
     return next;
   }, [step1.ageGroups, step1.divisionTable]);
 
+  React.useEffect(() => {
+    if (step !== 0) return;
+    if (step1._continue && canProceed) setStep(1);
+  }, [step, step1._continue, canProceed]);
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
       onChange={setStep1}
+      onValidityChange={setCanProceed}
+    />
+  ) : step === 1 ? (
+    <Step2Franchises
+      value={step2}
+      onChange={setStep2}
       onValidityChange={setCanProceed}
     />
   ) : (
@@ -528,7 +727,7 @@ export default function TournamentNewWizard() {
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
           onClick={() => setStep((s) => Math.min(4, s + 1))}
-          disabled={step === 0 && !canProceed}
+          disabled={!canProceed}
         >
           Next
         </button>

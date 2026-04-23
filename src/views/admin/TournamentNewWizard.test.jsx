@@ -29,4 +29,27 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByRole("checkbox", { name: "U9 Mixed" }));
     expect(next).toBeEnabled();
   });
+
+  it("requires at least two selected franchises on Step 2", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Name"), "HJ Test");
+    await user.type(screen.getByLabelText("Start date"), "2026-05-01");
+    await user.type(screen.getByLabelText("End date"), "2026-05-02");
+    await user.click(screen.getByRole("button", { name: "Beaulieu College" }));
+    await user.click(screen.getByRole("checkbox", { name: "U9 Mixed" }));
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    const save = screen.getByRole("button", { name: "Save & Continue" });
+    expect(save).toBeDisabled();
+
+    const cards = screen.getAllByRole("listitem");
+    await user.click(cards[0]);
+    expect(save).toBeDisabled();
+    await user.click(cards[1]);
+    expect(save).toBeEnabled();
+  });
 });
