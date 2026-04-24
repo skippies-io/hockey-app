@@ -224,6 +224,21 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
   });
 
+  it("does nothing when clicking a locked future step (guard clause)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // On initial render only step 1 is allowed. Step 3 is locked.
+    const step3 = screen.getByRole("button", { name: "Teams & Pools" });
+    expect(step3).toBeDisabled();
+
+    // Clicking a disabled button should not navigate.
+    await user.click(step3);
+
+    // Still on step 1.
+    expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
+  });
+
   it("lets you add an age group via the Add button", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
