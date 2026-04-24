@@ -1,13 +1,91 @@
 .hj-tw2-shell {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
-  gap: var(--hj-space-4);
   padding: var(--hj-space-4);
   max-width: var(--hj-page-max-width);
   margin: 0 auto;
   min-height: calc(100dvh - var(--hj-space-4));
   background: #f1f5f9;
   font-family: var(--hj-font-family-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
+}
+
+.hj-tw2-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--hj-space-4);
+  margin-top: var(--hj-space-3);
+}
+
+.hj-tw2-topstep {
+  background: var(--hj-color-surface);
+  border: 1px solid var(--hj-color-border-subtle);
+  border-radius: var(--hj-radius-md);
+  box-shadow: var(--hj-shadow-sm);
+  padding: var(--hj-space-3);
+}
+
+.hj-tw2-topstep-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-3);
+}
+
+.hj-tw2-topstep-item {
+  position: relative;
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  align-items: center;
+  gap: var(--hj-space-2);
+  min-width: 0;
+}
+
+.hj-tw2-topstep-node {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--hj-radius-pill);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hj-color-border-strong);
+  background: var(--hj-color-surface);
+  color: var(--hj-color-ink);
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-sm);
+  flex: 0 0 auto;
+}
+
+.hj-tw2-topstep-label {
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hj-tw2-topstep-rail {
+  position: absolute;
+  left: calc(26px + var(--hj-space-2));
+  right: -12px;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--hj-color-border-subtle);
+  z-index: 0;
+}
+
+.hj-tw2-topstep-item--current .hj-tw2-topstep-node {
+  border-color: var(--hj-color-brand-strong);
+  background: var(--hj-color-brand-soft);
+}
+
+.hj-tw2-topstep-item--current .hj-tw2-topstep-label {
+  color: var(--hj-color-ink);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.hj-tw2-topstep-item--done .hj-tw2-topstep-node {
+  border-color: var(--hj-color-success);
+  background: var(--hj-color-success-soft);
+  color: var(--hj-color-success-ink);
 }
 
 .hj-tw2-stepper {
