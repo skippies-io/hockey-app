@@ -961,6 +961,33 @@ export default function TournamentNewWizard() {
         </button>
       </div>
     </section>
+  ) : step === 3 ? (
+    <section className="hj-tw2-main" aria-label="Step 4 Fixtures & Time Slots">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 4 of 5, Fixtures & Time Slots</div>
+      </header>
+
+      <div className="hj-tw2-card">
+        <div className="hj-tw2-card-title">Fixtures & Time Slots</div>
+        <div style={{ color: "var(--hj-color-ink-muted)" }}>
+          Step 4 will be implemented next.
+        </div>
+      </div>
+
+      <div className="hj-tw2-footer">
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--ghost"
+          onClick={() => setStep(2)}
+        >
+          Back
+        </button>
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--primary" disabled>
+          Save & Continue
+        </button>
+      </div>
+    </section>
   ) : (
     <section className="hj-tw2-main">
       <header className="hj-tw2-header">
