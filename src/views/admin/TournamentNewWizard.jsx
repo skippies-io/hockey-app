@@ -149,7 +149,15 @@ function Step2Franchises({ value, onChange, onValidityChange }) {
             ))}
           </div>
         </div>
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--primary" disabled={!isValid}>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          onClick={() => {
+            if (!isValid) return;
+            onChange({ ...value, _continue: (value._continue || 0) + 1 });
+          }}
+          disabled={!isValid}
+        >
           Save & Continue
         </button>
       </div>
@@ -163,6 +171,7 @@ Step2Franchises.propTypes = {
     selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
     query: PropTypes.string.isRequired,
     draftName: PropTypes.string.isRequired,
+    _continue: PropTypes.number,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
@@ -744,6 +753,11 @@ export default function TournamentNewWizard() {
     draftName: "",
   });
 
+  const [step3, setStep3] = useState({
+    teamNameDraft: "",
+    teams: [],
+  });
+
   const activeDivisions = useMemo(() => {
     const next = [];
     for (const age of step1.ageGroups) {
@@ -770,6 +784,14 @@ export default function TournamentNewWizard() {
     mainRef.current.scrollTop = 0;
   }, [step]);
 
+  React.useEffect(() => {
+    if (step === 0) return;
+    if (step === 1) return;
+    if (step === 2) {
+      setCanProceed(step3.teams.length >= 2);
+    }
+  }, [step, step3.teams.length]);
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
@@ -780,8 +802,96 @@ export default function TournamentNewWizard() {
     <Step2Franchises
       value={step2}
       onChange={setStep2}
-      onValidityChange={setCanProceed}
+      onValidityChange={(isValid) => {
+        setCanProceed(isValid);
+        if (isValid && step2._continue) setStep(2);
+      }}
     />
+  ) : step === 2 ? (
+    <section className="hj-tw2-main" aria-label="Step 3 Teams & Pools">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 3 of 5, Teams & Pools</div>
+      </header>
+
+      <div className="hj-tw2-card">
+        <div className="hj-tw2-card-title">Teams</div>
+        <div className="hj-tw2-row">
+          <label className="hj-tw2-label" htmlFor="tw2-team-name">
+            Add team
+          </label>
+          <div className="hj-tw2-row-inline">
+            <input
+              id="tw2-team-name"
+              className="hj-tw2-input"
+              value={step3.teamNameDraft}
+              placeholder="Team name"
+              onChange={(e) =>
+                setStep3((s) => ({
+                  ...s,
+                  teamNameDraft: e.target.value,
+                }))
+              }
+            />
+            <button
+              type="button"
+              className="hj-tw2-btn"
+              onClick={() => {
+                const name = step3.teamNameDraft.trim();
+                if (!name) return;
+                setStep3((s) => ({
+                  ...s,
+                  teams: [...s.teams, { id: `t-${s.teams.length + 1}`, name }],
+                  teamNameDraft: "",
+                }));
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        {step3.teams.length ? (
+          <ul className="hj-tw2-list" aria-label="Teams list">
+            {step3.teams.map((t) => (
+              <li key={t.id} className="hj-tw2-list-item">
+                {t.name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="hj-tw2-empty">No teams added yet.</div>
+        )}
+      </div>
+
+      <div className="hj-tw2-card">
+        <div className="hj-tw2-card-title">Pools</div>
+        <div style={{ color: "var(--hj-color-ink-muted)" }}>
+          Pool assignment will be implemented next.
+        </div>
+      </div>
+
+      <div className="hj-tw2-footer">
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--ghost"
+          onClick={() => setStep(1)}
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          onClick={() => {
+            setStep(3);
+            setCanProceed(false);
+          }}
+          disabled={!canProceed}
+        >
+          Save & Continue
+        </button>
+      </div>
+    </section>
   ) : (
     <section className="hj-tw2-main">
       <header className="hj-tw2-header">
