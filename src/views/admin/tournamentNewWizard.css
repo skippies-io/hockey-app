@@ -61,6 +61,16 @@
   opacity: 0.6;
 }
 
+.hj-tw2-topstep-item.is-locked .hj-tw2-topstep-node {
+  border-color: var(--hj-color-border-subtle);
+  background: var(--hj-color-surface);
+  color: var(--hj-color-ink-muted);
+}
+
+.hj-tw2-topstep-item.is-locked .hj-tw2-topstep-rail {
+  background: var(--hj-color-border-subtle);
+}
+
 .hj-tw2-topstep-item:focus-visible {
   outline: 2px solid var(--hj-color-brand-strong);
   outline-offset: 3px;
