@@ -211,6 +211,19 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
   });
 
+  it("does not allow navigating to future steps via the stepper", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // Step 5 should be locked until we've progressed.
+    const review = screen.getByRole("button", { name: "Review & Submit" });
+    expect(review).toBeDisabled();
+
+    await user.click(review);
+    // Still on step 1
+    expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
+  });
+
   it("clamps points stepper interactions to a minimum of 0 for win/draw/loss", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
