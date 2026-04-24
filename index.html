@@ -33,9 +33,64 @@
     <!-- Fonts (DM Sans) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!--
+      Sonar hotspot Web:S5725 (SRI): add integrity for the Google Fonts stylesheet,
+      and preload the exact font binaries with integrity so tampering would fail.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap"
+      integrity="sha384-5lkXJWn3wXUQpDGxS/7OgHyHOqaH9o20hI6HHU6yL8OscNe4H3HBouX02QYbBVU0"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAopxhTg.ttf"
+      integrity="sha384-g31yWOJXkjgSNNTmvpv5K/qOcmFYwqeZLonmefbAFwpiF5DN/wIQZEqUCNvGgOCZ"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAkJxhTg.ttf"
+      integrity="sha384-luDc0ewkcU5yrSt2CQJ3/GqXnFJWDZKvpskHp7EwGwfwmUj4DsgwwrrJDYQfGo1i"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAfJthTg.ttf"
+      integrity="sha384-ooc2T0hgysxsceCxzIU0JVgrGOSceRN2qzUaAKIHS85HHfjsgT/FaTBy8+2FUDaO"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwARZthTg.ttf"
+      integrity="sha384-S5Ra+ViZtHa8HZHqiCYgYuZCYo8MhfiIDdu8J+ikUq7WjQnXVBisycT+T6oZspty"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAIpthTg.ttf"
+      integrity="sha384-iXOz7APJA4uJarrPF/BDlacNnN81thQTcJo/TCfDIcIdzrKgZ6W/+fDWSRiSyk3a"
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/ttf"
+      crossorigin
+      href="https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAC5thTg.ttf"
+      integrity="sha384-KjyBcEfyAflBt+BZ0+FCsrR85SPHo7SKNJrpkR0fdYAZq8494afcaKASetI1IcRA"
     />
 
     <!-- Google tag (gtag.js) -->
