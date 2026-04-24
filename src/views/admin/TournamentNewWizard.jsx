@@ -818,6 +818,11 @@ export default function TournamentNewWizard() {
     }
   }, [step, step3.teams.length, poolState.poolCount, poolState.poolNames, poolState.pools]);
 
+  const isStep3PoolInvalid =
+    step3.teams.length >= 2 &&
+    poolState.poolCount >= 2 &&
+    poolState.poolNames.some((p) => poolState.pools[p].length === 0);
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
@@ -939,8 +944,7 @@ export default function TournamentNewWizard() {
           ))}
         </div>
 
-        {step3.teams.length >= 2 && poolState.poolCount >= 2 &&
-        poolState.poolNames.some((p) => poolState.pools[p].length === 0) ? (
+        {isStep3PoolInvalid ? (
           <div className="hj-tw2-error">Each pool must have at least one team</div>
         ) : null}
       </div>
