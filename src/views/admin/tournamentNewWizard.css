@@ -594,8 +594,8 @@
 }
 
 .hj-tw2-sidebar-card {
-  background: var(--hj-color-surface);
-  border: 1px solid var(--hj-color-border-subtle);
+  background: #0b1f3a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--hj-radius-md);
   padding: var(--hj-space-3);
   box-shadow: var(--hj-shadow-sm);
@@ -604,6 +604,7 @@
 }
 
 .hj-tw2-sidebar-title {
+  color: rgba(255, 255, 255, 0.92);
   font-weight: var(--hj-font-weight-semibold);
   margin-bottom: var(--hj-space-2);
 }
@@ -616,13 +617,13 @@
 
 .hj-tw2-sidebar-dl dt {
   font-size: var(--hj-font-size-xs);
-  color: var(--hj-color-ink-muted);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .hj-tw2-sidebar-dl dd {
   margin: 0;
   font-size: var(--hj-font-size-sm);
-  color: var(--hj-color-ink);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 @media (max-width: 1100px) {
