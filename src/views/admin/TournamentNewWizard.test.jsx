@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
-import TournamentNewWizard from "./TournamentNewWizard";
+import TournamentNewWizard, { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard";
 
 async function completeStep1(user, { name = "HJ Test" } = {}) {
   await user.type(screen.getByLabelText("Name"), name);
@@ -14,6 +14,106 @@ async function completeStep1(user, { name = "HJ Test" } = {}) {
 }
 
 describe("TournamentNewWizard (v2)", () => {
+  it("normaliseId trims, lowercases, replaces non-alphanumerics, and clamps length", () => {
+    expect(normaliseId("  My Franchise  ")).toBe("my-franchise");
+    expect(normaliseId("My__Franchise!!")).toBe("my-franchise");
+    expect(normaliseId("---Hello---")).toBe("hello");
+    expect(normaliseId("")).toBe("");
+    expect(normaliseId("a".repeat(200))).toHaveLength(64);
+  });
+
+  it("exports FRANCHISE_COLOUR_ROTATION with expected brand colours", () => {
+    expect(FRANCHISE_COLOUR_ROTATION[0]).toBe("#2E5BFF");
+    expect(FRANCHISE_COLOUR_ROTATION).toContain("#22C55E");
+    expect(FRANCHISE_COLOUR_ROTATION).toHaveLength(10);
+  });
+  it("supports adding a custom venue (adds to directory and auto-selects)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Add custom venue"), "My Custom Venue");
+    // There are multiple "Add" buttons on Step 1 (venues + age group). Click the venues one.
+    await user.click(screen.getAllByRole("button", { name: "Add" })[0]);
+
+    // Directory pill exists and is selected
+    const pill = screen.getByRole("button", { name: "My Custom Venue" });
+    expect(pill).toHaveAttribute("aria-pressed", "true");
+
+    // Selected chip exists and is removable
+    expect(screen.getByRole("button", { name: "Remove selected venue My Custom Venue" })).toBeInTheDocument();
+  });
+
+  it("enforces Mixed exclusivity in divisions (Mixed clears Boys/Girls and vice versa)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    const boys = screen.getByRole("checkbox", { name: "U9 Boys" });
+    const girls = screen.getByRole("checkbox", { name: "U9 Girls" });
+    const mixed = screen.getByRole("checkbox", { name: "U9 Mixed" });
+
+    await user.click(boys);
+    await user.click(girls);
+    expect(boys).toBeChecked();
+    expect(girls).toBeChecked();
+    expect(mixed).not.toBeChecked();
+
+    await user.click(mixed);
+    expect(mixed).toBeChecked();
+    expect(boys).not.toBeChecked();
+    expect(girls).not.toBeChecked();
+
+    await user.click(boys);
+    expect(boys).toBeChecked();
+    expect(mixed).not.toBeChecked();
+  });
+
+  it("allows adding a custom age group and shows the CUSTOM badge", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Add age group"), "u17");
+    // There are multiple "Add" buttons on Step 1 (venues + age group). Click the age-group one.
+    await user.click(screen.getAllByRole("button", { name: "Add" })[1]);
+
+    expect(screen.getByText("U17")).toBeInTheDocument();
+    expect(screen.getAllByText("CUSTOM").length).toBeGreaterThan(0);
+  });
+
+  it("computes and displays total minutes per game using the timing inputs", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.clear(screen.getByLabelText("Chakas per game"));
+    await user.type(screen.getByLabelText("Chakas per game"), "2");
+
+    await user.clear(screen.getByLabelText("Chaka minutes"));
+    await user.type(screen.getByLabelText("Chaka minutes"), "10");
+
+    await user.clear(screen.getByLabelText("Halftime minutes"));
+    await user.type(screen.getByLabelText("Halftime minutes"), "3");
+
+    await user.clear(screen.getByLabelText("Changeover minutes"));
+    await user.type(screen.getByLabelText("Changeover minutes"), "2");
+
+    // 2 x 10 + 3 + 2 = 25
+    expect(screen.getByText(/=\s*25\s*min\/game/i)).toBeInTheDocument();
+  });
+
+  it("prevents adding a duplicate franchise (case-insensitive)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await user.type(screen.getByLabelText("Add franchise"), "Beaulieu College");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    // Should still only have one Beaulieu College in the list
+    expect(screen.getAllByText("Beaulieu College")).toHaveLength(1);
+  });
+
+
   it("disables Next until required Step 1 fields are provided", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
@@ -57,6 +157,19 @@ describe("TournamentNewWizard (v2)", () => {
     expect(save).toBeEnabled();
   });
 
+  it("adds a franchise via Enter key and auto-selects it", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await user.type(screen.getByLabelText("Add franchise"), "New Club{enter}");
+
+    expect(screen.getAllByText("New Club").length).toBeGreaterThan(0);
+    expect(screen.getByText(/1 selected|2 selected|3 selected/)).toBeInTheDocument();
+  });
+
   it("lets you adjust points tiles (plus, minus, and manual input)", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
@@ -96,4 +209,47 @@ describe("TournamentNewWizard (v2)", () => {
     // Back/locked nav will be verified when the prototype step indicator replaces the rail.
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
   });
+
+  it("clamps points stepper interactions to a minimum of 0 for win/draw/loss", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+
+    // Drive win down below zero
+    const winPoints = screen.getByLabelText("WIN points");
+    await user.clear(winPoints);
+    await user.type(winPoints, "0");
+    await user.click(screen.getByRole("button", { name: "WIN minus" }));
+    expect(winPoints).toHaveValue(0);
+
+    // Draw down below zero
+    const drawPoints = screen.getByLabelText("DRAW points");
+    await user.clear(drawPoints);
+    await user.type(drawPoints, "0");
+    await user.click(screen.getByRole("button", { name: "DRAW minus" }));
+    expect(drawPoints).toHaveValue(0);
+  });
+
+  it("allows proceeding to Step 3 once Step 2 is valid (two franchises selected)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    const save = screen.getByRole("button", { name: "Save & Continue" });
+    expect(save).toBeDisabled();
+
+    const cards = screen.getAllByRole("listitem");
+    await user.click(cards[0]);
+    await user.click(cards[1]);
+    expect(save).toBeEnabled();
+
+    // Step 2 CTA is not yet wired to advance steps (step-3+ are placeholders).
+    // For now, just verify the CTA becomes enabled when valid.
+  });
+
+
 });

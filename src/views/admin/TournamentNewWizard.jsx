@@ -10,7 +10,7 @@ const STEPS = [
   "Review & Submit",
 ];
 
-const FRANCHISE_COLOUR_ROTATION = [
+export const FRANCHISE_COLOUR_ROTATION = [
   "#2E5BFF",
   "#22C55E",
   "#F97316",
@@ -23,7 +23,7 @@ const FRANCHISE_COLOUR_ROTATION = [
   "#EC4899",
 ];
 
-function normaliseId(name) {
+export function normaliseId(name) {
   return String(name || "")
     .trim()
     .toLowerCase()
