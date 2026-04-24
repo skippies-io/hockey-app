@@ -61,6 +61,16 @@
   opacity: 0.6;
 }
 
+.hj-tw2-topstep-item:focus-visible {
+  outline: 2px solid var(--hj-color-brand-strong);
+  outline-offset: 3px;
+  border-radius: var(--hj-radius-sm);
+}
+
+.hj-tw2-topstep-item:hover:not(.is-locked) .hj-tw2-topstep-label {
+  color: var(--hj-color-ink);
+}
+
 .hj-tw2-topstep-node {
   width: 26px;
   height: 26px;
