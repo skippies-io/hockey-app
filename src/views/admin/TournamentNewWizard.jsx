@@ -756,6 +756,8 @@ export default function TournamentNewWizard() {
   const [step3, setStep3] = useState({
     teamNameDraft: "",
     teams: [],
+    poolCount: 2,
+    pools: {},
   });
 
   const activeDivisions = useMemo(() => {
@@ -784,13 +786,32 @@ export default function TournamentNewWizard() {
     mainRef.current.scrollTop = 0;
   }, [step]);
 
+  const poolState = useMemo(() => {
+    const poolCount = Math.max(1, Math.min(12, Number(step3.poolCount) || 1));
+    const poolNames = Array.from({ length: poolCount }, (_, i) => `Pool ${String.fromCharCode(65 + i)}`);
+
+    const pools = {};
+    for (const p of poolNames) pools[p] = [];
+
+    for (const t of step3.teams) {
+      const desired = step3.pools[t.id];
+      const chosen = poolNames.includes(desired) ? desired : poolNames[0];
+      pools[chosen].push(t.id);
+    }
+
+    return { poolCount, poolNames, pools };
+  }, [step3.poolCount, step3.pools, step3.teams]);
+
   React.useEffect(() => {
     if (step === 0) return;
     if (step === 1) return;
     if (step === 2) {
-      setCanProceed(step3.teams.length >= 2);
+      const hasMinTeams = step3.teams.length >= 2;
+      const hasAtLeastTwoPools = poolState.poolCount >= 2;
+      const hasNoEmptyPools = poolState.poolNames.every((p) => poolState.pools[p].length > 0);
+      setCanProceed(hasMinTeams && hasAtLeastTwoPools && hasNoEmptyPools);
     }
-  }, [step, step3.teams.length]);
+  }, [step, step3.teams.length, poolState.poolCount, poolState.poolNames, poolState.pools]);
 
   const main = step === 0 ? (
     <Step1
@@ -866,9 +887,57 @@ export default function TournamentNewWizard() {
 
       <div className="hj-tw2-card">
         <div className="hj-tw2-card-title">Pools</div>
-        <div style={{ color: "var(--hj-color-ink-muted)" }}>
-          Pool assignment will be implemented next.
+
+        <div className="hj-tw2-row hj-tw2-row--tight">
+          <label className="hj-tw2-label" htmlFor="tw2-pool-count">
+            Number of pools
+          </label>
+          <input
+            id="tw2-pool-count"
+            className="hj-tw2-input hj-tw2-input--small"
+            type="number"
+            min={2}
+            max={12}
+            value={step3.poolCount}
+            onChange={(e) => {
+              const next = Number(e.target.value);
+              setStep3((s) => ({ ...s, poolCount: next }));
+            }}
+          />
         </div>
+
+        <div className="hj-tw2-pools" role="group" aria-label="Pool assignments">
+          {poolState.poolNames.map((poolName) => (
+            <div key={poolName} className="hj-tw2-pool">
+              <div className="hj-tw2-pool-title">{poolName}</div>
+              <div className="hj-tw2-pool-body">
+                {step3.teams.map((t) => (
+                  <label key={t.id} className="hj-tw2-pool-row">
+                    <input
+                      type="radio"
+                      aria-label={t.name}
+                      name={`team-${t.id}-pool`}
+                      value={poolName}
+                      checked={(step3.pools[t.id] || poolState.poolNames[0]) === poolName}
+                      onChange={() => {
+                        setStep3((s) => ({
+                          ...s,
+                          pools: { ...s.pools, [t.id]: poolName },
+                        }));
+                      }}
+                    />
+                    <span className="hj-tw2-pool-team">{t.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {step3.teams.length >= 2 && poolState.poolCount >= 2 &&
+        poolState.poolNames.some((p) => poolState.pools[p].length === 0) ? (
+          <div className="hj-tw2-error">Each pool must have at least one team</div>
+        ) : null}
       </div>
 
       <div className="hj-tw2-footer">

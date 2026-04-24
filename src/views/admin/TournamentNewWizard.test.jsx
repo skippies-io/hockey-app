@@ -268,14 +268,22 @@ describe("TournamentNewWizard (v2)", () => {
     // We should now be on Step 3.
     expect(await screen.findByText("No teams added yet.")).toBeInTheDocument();
 
-    // Add two teams to satisfy Step 3 validity.
+    // Add two teams.
     await user.type(screen.getByLabelText("Add team"), "Beaulieu U12A");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.type(screen.getByLabelText("Add team"), "St Stithians U12A");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    expect(screen.getByText("Beaulieu U12A")).toBeInTheDocument();
-    expect(screen.getByText("St Stithians U12A")).toBeInTheDocument();
+    expect(screen.getAllByText("Beaulieu U12A").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("St Stithians U12A").length).toBeGreaterThan(0);
+
+    // Step 3 now requires pools to be non-empty.
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeDisabled();
+
+    // Assign each team to a different pool.
+    await user.click(screen.getAllByRole("radio", { name: "Beaulieu U12A" })[0]);
+    await user.click(screen.getAllByRole("radio", { name: "St Stithians U12A" })[1]);
+
     expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
 
     // Cover TopStepper onClick allowed path (idx <= maxStep):
