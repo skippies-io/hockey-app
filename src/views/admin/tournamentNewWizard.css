@@ -110,6 +110,14 @@
   color: var(--hj-color-success-ink);
 }
 
+.hj-tw2-topstep-item--done .hj-tw2-topstep-rail {
+  background: var(--hj-color-success);
+}
+
+.hj-tw2-topstep-item--current .hj-tw2-topstep-rail {
+  background: var(--hj-color-brand-strong);
+}
+
 .hj-tw2-stepper {
   background: var(--hj-color-surface);
   border: 1px solid var(--hj-color-border-subtle);
