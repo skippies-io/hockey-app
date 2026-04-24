@@ -267,6 +267,11 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText(/Teams & Pools/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save & Continue" })).toBeInTheDocument();
 
+    // Cover TopStepper onClick allowed path (idx <= maxStep):
+    // after reaching Step 3, clicking "Franchises" should navigate back to Step 2.
+    await user.click(screen.getByRole("button", { name: "Franchises" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
     // Going back from Step 3 isn't implemented yet in the WIP shell,
     // but we still assert we've reached the Step 3 shell state.
   });
