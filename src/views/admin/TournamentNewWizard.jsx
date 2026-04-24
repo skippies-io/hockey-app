@@ -697,6 +697,7 @@ export default function TournamentNewWizard() {
   const [step, setStep] = useState(0);
   const [canProceed, setCanProceed] = useState(false);
   const [maxStep, setMaxStep] = useState(0);
+  const mainRef = React.useRef(null);
   const [step1, setStep1] = useState({
     _continue: 0,
     name: "",
@@ -764,6 +765,11 @@ export default function TournamentNewWizard() {
     setMaxStep((m) => Math.max(m, step));
   }, [step]);
 
+  React.useEffect(() => {
+    if (!mainRef.current) return;
+    mainRef.current.scrollTop = 0;
+  }, [step]);
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
@@ -812,7 +818,7 @@ export default function TournamentNewWizard() {
     <div className="hj-tw2-shell">
       <TopStepper step={step} maxStep={maxStep} onStepChange={setStep} />
       <div className="hj-tw2-body">
-        {main}
+        <div ref={mainRef}>{main}</div>
         <SummarySidebar
           tournamentName={step1.name}
           venuesCount={step1.selectedVenues.length}
