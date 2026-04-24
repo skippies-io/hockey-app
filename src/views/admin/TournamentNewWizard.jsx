@@ -168,44 +168,32 @@ Step2Franchises.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
-function StepRail({ step }) {
-  return (
-    <nav className="hj-tw2-stepper" aria-label="Tournament wizard steps">
-      {STEPS.map((label, idx) => {
-        const state = idx === step ? "current" : idx < step ? "done" : "todo";
-        return (
-          <div key={label} className={`hj-tw2-step hj-tw2-step--${state}`}
-            aria-current={idx === step ? "step" : undefined}
-          >
-            <div className="hj-tw2-step-bullet">
-              {idx < step ? "✓" : idx + 1}
-            </div>
-            <div className="hj-tw2-step-label">{label}</div>
-          </div>
-        );
-      })}
-    </nav>
-  );
-}
-
-StepRail.propTypes = {
-  step: PropTypes.number.isRequired,
-};
-
-function TopStepper({ step }) {
+function TopStepper({ step, maxStep, onStepChange }) {
   return (
     <nav className="hj-tw2-topstep" aria-label="Tournament wizard progress">
       <div className="hj-tw2-topstep-inner">
         {STEPS.map((label, idx) => {
           const state = idx === step ? "current" : idx < step ? "done" : "todo";
+          const isLocked = idx > maxStep;
           return (
-            <div key={label} className={`hj-tw2-topstep-item hj-tw2-topstep-item--${state}`}>
+            <button
+              key={label}
+              type="button"
+              className={`hj-tw2-topstep-item hj-tw2-topstep-item--${state} ${isLocked ? "is-locked" : ""}`}
+              onClick={() => {
+                if (isLocked) return;
+                onStepChange(idx);
+              }}
+              aria-current={idx === step ? "step" : undefined}
+              aria-disabled={isLocked}
+              disabled={isLocked}
+            >
               <div className="hj-tw2-topstep-node" aria-hidden="true">
                 {idx < step ? "✓" : idx + 1}
               </div>
               <div className="hj-tw2-topstep-label">{label}</div>
               {idx < STEPS.length - 1 ? <div className="hj-tw2-topstep-rail" aria-hidden="true" /> : null}
-            </div>
+            </button>
           );
         })}
       </div>
@@ -215,6 +203,8 @@ function TopStepper({ step }) {
 
 TopStepper.propTypes = {
   step: PropTypes.number.isRequired,
+  maxStep: PropTypes.number.isRequired,
+  onStepChange: PropTypes.func.isRequired,
 };
 
 function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
@@ -706,6 +696,7 @@ Step1.propTypes = {
 export default function TournamentNewWizard() {
   const [step, setStep] = useState(0);
   const [canProceed, setCanProceed] = useState(false);
+  const [maxStep, setMaxStep] = useState(0);
   const [step1, setStep1] = useState({
     _continue: 0,
     name: "",
@@ -769,6 +760,10 @@ export default function TournamentNewWizard() {
     if (step1._continue && canProceed) setStep(1);
   }, [step, step1._continue, canProceed]);
 
+  React.useEffect(() => {
+    setMaxStep((m) => Math.max(m, step));
+  }, [step]);
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
@@ -815,7 +810,7 @@ export default function TournamentNewWizard() {
 
   return (
     <div className="hj-tw2-shell">
-      <TopStepper step={step} />
+      <TopStepper step={step} maxStep={maxStep} onStepChange={setStep} />
       <div className="hj-tw2-body">
         {main}
         <SummarySidebar

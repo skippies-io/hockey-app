@@ -37,6 +37,16 @@
   align-items: center;
   gap: var(--hj-space-2);
   min-width: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+.hj-tw2-topstep-item.is-locked {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .hj-tw2-topstep-node {

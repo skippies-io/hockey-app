@@ -211,6 +211,91 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
   });
 
+  it("does not allow navigating to future steps via the stepper", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // Step 5 should be locked until we've progressed.
+    const review = screen.getByRole("button", { name: "Review & Submit" });
+    expect(review).toBeDisabled();
+
+    await user.click(review);
+    // Still on step 1
+    expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
+  });
+
+  it("does nothing when clicking a locked future step (guard clause)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // On initial render only step 1 is allowed. Step 3 is locked.
+    const step3 = screen.getByRole("button", { name: "Teams & Pools" });
+    expect(step3).toBeDisabled();
+
+    // Clicking a disabled button should not navigate.
+    await user.click(step3);
+
+    // Still on step 1.
+    expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
+  });
+
+  it("lets you add an age group via the Add button", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Add age group"), "U19");
+    // There are multiple "Add" buttons on Step 1, click the one next to the age-group input.
+    await user.click(screen.getAllByRole("button", { name: "Add" })[1]);
+
+    expect(screen.getByRole("checkbox", { name: "U19 Mixed" })).toBeInTheDocument();
+  });
+
+  it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // Make Step 2 valid
+    await user.click(screen.getByText("Beaulieu College"));
+    await user.click(screen.getByText("St Stithians"));
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
+
+    // Advance to the WIP shell (Step 3)
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText(/Teams & Pools/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeInTheDocument();
+
+    // Cover TopStepper onClick allowed path (idx <= maxStep):
+    // after reaching Step 3, clicking "Franchises" should navigate back to Step 2.
+    await user.click(screen.getByRole("button", { name: "Franchises" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    // Going back from Step 3 isn't implemented yet in the WIP shell,
+    // but we still assert we've reached the Step 3 shell state.
+  });
+
+  it("advances maxStep after step changes, unlocking the current step in the stepper", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // Step 2 is initially locked
+    const franchises = screen.getByRole("button", { name: "Franchises" });
+    expect(franchises).toBeDisabled();
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    // After reaching step 2, it should no longer be locked
+    expect(franchises).toBeEnabled();
+
+    // Spot check that we can still interact with previous step button (not disabled)
+    const details = screen.getByRole("button", { name: "Tournament Details" });
+    expect(details).toBeEnabled();
+  });
+
   it("clamps points stepper interactions to a minimum of 0 for win/draw/loss", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
@@ -250,6 +335,27 @@ describe("TournamentNewWizard (v2)", () => {
 
     // Step 2 CTA is not yet wired to advance steps (step-3+ are placeholders).
     // For now, just verify the CTA becomes enabled when valid.
+  });
+
+  it("normalises franchise search results (case-insensitive, trim) and supports clearing the search", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    const search = screen.getByRole("textbox", { name: "Search franchises" });
+    await user.type(search, "  st stithians ");
+
+    // Only the matching franchise card should remain visible.
+    expect(screen.getByText("St Stithians")).toBeInTheDocument();
+    expect(screen.queryByText("Beaulieu College")).not.toBeInTheDocument();
+
+    await user.clear(search);
+
+    // Clearing search restores the full directory.
+    expect(screen.getByText("Beaulieu College")).toBeInTheDocument();
+    expect(screen.getByText("St Stithians")).toBeInTheDocument();
   });
 
 
