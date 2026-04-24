@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import "./tournamentNewWizard.css";
 
 const STEPS = [
@@ -30,6 +31,12 @@ function normaliseId(name) {
     .replace(/(^-|-$)/g, "")
     .slice(0, 64);
 }
+
+const franchiseShape = PropTypes.shape({
+  id: PropTypes.string.isRequired,
+  name: PropTypes.string.isRequired,
+  colour: PropTypes.string.isRequired,
+});
 
 function Step2Franchises({ value, onChange, onValidityChange }) {
   const filtered = useMemo(() => {
@@ -168,6 +175,17 @@ function Step2Franchises({ value, onChange, onValidityChange }) {
   );
 }
 
+Step2Franchises.propTypes = {
+  value: PropTypes.shape({
+    directory: PropTypes.arrayOf(franchiseShape).isRequired,
+    selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+    query: PropTypes.string.isRequired,
+    draftName: PropTypes.string.isRequired,
+  }).isRequired,
+  onChange: PropTypes.func.isRequired,
+  onValidityChange: PropTypes.func.isRequired,
+};
+
 function StepRail({ step }) {
   return (
     <nav className="hj-tw2-stepper" aria-label="Tournament wizard steps">
@@ -187,6 +205,10 @@ function StepRail({ step }) {
     </nav>
   );
 }
+
+StepRail.propTypes = {
+  step: PropTypes.number.isRequired,
+};
 
 function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
   return (
@@ -211,6 +233,12 @@ function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
     </aside>
   );
 }
+
+SummarySidebar.propTypes = {
+  tournamentName: PropTypes.string.isRequired,
+  venuesCount: PropTypes.number.isRequired,
+  divisionsCount: PropTypes.number.isRequired,
+};
 
 function Step1({ value, onChange, onValidityChange }) {
   const errors = useMemo(() => {
@@ -624,6 +652,49 @@ function Step1({ value, onChange, onValidityChange }) {
     </section>
   );
 }
+
+Step1.propTypes = {
+  value: PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    season: PropTypes.string.isRequired,
+    seasonOptions: PropTypes.arrayOf(PropTypes.string).isRequired,
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired,
+    venueDirectory: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        name: PropTypes.string.isRequired,
+      })
+    ).isRequired,
+    selectedVenues: PropTypes.arrayOf(PropTypes.string).isRequired,
+    customVenueDraft: PropTypes.string.isRequired,
+    divisionTable: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        ageGroup: PropTypes.string.isRequired,
+        isCustom: PropTypes.bool,
+        boys: PropTypes.bool.isRequired,
+        girls: PropTypes.bool.isRequired,
+        mixed: PropTypes.bool.isRequired,
+      })
+    ).isRequired,
+    ageGroups: PropTypes.arrayOf(PropTypes.string).isRequired,
+    customAgeGroupDraft: PropTypes.string.isRequired,
+    chakasPerGame: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    chakaMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    halftimeMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    changeoverMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    points: PropTypes.shape({
+      win: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      draw: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+      loss: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    }).isRequired,
+    _continue: PropTypes.bool,
+    activeDivisions: PropTypes.array,
+  }).isRequired,
+  onChange: PropTypes.func.isRequired,
+  onValidityChange: PropTypes.func.isRequired,
+};
 
 export default function TournamentNewWizard() {
   const [step, setStep] = useState(0);
