@@ -991,28 +991,32 @@ export default function TournamentNewWizard() {
                 className={`hj-tw2-opt ${selected === "rr1" ? "is-selected" : ""}`}
                 onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr1" } }))}
               >
-                Round Robin x1
+                <span className={`hj-tw2-opt-radio ${selected === "rr1" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Round Robin x1</span>
               </button>
               <button
                 type="button"
                 className={`hj-tw2-opt ${selected === "rr2" ? "is-selected" : ""}`}
                 onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr2" } }))}
               >
-                Round Robin x2
+                <span className={`hj-tw2-opt-radio ${selected === "rr2" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Round Robin x2</span>
               </button>
               <button
                 type="button"
                 className={`hj-tw2-opt ${selected === "gsk" ? "is-selected" : ""}`}
                 onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "gsk" } }))}
               >
-                Group Stage + Knockout
+                <span className={`hj-tw2-opt-radio ${selected === "gsk" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Group Stage + Knockout</span>
               </button>
               <button
                 type="button"
                 className={`hj-tw2-opt ${selected === "ko" ? "is-selected" : ""}`}
                 onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "ko" } }))}
               >
-                Knockout Only
+                <span className={`hj-tw2-opt-radio ${selected === "ko" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Knockout Only</span>
               </button>
             </div>
           </div>
