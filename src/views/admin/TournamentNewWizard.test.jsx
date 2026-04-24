@@ -3,7 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
-import TournamentNewWizard, { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard";
+import TournamentNewWizard from "./TournamentNewWizard";
+import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
 
 async function completeStep1(user, { name = "HJ Test" } = {}) {
   await user.type(screen.getByLabelText("Name"), name);
