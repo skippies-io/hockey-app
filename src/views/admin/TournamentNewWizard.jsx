@@ -975,14 +975,15 @@ export default function TournamentNewWizard() {
 
       {activeDivisions.map((division) => {
         const teamCount = step3.teams.length;
-        const selected = step4.formats[division] || (teamCount === 3 ? "rr2" : "rr1");
+        const defaultFormat = teamCount === 3 ? "rr2" : "rr1";
+        const selected = step4.formats[division] || defaultFormat;
         const isAuto = teamCount === 3 && selected === "rr2";
         return (
           <div key={division} className="hj-tw2-card">
             <div className="hj-tw2-card-title">{division}</div>
             <div className="hj-tw2-rule-meta">
               <span>{teamCount} teams</span>
-              {isAuto ? <span className="hj-tw2-pill">AUTO-SUGGESTED</span> : null}
+              {isAuto ? <span className="hj-tw2-autosuggested">AUTO-SUGGESTED</span> : null}
             </div>
 
             <div className="hj-tw2-rule-options" role="radiogroup" aria-label={`${division} format`}>
