@@ -216,7 +216,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     // Step 5 should be locked until we've progressed.
-    const review = screen.getByRole("button", { name: "Review & Submit" });
+    const review = screen.getByRole("button", { name: "Fixtures" });
     expect(review).toBeDisabled();
 
     await user.click(review);
@@ -248,6 +248,39 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getAllByRole("button", { name: "Add" })[1]);
 
     expect(screen.getByRole("checkbox", { name: "U19 Mixed" })).toBeInTheDocument();
+  });
+
+  it("renders Step 4 Rules and supports selecting a format", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // Step 2 valid
+    await user.click(screen.getByText("Beaulieu College"));
+    await user.click(screen.getByText("St Stithians"));
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 3 valid (2 teams, pools non-empty)
+    await screen.findByText("No teams added yet.");
+    await user.type(screen.getByLabelText("Add team"), "Beaulieu U9A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Add team"), "St Stithians U9A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await user.click(screen.getAllByRole("radio", { name: "Beaulieu U9A" })[0]);
+    await user.click(screen.getAllByRole("radio", { name: "St Stithians U9A" })[1]);
+
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 4
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // One of the option pills should be selectable.
+    await user.click(screen.getByRole("button", { name: "Round Robin x2" }));
+    expect(screen.getByRole("button", { name: "Round Robin x2" })).toHaveClass("is-selected");
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
