@@ -262,15 +262,26 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByText("St Stithians"));
     expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
 
-    // Advance to the WIP shell (Step 3)
+    // Advance to Step 3 (Teams & Pools)
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
-    expect(screen.getByText(/Teams & Pools/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeInTheDocument();
+
+    // We should now be on Step 3.
+    expect(await screen.findByText("No teams added yet.")).toBeInTheDocument();
+
+    // Add two teams to satisfy Step 3 validity.
+    await user.type(screen.getByLabelText("Add team"), "Beaulieu U12A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Add team"), "St Stithians U12A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByText("Beaulieu U12A")).toBeInTheDocument();
+    expect(screen.getByText("St Stithians U12A")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
 
     // Cover TopStepper onClick allowed path (idx <= maxStep):
     // after reaching Step 3, clicking "Franchises" should navigate back to Step 2.
     await user.click(screen.getByRole("button", { name: "Franchises" }));
-    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Step 3 Teams & Pools" })).toBeInTheDocument();
 
     // Going back from Step 3 isn't implemented yet in the WIP shell,
     // but we still assert we've reached the Step 3 shell state.

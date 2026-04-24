@@ -612,6 +612,52 @@
   color: var(--hj-color-inverse-text);
 }
 
+.hj-tw2-row {
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.hj-tw2-row-inline {
+  display: flex;
+  gap: var(--hj-space-2);
+  align-items: center;
+}
+
+.hj-tw2-label {
+  font-size: var(--hj-font-size-sm);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.hj-tw2-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--hj-color-border-strong);
+  border-radius: var(--hj-radius-sm);
+  padding: 10px 12px;
+  font-size: var(--hj-font-size-md);
+}
+
+.hj-tw2-list {
+  margin: var(--hj-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--hj-space-2);
+}
+
+.hj-tw2-list-item {
+  padding: 10px 12px;
+  border: 1px solid var(--hj-color-border-subtle);
+  border-radius: var(--hj-radius-sm);
+  background: var(--hj-color-surface);
+}
+
+.hj-tw2-empty {
+  margin-top: var(--hj-space-3);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+}
+
 .hj-tw2-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
