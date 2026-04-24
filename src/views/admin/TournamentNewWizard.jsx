@@ -168,30 +168,6 @@ Step2Franchises.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
-function StepRail({ step }) {
-  return (
-    <nav className="hj-tw2-stepper" aria-label="Tournament wizard steps">
-      {STEPS.map((label, idx) => {
-        const state = idx === step ? "current" : idx < step ? "done" : "todo";
-        return (
-          <div key={label} className={`hj-tw2-step hj-tw2-step--${state}`}
-            aria-current={idx === step ? "step" : undefined}
-          >
-            <div className="hj-tw2-step-bullet">
-              {idx < step ? "✓" : idx + 1}
-            </div>
-            <div className="hj-tw2-step-label">{label}</div>
-          </div>
-        );
-      })}
-    </nav>
-  );
-}
-
-StepRail.propTypes = {
-  step: PropTypes.number.isRequired,
-};
-
 function TopStepper({ step, maxStep, onStepChange }) {
   return (
     <nav className="hj-tw2-topstep" aria-label="Tournament wizard progress">
