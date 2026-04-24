@@ -7,11 +7,23 @@
   font-family: var(--hj-font-family-sans, system-ui, -apple-system, Segoe UI, Roboto, sans-serif);
 }
 
+.hj-tw2-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .hj-tw2-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: var(--hj-space-4);
   margin-top: var(--hj-space-3);
+  min-height: 0;
+}
+
+.hj-tw2-main {
+  min-height: 0;
+  overflow: auto;
+  max-height: calc(100dvh - 160px);
 }
 
 .hj-tw2-topstep {
