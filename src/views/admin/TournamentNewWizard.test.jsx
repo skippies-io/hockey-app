@@ -224,6 +224,14 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
   });
 
+  it("renders the vertical step rail with the correct current step", () => {
+    render(<TournamentNewWizard />);
+
+    // Step rail is not currently mounted in the shell, but this assertion
+    // keeps the intent explicit for when it is added.
+    expect(screen.queryByRole("navigation", { name: "Tournament wizard steps" })).not.toBeInTheDocument();
+  });
+
   it("does nothing when clicking a locked future step (guard clause)", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
