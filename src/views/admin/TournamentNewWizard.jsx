@@ -192,6 +192,31 @@ StepRail.propTypes = {
   step: PropTypes.number.isRequired,
 };
 
+function TopStepper({ step }) {
+  return (
+    <nav className="hj-tw2-topstep" aria-label="Tournament wizard progress">
+      <div className="hj-tw2-topstep-inner">
+        {STEPS.map((label, idx) => {
+          const state = idx === step ? "current" : idx < step ? "done" : "todo";
+          return (
+            <div key={label} className={`hj-tw2-topstep-item hj-tw2-topstep-item--${state}`}>
+              <div className="hj-tw2-topstep-node" aria-hidden="true">
+                {idx < step ? "✓" : idx + 1}
+              </div>
+              <div className="hj-tw2-topstep-label">{label}</div>
+              {idx < STEPS.length - 1 ? <div className="hj-tw2-topstep-rail" aria-hidden="true" /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+TopStepper.propTypes = {
+  step: PropTypes.number.isRequired,
+};
+
 function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
   return (
     <aside className="hj-tw2-sidebar" aria-label="Tournament summary">
@@ -790,13 +815,15 @@ export default function TournamentNewWizard() {
 
   return (
     <div className="hj-tw2-shell">
-      <StepRail step={step} />
-      {main}
-      <SummarySidebar
-        tournamentName={step1.name}
-        venuesCount={step1.selectedVenues.length}
-        divisionsCount={activeDivisions.length}
-      />
+      <TopStepper step={step} />
+      <div className="hj-tw2-body">
+        {main}
+        <SummarySidebar
+          tournamentName={step1.name}
+          venuesCount={step1.selectedVenues.length}
+          divisionsCount={activeDivisions.length}
+        />
+      </div>
     </div>
   );
 }
