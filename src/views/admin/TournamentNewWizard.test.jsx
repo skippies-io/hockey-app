@@ -108,11 +108,12 @@ describe("TournamentNewWizard (v2)", () => {
     await completeStep1(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    await user.type(screen.getByLabelText("Add franchise"), "Beaulieu College");
+    // BHA is already in the initial directory — adding it again should be rejected.
+    await user.type(screen.getByLabelText("Add franchise"), "BHA");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    // Should still only have one Beaulieu College in the list
-    expect(screen.getAllByText("Beaulieu College")).toHaveLength(1);
+    // Only one BHA entry should exist in the franchise grid.
+    expect(screen.getAllByText("BHA")).toHaveLength(1);
   });
 
 
@@ -267,40 +268,30 @@ describe("TournamentNewWizard (v2)", () => {
     await completeStep1(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    // Step 2 valid
-    await user.click(screen.getByText("Beaulieu College"));
-    await user.click(screen.getByText("St Stithians"));
+    // Step 2: select BHA and Black Hawks
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Black Hawks"));
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
 
-    // Step 3 valid (2 teams, pools non-empty)
-    await screen.findByText("No teams added yet.");
-    await user.type(screen.getByLabelText("Add team"), "Beaulieu U9A");
-    await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Add team"), "St Stithians U9A");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    // Step 3: opt both franchises into the U9 Mixed division
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]); // BHA opts in → auto-adds "BHA"
+    await user.click(divTiles[1]); // Black Hawks opts in → auto-adds "Black Hawks"
 
-    // Explicitly change pool count to cover the handler.
-    await user.clear(screen.getByLabelText("Number of pools"));
-    await user.type(screen.getByLabelText("Number of pools"), "2");
+    const nextStep3 = screen.getByRole("button", { name: "Next →" });
+    expect(nextStep3).toBeEnabled();
+    await user.click(nextStep3);
 
-    // Assign one team per pool.
-    await user.click(screen.getAllByRole("radio", { name: "Beaulieu U9A" })[0]);
-    await user.click(screen.getAllByRole("radio", { name: "St Stithians U9A" })[1]);
+    // Step 4: Division Rules
+    expect(screen.getByText("Step 4 of 5, Division Rules")).toBeInTheDocument();
 
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
-
-    // Step 4
-    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
-
-    // Select each option at least once to cover handlers.
+    // Select each format option to cover handlers (U9 Mixed has 2 teams → auto-suggest rr2)
     await user.click(screen.getByRole("button", { name: "Round Robin x1" }));
     expect(screen.getByRole("button", { name: "Round Robin x1" })).toHaveClass("is-selected");
 
-    await user.click(screen.getByRole("button", { name: "Group Stage + Knockout" }));
-    expect(screen.getByRole("button", { name: "Group Stage + Knockout" })).toHaveClass(
-      "is-selected"
-    );
+    await user.click(screen.getByRole("button", { name: "Group Stage + KO" }));
+    expect(screen.getByRole("button", { name: "Group Stage + KO" })).toHaveClass("is-selected");
 
     await user.click(screen.getByRole("button", { name: "Knockout Only" }));
     expect(screen.getByRole("button", { name: "Knockout Only" })).toHaveClass("is-selected");
@@ -308,87 +299,76 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByRole("button", { name: "Round Robin x2" }));
     expect(screen.getByRole("button", { name: "Round Robin x2" })).toHaveClass("is-selected");
 
-    // Step 4 Back should return to Step 3.
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByText("Step 3 of 5, Teams & Pools")).toBeInTheDocument();
+    // Step 4 Back returns to Step 3.
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
 
-    // Forward again.
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
-    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+    // Forward again to Step 4.
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.getByText("Step 4 of 5, Division Rules")).toBeInTheDocument();
 
-    // Step 4 Continue advances to Step 5 placeholder.
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    // Step 4 Next → advances to Step 5.
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
 
-    // Step 5 Back uses the generic handler.
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+    // Step 5 Back returns to Step 4.
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    expect(screen.getByText("Step 4 of 5, Division Rules")).toBeInTheDocument();
 
-    // Step 5 has no Next; it will submit via "Create tournament".
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Generate fixtures" }));
-    expect(screen.queryByText("No fixtures generated yet.")).not.toBeInTheDocument();
+    // Auto-generate fixtures.
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+    expect(screen.queryByText(/No fixtures generated yet/i)).not.toBeInTheDocument();
 
-    // Cover the Back handler on Step 5.
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
-    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Create tournament" }));
-
-    // We don't assert submission here since Step 5 may be in flux while fixtures evolve.
-    // We do assert we rendered Step 5 and the submit CTA is present.
-    expect(screen.getByRole("button", { name: "Create tournament" })).toBeInTheDocument();
+    // Step 5 submits via "Create Tournament →".
+    expect(screen.getByRole("button", { name: "Create Tournament →" })).toBeInTheDocument();
 
     adminFetchSpy.mockRestore();
   });
 
-  it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
+  it("renders Step 3 Teams and supports back/next with franchise-division tiles", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
 
-    // Make Step 2 valid
-    await user.click(screen.getByText("Beaulieu College"));
-    await user.click(screen.getByText("St Stithians"));
+    // Select BHA and Knights in Step 2.
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Knights"));
     expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
-
-    // Advance to Step 3 (Teams & Pools)
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
 
-    // We should now be on Step 3.
-    expect(await screen.findByText("No teams added yet.")).toBeInTheDocument();
+    // Now on Step 3 — sees franchise cards with division tiles.
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
 
-    // Add two teams.
-    await user.type(screen.getByLabelText("Add team"), "Beaulieu U12A");
-    await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.type(screen.getByLabelText("Add team"), "St Stithians U12A");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    // Next should be disabled until at least one division has ≥2 teams.
+    expect(screen.getByRole("button", { name: "Next →" })).toBeDisabled();
 
-    expect(screen.getAllByText("Beaulieu U12A").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("St Stithians U12A").length).toBeGreaterThan(0);
+    // Opt BHA into U9 Mixed → auto-adds first slot ("BHA") from TEAM_DIRECTORY.
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    expect(divTiles).toHaveLength(2); // one per franchise
 
-    // Step 3 now requires pools to be non-empty.
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeDisabled();
+    await user.click(divTiles[0]); // BHA opts in
+    // 1 team in U9 Mixed — still not valid
+    expect(screen.getByRole("button", { name: "Next →" })).toBeDisabled();
 
-    // Assign each team to a different pool.
-    await user.click(screen.getAllByRole("radio", { name: "Beaulieu U12A" })[0]);
-    await user.click(screen.getAllByRole("radio", { name: "St Stithians U12A" })[1]);
+    await user.click(divTiles[1]); // Knights opts in → adds "Knights"
+    // 2 teams in U9 Mixed → valid
+    expect(screen.getByRole("button", { name: "Next →" })).toBeEnabled();
 
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
+    // Division summary chip should show count 2.
+    expect(screen.getByText("2")).toBeInTheDocument();
 
-    // Cover TopStepper onClick allowed path (idx <= maxStep):
-    // after reaching Step 3, clicking "Franchises" should navigate back to Step 2.
+    // Back button returns to Step 2.
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    expect(await screen.findByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    // Clicking "Teams & Pools" stepper (now unlocked) still shows Step 3.
     await user.click(screen.getByRole("button", { name: "Franchises" }));
-    expect(screen.getByRole("region", { name: "Step 3 Teams & Pools" })).toBeInTheDocument();
-
-    // Going back from Step 3 isn't implemented yet in the WIP shell,
-    // but we still assert we've reached the Step 3 shell state.
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
   });
 
   it("advances maxStep after step changes, unlocking the current step in the stepper", async () => {
@@ -460,17 +440,17 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByRole("button", { name: "Next" }));
 
     const search = screen.getByRole("textbox", { name: "Search franchises" });
-    await user.type(search, "  st stithians ");
+    await user.type(search, "  sharks ");
 
     // Only the matching franchise card should remain visible.
-    expect(screen.getByText("St Stithians")).toBeInTheDocument();
-    expect(screen.queryByText("Beaulieu College")).not.toBeInTheDocument();
+    expect(screen.getByText("Sharks")).toBeInTheDocument();
+    expect(screen.queryByText("BHA")).not.toBeInTheDocument();
 
     await user.clear(search);
 
     // Clearing search restores the full directory.
-    expect(screen.getByText("Beaulieu College")).toBeInTheDocument();
-    expect(screen.getByText("St Stithians")).toBeInTheDocument();
+    expect(screen.getByText("BHA")).toBeInTheDocument();
+    expect(screen.getByText("Sharks")).toBeInTheDocument();
   });
 
 

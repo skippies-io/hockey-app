@@ -4,7 +4,14 @@ import "./tournamentNewWizard.css";
 
 import { adminFetch } from "../../lib/adminAuth";
 
-import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
+import {
+  FRANCHISE_COLOUR_ROTATION,
+  FRANCHISE_DIRECTORY,
+  TEAM_DIRECTORY,
+  getAutoFormat,
+  getInitials,
+  normaliseId,
+} from "./TournamentNewWizard.utils";
 
 const STEPS = [
   "Tournament Details",
@@ -52,46 +59,626 @@ function roundRobinPairs(teamIds) {
   return all;
 }
 
-function buildFixturesForStep5({ divisions, teams, poolState, formats }) {
-  const fixtures = [];
-  const divisionKey = divisions[0];
-  if (!divisionKey) return fixtures;
+/**
+ * Collect all team names for a division from the new entries data model.
+ * Returns [{ name, franchiseId }] for teams in opted-in franchises.
+ */
+function getTeamsForDivision(entries, divKey) {
+  const result = [];
+  const divEntries = entries[divKey] ?? {};
+  for (const [franchiseId, entry] of Object.entries(divEntries)) {
+    if (entry.optedIn) {
+      for (const slot of entry.slots) {
+        if (slot.name.trim()) result.push({ name: slot.name.trim(), franchiseId });
+      }
+    }
+  }
+  return result;
+}
 
-  const format = formats[divisionKey] || (teams.length === 3 ? "rr2" : "rr1");
-  const poolNames = poolState.poolNames;
+/**
+ * Build round-robin fixtures for Step 5 from the new data model.
+ * Skips same-franchise pairings and returns the count of skipped pairs.
+ */
+function buildFixturesForStep5({ activeDivisions, step3Entries, step4 }) {
+  const allFixtures = [];
+  let skippedSameFranchise = 0;
 
-  // If we don't have meaningful per-pool groupings yet, fall back to a single pool.
-  const effectivePoolNames = poolNames.length && poolNames.every((p) => (poolState.pools[p] || []).length >= 2)
-    ? poolNames
-    : ["Pool A"];
+  for (const divKey of activeDivisions) {
+    const teams = getTeamsForDivision(step3Entries, divKey);
+    if (teams.length < 2) continue;
 
-  for (const poolName of effectivePoolNames) {
-    const poolTeamIds =
-      effectivePoolNames.length === 1 ? teams.map((t) => t.id) : poolState.pools[poolName] || [];
-    const pairings = roundRobinPairs(poolTeamIds);
-    const repeats = format === "rr2" ? 2 : 1;
+    const format = step4.formats[divKey] || getAutoFormat(teams.length);
+    const poolsA = step4.poolsA?.[divKey] ?? [];
+    const poolsB = step4.poolsB?.[divKey] ?? [];
 
-    for (let rep = 0; rep < repeats; rep++) {
-      for (const [aId, bId, roundNum] of pairings) {
-        const a = teams.find((t) => t.id === aId);
-        const b = teams.find((t) => t.id === bId);
-        if (!a || !b) continue;
-        fixtures.push({
-          group_id: normaliseId(divisionKey),
-          date: new Date().toISOString().slice(0, 10),
-          time: "10:00",
-          venue: "",
-          pool: poolName.replace("Pool ", ""),
-          team1: a.name,
-          team2: b.name,
-          round: `Round ${roundNum}`,
-        });
+    const isGS = format === "gs_ko" && (poolsA.length >= 2 || poolsB.length >= 2);
+
+    let groups;
+    if (isGS) {
+      groups = [
+        { pool: "A", names: poolsA },
+        { pool: "B", names: poolsB },
+      ].filter((g) => g.names.length >= 2);
+      if (groups.length === 0) groups = [{ pool: null, names: teams.map((t) => t.name) }];
+    } else {
+      groups = [{ pool: null, names: teams.map((t) => t.name) }];
+    }
+
+    const repeats = format === "rr1" ? 2 : 1;
+
+    for (const { pool, names } of groups) {
+      const pairings = roundRobinPairs(names);
+      for (let rep = 0; rep < repeats; rep++) {
+        for (const [a, b, roundNum] of pairings) {
+          const teamA = teams.find((t) => t.name === a);
+          const teamB = teams.find((t) => t.name === b);
+          if (teamA && teamB && teamA.franchiseId === teamB.franchiseId) {
+            skippedSameFranchise++;
+            continue;
+          }
+          allFixtures.push({
+            group_id: normaliseId(divKey),
+            date: "",
+            time: "",
+            venue: "",
+            pool: pool ?? null,
+            team1: a,
+            team2: b,
+            round: `Round ${roundNum}`,
+            slotDay: null,
+          });
+        }
       }
     }
   }
 
-  return fixtures;
+  return { fixtures: allFixtures, skippedSameFranchise };
 }
+
+let _slotCounter = 0;
+function newSlotId() {
+  return `slot-${++_slotCounter}`;
+}
+
+/** Get used names for a franchise in a division (excludes a specific slot id). */
+function getUsedNames(entries, divKey, franchiseId, excludeSlotId = null) {
+  const entry = entries[divKey]?.[franchiseId];
+  if (!entry) return new Set();
+  return new Set(
+    entry.slots
+      .filter((s) => s.id !== excludeSlotId && !s.custom && s.name)
+      .map((s) => s.name)
+  );
+}
+
+/** Pick the next unused name from TEAM_DIRECTORY for a franchise+division entry. */
+function nextUnusedName(entries, divKey, franchiseId) {
+  const names = TEAM_DIRECTORY[franchiseId] ?? [];
+  const used = getUsedNames(entries, divKey, franchiseId);
+  return names.find((n) => !used.has(n)) ?? null;
+}
+
+function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onValidityChange }) {
+  const getEntry = (divKey, fId) =>
+    value.entries?.[divKey]?.[fId] ?? { optedIn: false, slots: [] };
+
+  const updateEntry = (divKey, fId, updater) => {
+    const current = getEntry(divKey, fId);
+    const next = updater(current);
+    onChange({
+      ...value,
+      entries: {
+        ...value.entries,
+        [divKey]: { ...(value.entries[divKey] ?? {}), [fId]: next },
+      },
+    });
+  };
+
+  // Team count per division (for summary chips + bye detection)
+  const teamsPerDiv = activeDivisions.map((divKey) => {
+    let count = 0;
+    for (const f of selectedFranchises) {
+      const e = getEntry(divKey, f.id);
+      if (e.optedIn) count += e.slots.filter((s) => s.name.trim()).length;
+    }
+    return { divKey, count };
+  });
+
+  const isValid = teamsPerDiv.some((d) => d.count >= 2);
+
+  React.useEffect(() => {
+    onValidityChange(isValid);
+  }, [isValid, onValidityChange]);
+
+  const toggleOptIn = (divKey, franchise) => {
+    const entry = getEntry(divKey, franchise.id);
+    if (entry.optedIn) {
+      updateEntry(divKey, franchise.id, () => ({ optedIn: false, slots: [] }));
+    } else {
+      const firstName = nextUnusedName(value.entries, divKey, franchise.id);
+      const slot = firstName
+        ? { id: newSlotId(), name: firstName, custom: false, isEditing: false }
+        : { id: newSlotId(), name: "", custom: true, isEditing: true };
+      updateEntry(divKey, franchise.id, () => ({ optedIn: true, slots: [slot] }));
+    }
+  };
+
+  const addSlot = (divKey, franchise) => {
+    updateEntry(divKey, franchise.id, (entry) => {
+      const nextName = nextUnusedName(
+        { ...value.entries, [divKey]: { ...(value.entries[divKey] ?? {}), [franchise.id]: entry } },
+        divKey,
+        franchise.id
+      );
+      const slot = nextName
+        ? { id: newSlotId(), name: nextName, custom: false, isEditing: false }
+        : { id: newSlotId(), name: "", custom: true, isEditing: true };
+      return { ...entry, slots: [...entry.slots, slot] };
+    });
+  };
+
+  const removeSlot = (divKey, franchise, slotId) => {
+    updateEntry(divKey, franchise.id, (entry) => {
+      const slots = entry.slots.filter((s) => s.id !== slotId);
+      if (slots.length === 0) return { optedIn: false, slots: [] };
+      return { ...entry, slots };
+    });
+  };
+
+  const changeSlotName = (divKey, franchise, slotId, name) => {
+    updateEntry(divKey, franchise.id, (entry) => ({
+      ...entry,
+      slots: entry.slots.map((s) => (s.id === slotId ? { ...s, name } : s)),
+    }));
+  };
+
+  const setSlotEditing = (divKey, franchise, slotId, isEditing) => {
+    updateEntry(divKey, franchise.id, (entry) => ({
+      ...entry,
+      slots: entry.slots.map((s) =>
+        s.id === slotId ? { ...s, isEditing, custom: isEditing ? true : s.custom } : s
+      ),
+    }));
+  };
+
+  const revertSlot = (divKey, franchise, slotId) => {
+    updateEntry(divKey, franchise.id, (entry) => {
+      const used = getUsedNames(value.entries, divKey, franchise.id, slotId);
+      const names = TEAM_DIRECTORY[franchise.id] ?? [];
+      const firstName = names.find((n) => !used.has(n));
+      return {
+        ...entry,
+        slots: entry.slots.map((s) =>
+          s.id === slotId
+            ? { ...s, name: firstName ?? s.name, custom: false, isEditing: false }
+            : s
+        ),
+      };
+    });
+  };
+
+  return (
+    <section className="hj-tw2-main" aria-label="Step 3 Teams">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 3 of 5, Teams</div>
+      </header>
+
+      {/* Division summary chips */}
+      <div className="hj-tw2-div-chips" aria-label="Division team counts">
+        {teamsPerDiv.map(({ divKey, count }) => {
+          const isBye = count > 0 && count % 2 === 1;
+          return (
+            <span key={divKey} className="hj-tw2-div-chip">
+              {divKey}
+              <span className="hj-tw2-div-chip-badge">{count}</span>
+              {isBye ? (
+                <span className="hj-tw2-bye-notice" aria-label="Bye auto-added">Bye auto-added</span>
+              ) : null}
+            </span>
+          );
+        })}
+      </div>
+
+      {/* One card per franchise */}
+      {selectedFranchises.map((franchise) => (
+        <div
+          key={franchise.id}
+          className="hj-tw2-card hj-tw2-fr-card-teams"
+          style={{ "--accent": franchise.colour }}
+        >
+          <div className="hj-tw2-card-title hj-tw2-card-title--accented">
+            {franchise.name}
+          </div>
+
+          <div className="hj-tw2-div-tiles">
+            {activeDivisions.map((divKey) => {
+              const entry = getEntry(divKey, franchise.id);
+              const isOptedIn = entry.optedIn;
+
+              return (
+                <div
+                  key={divKey}
+                  className={`hj-tw2-div-tile ${isOptedIn ? "is-opted-in" : ""}`}
+                >
+                  {/* Tile header — click to toggle */}
+                  <button
+                    type="button"
+                    className="hj-tw2-div-tile-header"
+                    onClick={() => toggleOptIn(divKey, franchise)}
+                    aria-pressed={isOptedIn}
+                  >
+                    <span className="hj-tw2-div-tile-name">{divKey}</span>
+                    <span
+                      className={`hj-tw2-div-tile-badge ${isOptedIn ? "is-opted-in" : ""}`}
+                      aria-hidden="true"
+                    >
+                      {isOptedIn ? "✓" : "+"}
+                    </span>
+                  </button>
+
+                  {/* Slot list — shown when opted in */}
+                  {isOptedIn ? (
+                    <div className="hj-tw2-div-tile-body">
+                      {entry.slots.map((slot) => {
+                        const used = getUsedNames(value.entries, divKey, franchise.id, slot.id);
+                        const available = (TEAM_DIRECTORY[franchise.id] ?? []).filter(
+                          (n) => !used.has(n)
+                        );
+
+                        return (
+                          <div key={slot.id} className="hj-tw2-slot">
+                            {slot.isEditing ? (
+                              <>
+                                <input
+                                  className="hj-tw2-input hj-tw2-slot-input--custom"
+                                  aria-label={`Custom team name for ${divKey}`}
+                                  value={slot.name}
+                                  placeholder="Team name"
+                                  onChange={(e) =>
+                                    changeSlotName(divKey, franchise, slot.id, e.target.value)
+                                  }
+                                />
+                                {(TEAM_DIRECTORY[franchise.id] ?? []).length > 0 ? (
+                                  <button
+                                    type="button"
+                                    className="hj-tw2-slot-revert"
+                                    aria-label="Revert to directory name"
+                                    onClick={() => revertSlot(divKey, franchise, slot.id)}
+                                  >
+                                    ↩
+                                  </button>
+                                ) : null}
+                              </>
+                            ) : (
+                              <select
+                                className="hj-tw2-input hj-tw2-select hj-tw2-slot-select"
+                                aria-label={`Team name for ${divKey}`}
+                                value={slot.name}
+                                onChange={(e) => {
+                                  if (e.target.value === "__new__") {
+                                    setSlotEditing(divKey, franchise, slot.id, true);
+                                  } else {
+                                    changeSlotName(divKey, franchise, slot.id, e.target.value);
+                                  }
+                                }}
+                              >
+                                {slot.name ? (
+                                  <option value={slot.name}>{slot.name}</option>
+                                ) : null}
+                                {available
+                                  .filter((n) => n !== slot.name)
+                                  .map((n) => (
+                                    <option key={n} value={n}>
+                                      {n}
+                                    </option>
+                                  ))}
+                                <option value="__new__">＋ New name…</option>
+                              </select>
+                            )}
+                            <button
+                              type="button"
+                              className="hj-tw2-slot-remove"
+                              aria-label={`Remove team slot for ${divKey}`}
+                              onClick={() => removeSlot(divKey, franchise, slot.id)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        className="hj-tw2-slot-add"
+                        onClick={() => addSlot(divKey, franchise)}
+                      >
+                        + Add team
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {!isValid ? (
+        <div className="hj-tw2-error" role="alert">
+          At least one division needs 2 or more teams to continue.
+        </div>
+      ) : null}
+
+      <div className="hj-tw2-footer">
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--ghost"
+          onClick={() => onChange({ ...value, _back: (value._back || 0) + 1 })}
+        >
+          ← Back
+        </button>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          disabled={!isValid}
+          onClick={() => onChange({ ...value, _continue: (value._continue || 0) + 1 })}
+        >
+          Next →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+Step3Teams.propTypes = {
+  activeDivisions: PropTypes.arrayOf(PropTypes.string).isRequired,
+  selectedFranchises: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+      colour: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  value: PropTypes.shape({
+    entries: PropTypes.object.isRequired,
+    _continue: PropTypes.number,
+    _back: PropTypes.number,
+  }).isRequired,
+  onChange: PropTypes.func.isRequired,
+  onValidityChange: PropTypes.func.isRequired,
+};
+
+function Step4Rules({ activeDivisions, step3Entries, value, onChange, onValidityChange }) {
+  // Derive teams per division from step3 entries
+  const divTeams = useMemo(() => {
+    const map = {};
+    for (const divKey of activeDivisions) {
+      map[divKey] = getTeamsForDivision(step3Entries, divKey);
+    }
+    return map;
+  }, [activeDivisions, step3Entries]);
+
+  // Only show divisions that have at least one team
+  const activeDivs = activeDivisions.filter((d) => (divTeams[d] ?? []).length >= 1);
+
+  React.useEffect(() => {
+    onValidityChange(true); // Step 4 has no blocking validation
+  }, [onValidityChange]);
+
+  const getFormat = (divKey) => {
+    return value.formats[divKey] || getAutoFormat((divTeams[divKey] ?? []).length);
+  };
+
+  const isAutoSuggested = (divKey) => !value.overridden[divKey];
+
+  const setFormat = (divKey, fmt) => {
+    onChange({
+      ...value,
+      formats: { ...value.formats, [divKey]: fmt },
+      overridden: { ...value.overridden, [divKey]: true },
+    });
+  };
+
+  const moveToPool = (divKey, teamName, pool) => {
+    const curA = value.poolsA[divKey] ?? [];
+    const curB = value.poolsB[divKey] ?? [];
+    let nextA = curA.filter((n) => n !== teamName);
+    let nextB = curB.filter((n) => n !== teamName);
+    if (pool === "A") nextA = [...nextA, teamName];
+    if (pool === "B") nextB = [...nextB, teamName];
+    onChange({
+      ...value,
+      poolsA: { ...value.poolsA, [divKey]: nextA },
+      poolsB: { ...value.poolsB, [divKey]: nextB },
+    });
+  };
+
+  const FORMAT_OPTIONS = [
+    { value: "rr2", label: "Round Robin x1" },
+    { value: "rr1", label: "Round Robin x2" },
+    { value: "gs_ko", label: "Group Stage + KO" },
+    { value: "ko", label: "Knockout Only" },
+  ];
+
+  return (
+    <section className="hj-tw2-main" aria-label="Step 4 Division Rules">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 4 of 5, Division Rules</div>
+      </header>
+
+      {activeDivs.map((divKey) => {
+        const teams = divTeams[divKey] ?? [];
+        const fmt = getFormat(divKey);
+        const isAuto = isAutoSuggested(divKey);
+        const isGS = fmt === "gs_ko";
+
+        const poolsA = value.poolsA[divKey] ?? [];
+        const poolsB = value.poolsB[divKey] ?? [];
+        const unassigned = teams.map((t) => t.name).filter(
+          (n) => !poolsA.includes(n) && !poolsB.includes(n)
+        );
+
+        return (
+          <div key={divKey} className="hj-tw2-card">
+            <div className="hj-tw2-card-title">
+              {divKey}
+              {isAuto ? (
+                <span className="hj-tw2-autosuggested" style={{ marginLeft: 10 }}>
+                  AUTO-SUGGESTED
+                </span>
+              ) : null}
+            </div>
+
+            <div style={{ padding: "8px 20px 0", color: "#64748b", fontSize: 13 }}>
+              {teams.length} team{teams.length !== 1 ? "s" : ""}
+            </div>
+
+            <div
+              className="hj-tw2-rule-options"
+              role="radiogroup"
+              aria-label={`${divKey} format`}
+              style={{ padding: "12px 20px" }}
+            >
+              {FORMAT_OPTIONS.map((opt) => {
+                const isSel = fmt === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`hj-tw2-opt ${isSel ? "is-selected" : ""}`}
+                    onClick={() => setFormat(divKey, opt.value)}
+                    aria-pressed={isSel}
+                  >
+                    <span
+                      className={`hj-tw2-opt-radio ${isSel ? "is-checked" : ""}`}
+                      aria-hidden="true"
+                    />
+                    <span className="hj-tw2-opt-label">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Pool assignment — only shown for Group Stage */}
+            {isGS ? (
+              <div className="hj-tw2-pool-assignment" aria-label={`${divKey} pool assignment`}>
+                <div className="hj-tw2-pool-col hj-tw2-pool-col--a">
+                  <div className="hj-tw2-pool-col-title">Pool A</div>
+                  {poolsA.map((name) => (
+                    <div key={name} className="hj-tw2-pool-team-row">
+                      <span className="hj-tw2-pool-team-name">{name}</span>
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow"
+                        aria-label={`Move ${name} to Pool B`}
+                        onClick={() => moveToPool(divKey, name, "B")}
+                      >
+                        →
+                      </button>
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow hj-tw2-pool-arrow--unassign"
+                        aria-label={`Unassign ${name}`}
+                        onClick={() => moveToPool(divKey, name, null)}
+                      >
+                        ↩
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hj-tw2-pool-col hj-tw2-pool-col--b">
+                  <div className="hj-tw2-pool-col-title">Pool B</div>
+                  {poolsB.map((name) => (
+                    <div key={name} className="hj-tw2-pool-team-row">
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow"
+                        aria-label={`Move ${name} to Pool A`}
+                        onClick={() => moveToPool(divKey, name, "A")}
+                      >
+                        ←
+                      </button>
+                      <span className="hj-tw2-pool-team-name">{name}</span>
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow hj-tw2-pool-arrow--unassign"
+                        aria-label={`Unassign ${name}`}
+                        onClick={() => moveToPool(divKey, name, null)}
+                      >
+                        ↩
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hj-tw2-pool-col hj-tw2-pool-col--unassigned">
+                  <div className="hj-tw2-pool-col-title">Unassigned</div>
+                  {unassigned.map((name) => (
+                    <div key={name} className="hj-tw2-pool-team-row">
+                      <span className="hj-tw2-pool-team-name">{name}</span>
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow"
+                        aria-label={`Move ${name} to Pool A`}
+                        onClick={() => moveToPool(divKey, name, "A")}
+                      >
+                        → A
+                      </button>
+                      <button
+                        type="button"
+                        className="hj-tw2-pool-arrow"
+                        aria-label={`Move ${name} to Pool B`}
+                        onClick={() => moveToPool(divKey, name, "B")}
+                      >
+                        → B
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+
+      <div className="hj-tw2-footer">
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--ghost"
+          onClick={() => onChange({ ...value, _back: (value._back || 0) + 1 })}
+        >
+          ← Back
+        </button>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          onClick={() => onChange({ ...value, _continue: (value._continue || 0) + 1 })}
+        >
+          Next →
+        </button>
+      </div>
+    </section>
+  );
+}
+
+Step4Rules.propTypes = {
+  activeDivisions: PropTypes.arrayOf(PropTypes.string).isRequired,
+  step3Entries: PropTypes.object.isRequired,
+  value: PropTypes.shape({
+    formats: PropTypes.object.isRequired,
+    overridden: PropTypes.object.isRequired,
+    poolsA: PropTypes.object.isRequired,
+    poolsB: PropTypes.object.isRequired,
+    _continue: PropTypes.number,
+    _back: PropTypes.number,
+  }).isRequired,
+  onChange: PropTypes.func.isRequired,
+  onValidityChange: PropTypes.func.isRequired,
+};
 
 function Step2Franchises({ value, onChange, onValidityChange }) {
   const filtered = useMemo(() => {
@@ -783,6 +1370,9 @@ export default function TournamentNewWizard() {
 
   const [step4, setStep4] = useState({
     formats: {},
+    overridden: {},
+    poolsA: {},
+    poolsB: {},
   });
 
   const [step5, setStep5] = useState({
@@ -790,6 +1380,7 @@ export default function TournamentNewWizard() {
     submitError: "",
     createdTournamentId: "",
     fixtures: [],
+    skippedSameFranchise: 0,
   });
 
   const [step1, setStep1] = useState({
@@ -825,24 +1416,16 @@ export default function TournamentNewWizard() {
   });
 
   const [step2, setStep2] = useState({
-    directory: [
-      { id: "f-beaulieu", name: "Beaulieu College", colour: "#2E5BFF" },
-      { id: "f-stithians", name: "St Stithians", colour: "#22C55E" },
-      { id: "f-kings", name: "King Edward VII", colour: "#F97316" },
-      { id: "f-randpark", name: "Rand Park", colour: "#A855F7" },
-      { id: "f-stdavids", name: "St David's", colour: "#EF4444" },
-      { id: "f-westerford", name: "Westerford", colour: "#06B6D4" },
-    ],
+    directory: FRANCHISE_DIRECTORY.map((f) => ({ ...f })),
     selectedIds: [],
     query: "",
     draftName: "",
   });
 
   const [step3, setStep3] = useState({
-    teamNameDraft: "",
-    teams: [],
-    poolCount: 2,
-    pools: {},
+    entries: {},
+    _continue: 0,
+    _back: 0,
   });
 
   const activeDivisions = useMemo(() => {
@@ -863,6 +1446,26 @@ export default function TournamentNewWizard() {
   }, [step, step1._continue, canProceed]);
 
   React.useEffect(() => {
+    if (step !== 2) return;
+    if (step3._continue && canProceed) setStep(3);
+  }, [step, step3._continue, canProceed]);
+
+  React.useEffect(() => {
+    if (step !== 2) return;
+    if (step3._back) setStep(1);
+  }, [step, step3._back]);
+
+  React.useEffect(() => {
+    if (step !== 3) return;
+    if (step4._continue) setStep(4);
+  }, [step, step4._continue]);
+
+  React.useEffect(() => {
+    if (step !== 3) return;
+    if (step4._back) setStep(2);
+  }, [step, step4._back]);
+
+  React.useEffect(() => {
     setMaxStep((m) => Math.max(m, step));
   }, [step]);
 
@@ -871,37 +1474,14 @@ export default function TournamentNewWizard() {
     mainRef.current.scrollTop = 0;
   }, [step]);
 
-  const poolState = useMemo(() => {
-    const poolCount = Math.max(1, Math.min(12, Number(step3.poolCount) || 1));
-    const poolNames = Array.from({ length: poolCount }, (_, i) => `Pool ${String.fromCharCode(65 + i)}`);
-
-    const pools = {};
-    for (const p of poolNames) pools[p] = [];
-
-    for (const t of step3.teams) {
-      const desired = step3.pools[t.id];
-      const chosen = poolNames.includes(desired) ? desired : poolNames[0];
-      pools[chosen].push(t.id);
-    }
-
-    return { poolCount, poolNames, pools };
-  }, [step3.poolCount, step3.pools, step3.teams]);
-
-  React.useEffect(() => {
-    if (step === 0) return;
-    if (step === 1) return;
-    if (step === 2) {
-      const hasMinTeams = step3.teams.length >= 2;
-      const hasAtLeastTwoPools = poolState.poolCount >= 2;
-      const hasNoEmptyPools = poolState.poolNames.every((p) => poolState.pools[p].length > 0);
-      setCanProceed(hasMinTeams && hasAtLeastTwoPools && hasNoEmptyPools);
-    }
-  }, [step, step3.teams.length, poolState.poolCount, poolState.poolNames, poolState.pools]);
-
-  const isStep3PoolInvalid =
-    step3.teams.length >= 2 &&
-    poolState.poolCount >= 2 &&
-    poolState.poolNames.some((p) => poolState.pools[p].length === 0);
+  // Derive selected franchise objects for Step 3
+  const selectedFranchises = useMemo(
+    () =>
+      step2.selectedIds
+        .map((id) => step2.directory.find((f) => f.id === id))
+        .filter(Boolean),
+    [step2.selectedIds, step2.directory]
+  );
 
   const main = step === 0 ? (
     <Step1
@@ -919,211 +1499,21 @@ export default function TournamentNewWizard() {
       }}
     />
   ) : step === 2 ? (
-    <section className="hj-tw2-main" aria-label="Step 3 Teams & Pools">
-      <header className="hj-tw2-header">
-        <h1 className="hj-tw2-title">Create a new tournament</h1>
-        <div className="hj-tw2-subtitle">Step 3 of 5, Teams & Pools</div>
-      </header>
-
-      <div className="hj-tw2-card">
-        <div className="hj-tw2-card-title">Teams</div>
-        <div className="hj-tw2-row">
-          <label className="hj-tw2-label" htmlFor="tw2-team-name">
-            Add team
-          </label>
-          <div className="hj-tw2-row-inline">
-            <input
-              id="tw2-team-name"
-              className="hj-tw2-input"
-              value={step3.teamNameDraft}
-              placeholder="Team name"
-              onChange={(e) =>
-                setStep3((s) => ({
-                  ...s,
-                  teamNameDraft: e.target.value,
-                }))
-              }
-            />
-            <button
-              type="button"
-              className="hj-tw2-btn"
-              onClick={() => {
-                const name = step3.teamNameDraft.trim();
-                if (!name) return;
-                setStep3((s) => ({
-                  ...s,
-                  teams: [...s.teams, { id: `t-${s.teams.length + 1}`, name }],
-                  teamNameDraft: "",
-                }));
-              }}
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {step3.teams.length ? (
-          <ul className="hj-tw2-list" aria-label="Teams list">
-            {step3.teams.map((t) => (
-              <li key={t.id} className="hj-tw2-list-item">
-                {t.name}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="hj-tw2-empty">No teams added yet.</div>
-        )}
-      </div>
-
-      <div className="hj-tw2-card">
-        <div className="hj-tw2-card-title">Pools</div>
-
-        <div className="hj-tw2-row hj-tw2-row--tight">
-          <label className="hj-tw2-label" htmlFor="tw2-pool-count">
-            Number of pools
-          </label>
-          <input
-            id="tw2-pool-count"
-            className="hj-tw2-input hj-tw2-input--small"
-            type="number"
-            min={2}
-            max={12}
-            value={step3.poolCount}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setStep3((s) => ({ ...s, poolCount: next }));
-            }}
-          />
-        </div>
-
-        <div className="hj-tw2-pools" role="group" aria-label="Pool assignments">
-          {poolState.poolNames.map((poolName) => (
-            <div key={poolName} className="hj-tw2-pool">
-              <div className="hj-tw2-pool-title">{poolName}</div>
-              <div className="hj-tw2-pool-body">
-                {step3.teams.map((t) => (
-                  <label key={t.id} className="hj-tw2-pool-row">
-                    <input
-                      type="radio"
-                      aria-label={t.name}
-                      name={`team-${t.id}-pool`}
-                      value={poolName}
-                      checked={(step3.pools[t.id] || poolState.poolNames[0]) === poolName}
-                      onChange={() => {
-                        setStep3((s) => ({
-                          ...s,
-                          pools: { ...s.pools, [t.id]: poolName },
-                        }));
-                      }}
-                    />
-                    <span className="hj-tw2-pool-team">{t.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {isStep3PoolInvalid ? (
-          <div className="hj-tw2-error">Each pool must have at least one team</div>
-        ) : null}
-      </div>
-
-      <div className="hj-tw2-footer">
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--ghost"
-          onClick={() => setStep(1)}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--primary"
-          onClick={() => {
-            setStep(3);
-            setCanProceed(false);
-          }}
-          disabled={!canProceed}
-        >
-          Save & Continue
-        </button>
-      </div>
-    </section>
+    <Step3Teams
+      activeDivisions={activeDivisions}
+      selectedFranchises={selectedFranchises}
+      value={step3}
+      onChange={setStep3}
+      onValidityChange={setCanProceed}
+    />
   ) : step === 3 ? (
-    <section className="hj-tw2-main" aria-label="Step 4 Rules">
-      <header className="hj-tw2-header">
-        <h1 className="hj-tw2-title">Create a new tournament</h1>
-        <div className="hj-tw2-subtitle">Step 4 of 5, Rules</div>
-      </header>
-
-      {activeDivisions.map((division) => {
-        const teamCount = step3.teams.length;
-        const defaultFormat = teamCount === 3 ? "rr2" : "rr1";
-        const selected = step4.formats[division] || defaultFormat;
-        const isAuto = teamCount === 3 && selected === "rr2";
-        return (
-          <div key={division} className="hj-tw2-card">
-            <div className="hj-tw2-card-title">{division}</div>
-            <div className="hj-tw2-rule-meta">
-              <span>{teamCount} teams</span>
-              {isAuto ? <span className="hj-tw2-autosuggested">AUTO-SUGGESTED</span> : null}
-            </div>
-
-            <div className="hj-tw2-rule-options" role="radiogroup" aria-label={`${division} format`}>
-              <button
-                type="button"
-                className={`hj-tw2-opt ${selected === "rr1" ? "is-selected" : ""}`}
-                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr1" } }))}
-              >
-                <span className={`hj-tw2-opt-radio ${selected === "rr1" ? "is-checked" : ""}`} aria-hidden="true" />
-                <span className="hj-tw2-opt-label">Round Robin x1</span>
-              </button>
-              <button
-                type="button"
-                className={`hj-tw2-opt ${selected === "rr2" ? "is-selected" : ""}`}
-                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr2" } }))}
-              >
-                <span className={`hj-tw2-opt-radio ${selected === "rr2" ? "is-checked" : ""}`} aria-hidden="true" />
-                <span className="hj-tw2-opt-label">Round Robin x2</span>
-              </button>
-              <button
-                type="button"
-                className={`hj-tw2-opt ${selected === "gsk" ? "is-selected" : ""}`}
-                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "gsk" } }))}
-              >
-                <span className={`hj-tw2-opt-radio ${selected === "gsk" ? "is-checked" : ""}`} aria-hidden="true" />
-                <span className="hj-tw2-opt-label">Group Stage + Knockout</span>
-              </button>
-              <button
-                type="button"
-                className={`hj-tw2-opt ${selected === "ko" ? "is-selected" : ""}`}
-                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "ko" } }))}
-              >
-                <span className={`hj-tw2-opt-radio ${selected === "ko" ? "is-checked" : ""}`} aria-hidden="true" />
-                <span className="hj-tw2-opt-label">Knockout Only</span>
-              </button>
-            </div>
-          </div>
-        );
-      })}
-
-      <div className="hj-tw2-footer">
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={() => setStep(2)}>
-          Back
-        </button>
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--primary"
-          onClick={() => {
-            setStep(4);
-            setCanProceed(false);
-          }}
-        >
-          Save & Continue
-        </button>
-      </div>
-    </section>
+    <Step4Rules
+      activeDivisions={activeDivisions}
+      step3Entries={step3.entries}
+      value={step4}
+      onChange={setStep4}
+      onValidityChange={setCanProceed}
+    />
   ) : step === 4 ? (
     <section className="hj-tw2-main" aria-label="Step 5 Fixtures">
       <header className="hj-tw2-header">
@@ -1133,81 +1523,107 @@ export default function TournamentNewWizard() {
 
       <div className="hj-tw2-card">
         <div className="hj-tw2-card-title">Fixtures</div>
-        <div style={{ color: "var(--hj-color-ink-muted)" }}>
-          Generated fixtures preview (Round Robin only for now).
-        </div>
 
         <div className="hj-tw2-footer" style={{ padding: 0, marginTop: 12 }}>
           <button
             type="button"
             className="hj-tw2-btn hj-tw2-btn--ghost"
             onClick={() => {
-              const fixtures = buildFixturesForStep5({
-                divisions: activeDivisions,
-                teams: step3.teams,
-                poolState,
-                formats: step4.formats,
+              const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
+                activeDivisions,
+                step3Entries: step3.entries,
+                step4,
               });
-              setStep5((s) => ({ ...s, fixtures }));
+              setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
             }}
           >
-            Generate fixtures
+            Auto-generate fixtures
           </button>
         </div>
 
+        {step5.skippedSameFranchise > 0 ? (
+          <div className="hj-tw2-banner hj-tw2-banner--amber" role="status">
+            ⚠ {step5.skippedSameFranchise} same-franchise match(es) skipped.
+          </div>
+        ) : null}
+
         {step5.fixtures.length ? (
           <div className="hj-tw2-fixtures" aria-label="Fixtures preview">
-            {step5.fixtures.slice(0, 12).map((f, idx) => (
+            {step5.fixtures.map((f, idx) => (
               <div key={idx} className="hj-tw2-fixture">
                 <div className="hj-tw2-fixture-meta">
-                  {f.group_id} · Pool {f.pool} · {f.round}
+                  {f.group_id}{f.pool ? ` · Pool ${f.pool}` : ""} · {f.round}
                 </div>
                 <div className="hj-tw2-fixture-teams">
                   {f.team1} vs {f.team2}
                 </div>
               </div>
             ))}
-            {step5.fixtures.length > 12 ? (
-              <div className="hj-tw2-empty">+ {step5.fixtures.length - 12} more…</div>
-            ) : null}
           </div>
         ) : (
-          <div className="hj-tw2-empty">No fixtures generated yet.</div>
+          <div className="hj-tw2-empty">No fixtures generated yet. Click Auto-generate to build round-robin fixtures.</div>
         )}
       </div>
 
-      {step5.submitError ? <div className="hj-tw2-error">{step5.submitError}</div> : null}
-      {step5.createdTournamentId ? (
-        <div className="hj-tw2-success">Created: {step5.createdTournamentId}</div>
+      {step5.submitError ? (
+        <div className="hj-tw2-error" role="alert">{step5.submitError}</div>
       ) : null}
 
       <div className="hj-tw2-footer">
         <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={() => setStep(3)}>
-          Back
+          ← Back
         </button>
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
           disabled={step5.isSubmitting}
           onClick={async () => {
-            setStep5((s) => ({ ...s, isSubmitting: true, submitError: "", createdTournamentId: "" }));
+            setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
             try {
+              const franchiseDir = step2.directory;
+              const allTeams = [];
+              for (const divKey of activeDivisions) {
+                const divEntries = step3.entries[divKey] ?? {};
+                for (const [fId, entry] of Object.entries(divEntries)) {
+                  if (!entry.optedIn) continue;
+                  const fObj = franchiseDir.find((f) => f.id === fId);
+                  for (const slot of entry.slots) {
+                    if (!slot.name.trim()) continue;
+                    allTeams.push({
+                      group_id: normaliseId(divKey),
+                      name: slot.name.trim(),
+                      franchise_name: fObj ? fObj.name : fId,
+                      is_placeholder: false,
+                    });
+                  }
+                }
+              }
+
               const payload = {
-                tournament: { id: normaliseId(step1.name), name: step1.name, season: String(step1.season) },
-                venues: step1.selectedVenues.map((name) => ({ name })),
+                tournament: {
+                  id: normaliseId(`${step1.name} ${step1.season}`),
+                  name: step1.name,
+                  season: String(step1.season),
+                },
+                venues: step1.selectedVenues,
                 groups: activeDivisions.map((d) => ({
                   id: normaliseId(d),
                   label: d,
-                  format: step4.formats[d] || undefined,
+                  format: step4.formats[d] || getAutoFormat(getTeamsForDivision(step3.entries, d).length),
                 })),
-                franchises: step2.selected.map((name) => ({ name })),
-                teams: step3.teams.map((t) => ({
-                  group_id: normaliseId(activeDivisions[0] || ""),
-                  name: t.name,
-                  franchise_name: step2.selected[0] || "",
-                  is_placeholder: false,
-                })),
-                fixtures: step5.fixtures,
+                franchises: selectedFranchises.map((f) => ({ name: f.name })),
+                teams: allTeams,
+                fixtures: step5.fixtures
+                  .filter((f) => f.slotDay !== null && f.time && f.venue)
+                  .map((f) => ({
+                    group_id: f.group_id,
+                    date: f.date,
+                    time: f.time,
+                    venue: f.venue,
+                    pool: f.pool ?? null,
+                    team1: f.team1,
+                    team2: f.team2,
+                  })),
               };
 
               const res = await adminFetch("/admin/tournament-wizard", {
@@ -1219,8 +1635,10 @@ export default function TournamentNewWizard() {
               if (!res.ok || json.ok === false) {
                 throw new Error(json.error || `HTTP ${res.status}`);
               }
-              // Be defensive with response shape so UI never throws during render.
-              setStep5((s) => ({ ...s, createdTournamentId: typeof json.tournament_id === "string" ? json.tournament_id : "" }));
+              setStep5((s) => ({
+                ...s,
+                createdTournamentId: typeof json.tournament_id === "string" ? json.tournament_id : "",
+              }));
             } catch (e) {
               setStep5((s) => ({ ...s, submitError: e.message || "Submit failed" }));
             } finally {
@@ -1228,41 +1646,11 @@ export default function TournamentNewWizard() {
             }
           }}
         >
-          {step5.isSubmitting ? "Creating..." : "Create tournament"}
+          {step5.isSubmitting ? "Creating…" : "Create Tournament →"}
         </button>
       </div>
     </section>
-  ) : (
-    <section className="hj-tw2-main">
-      <header className="hj-tw2-header">
-        <h1 className="hj-tw2-title">Create a new tournament</h1>
-        <div className="hj-tw2-subtitle">Step {step + 1} of 5, {STEPS[step]}</div>
-      </header>
-      <div className="hj-tw2-card">
-        <div className="hj-tw2-card-title">WIP</div>
-        <div style={{ color: "var(--hj-color-ink-muted)" }}>
-          This step is not implemented yet.
-        </div>
-      </div>
-      <div className="hj-tw2-footer">
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--ghost"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--primary"
-          onClick={() => setStep((s) => Math.min(4, s + 1))}
-          disabled={!canProceed}
-        >
-          Next
-        </button>
-      </div>
-    </section>
-  );
+  ) : null;
 
   return (
     <div className="hj-tw2-shell">

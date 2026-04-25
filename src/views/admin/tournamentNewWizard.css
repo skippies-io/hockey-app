@@ -879,3 +879,304 @@
     position: static;
   }
 }
+
+/* ── Step 3: Division summary chips ── */
+.hj-tw2-div-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.hj-tw2-div-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.hj-tw2-div-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 5px;
+}
+
+.hj-tw2-bye-notice {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* ── Step 3: Franchise card with accent bar ── */
+.hj-tw2-fr-card-teams {
+  border-left: 4px solid var(--accent, #e2e8f0) !important;
+}
+
+.hj-tw2-card-title--accented {
+  font-size: 14px;
+  font-weight: 800;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* ── Step 3: Division tiles inside franchise card ── */
+.hj-tw2-div-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.hj-tw2-div-tile {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 160px;
+  flex: 1 1 160px;
+  background: #fff;
+}
+
+.hj-tw2-div-tile.is-opted-in {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+.hj-tw2-div-tile-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.hj-tw2-div-tile.is-opted-in .hj-tw2-div-tile-header {
+  background: #0f172a;
+  color: #fff;
+}
+
+.hj-tw2-div-tile-name {
+  flex: 1 1 auto;
+}
+
+.hj-tw2-div-tile-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.hj-tw2-div-tile-badge.is-opted-in {
+  background: #22c55e;
+  color: #fff;
+}
+
+.hj-tw2-div-tile-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fff;
+}
+
+/* ── Step 3: Team slot row ── */
+.hj-tw2-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hj-tw2-slot-select,
+.hj-tw2-slot-input--custom {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.hj-tw2-slot-input--custom {
+  border-color: #6366f1;
+}
+
+.hj-tw2-slot-remove {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid #fca5a5;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.hj-tw2-slot-revert {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.hj-tw2-slot-add {
+  border: 1.5px dashed #e2e8f0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+}
+
+.hj-tw2-slot-add:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* ── Step 4: Pool assignment ── */
+.hj-tw2-pool-assignment {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 20px 16px;
+}
+
+@media (max-width: 640px) {
+  .hj-tw2-pool-assignment {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hj-tw2-pool-col {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.hj-tw2-pool-col-title {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.hj-tw2-pool-col--a .hj-tw2-pool-col-title {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.hj-tw2-pool-col--b .hj-tw2-pool-col-title {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.hj-tw2-pool-col--unassigned .hj-tw2-pool-col-title {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.hj-tw2-pool-team-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+}
+
+.hj-tw2-pool-team-row:last-child {
+  border-bottom: 0;
+}
+
+.hj-tw2-pool-team-name {
+  flex: 1 1 auto;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hj-tw2-pool-arrow {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 7px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.hj-tw2-pool-arrow--unassign {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Amber banner variant ── */
+.hj-tw2-banner--amber {
+  background: #fff7ed;
+  border-color: #f97316;
+  color: #92400e;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.hj-tw2-success {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #dcfce7;
+  border: 1.5px solid #86efac;
+  border-radius: 12px;
+  color: #166534;
+  font-weight: 700;
+}
