@@ -1358,6 +1358,321 @@ Step1.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
+function Step5Fixtures({ step1, step5, onFixturesChange, onAutoGenerate, onBack, onSubmit }) {
+  const [selectedIdx, setSelectedIdx] = React.useState(null);
+  const [activeDay, setActiveDay] = React.useState(0);
+
+  const gameDuration = React.useMemo(() => {
+    const chakas = Number(step1.chakasPerGame) || 2;
+    const dur = Number(step1.chakaMinutes) || 20;
+    const half = Number(step1.halftimeMinutes) || 5;
+    const co = Number(step1.changeoverMinutes) || 3;
+    return Math.max(1, chakas * dur + half + co);
+  }, [step1.chakasPerGame, step1.chakaMinutes, step1.halftimeMinutes, step1.changeoverMinutes]);
+
+  const days = React.useMemo(() => {
+    if (!step1.startDate || !step1.endDate) return [];
+    const start = new Date(step1.startDate + "T00:00:00Z");
+    const end = new Date(step1.endDate + "T00:00:00Z");
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return [];
+    const result = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      result.push(new Date(cur));
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    return result;
+  }, [step1.startDate, step1.endDate]);
+
+  const timeSlots = React.useMemo(() => {
+    const slots = [];
+    let mins = 8 * 60;
+    const endMins = 20 * 60 + 30;
+    while (mins <= endMins) {
+      const h = Math.floor(mins / 60).toString().padStart(2, "0");
+      const m = (mins % 60).toString().padStart(2, "0");
+      slots.push(`${h}:${m}`);
+      mins += gameDuration;
+    }
+    return slots;
+  }, [gameDuration]);
+
+  const venues = step1.selectedVenues ?? [];
+  const fixtures = React.useMemo(() => step5.fixtures ?? [], [step5.fixtures]);
+  const unscheduled = fixtures.filter((f) => f.slotDay === null);
+
+  const scheduledPerDay = React.useMemo(() => {
+    const counts = new Array(days.length).fill(0);
+    for (const f of fixtures) {
+      if (f.slotDay !== null && f.slotDay >= 0 && f.slotDay < days.length) {
+        counts[f.slotDay]++;
+      }
+    }
+    return counts;
+  }, [fixtures, days.length]);
+
+  // Detect same-team-name conflicts: same name at same day+time in different venue slots
+  const conflictSet = React.useMemo(() => {
+    const placed = [];
+    fixtures.forEach((f, i) => { if (f.slotDay !== null) placed.push({ f, i }); });
+    const set = new Set();
+    for (let a = 0; a < placed.length; a++) {
+      for (let b = a + 1; b < placed.length; b++) {
+        const { f: fa, i: ia } = placed[a];
+        const { f: fb, i: ib } = placed[b];
+        if (fa.slotDay !== fb.slotDay || fa.time !== fb.time || fa.venue === fb.venue) continue;
+        const shared = [fa.team1, fa.team2].some((t) => t === fb.team1 || t === fb.team2);
+        if (shared) { set.add(ia); set.add(ib); }
+      }
+    }
+    return set;
+  }, [fixtures]);
+
+  function getConflictWarning(f, fIdx) {
+    if (!conflictSet.has(fIdx)) return null;
+    for (const teamName of [f.team1, f.team2]) {
+      const clash = fixtures.find(
+        (fx, i) =>
+          i !== fIdx &&
+          fx.slotDay === f.slotDay &&
+          fx.time === f.time &&
+          fx.venue !== f.venue &&
+          (fx.team1 === teamName || fx.team2 === teamName)
+      );
+      if (clash) return `⚠ ${teamName} is already playing at ${f.time}`;
+    }
+    return null;
+  }
+
+  function placeFixture(dayIdx, time, venue) {
+    if (selectedIdx === null) return;
+    const d = days[dayIdx];
+    const dateStr = d
+      ? `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
+      : "";
+    onFixturesChange(
+      fixtures.map((f, i) =>
+        i === selectedIdx ? { ...f, slotDay: dayIdx, date: dateStr, time, venue } : f
+      )
+    );
+    setSelectedIdx(null);
+  }
+
+  function removeFromSlot(fIdx) {
+    onFixturesChange(
+      fixtures.map((f, i) =>
+        i === fIdx ? { ...f, slotDay: null, date: "", time: "", venue: "" } : f
+      )
+    );
+  }
+
+  function getSlotFixtureIdx(dayIdx, time, venue) {
+    return fixtures.findIndex(
+      (f) => f.slotDay === dayIdx && f.time === time && f.venue === venue
+    );
+  }
+
+  return (
+    <section className="hj-tw2-main" aria-label="Step 5 Fixtures">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 5 of 5, Fixtures</div>
+      </header>
+
+      <div className="hj-tw2-card hj-tw2-card--no-pad">
+        {/* Header row: unscheduled badge + day strip */}
+        <div className="hj-tw2-sched-hdr">
+          <div className="hj-tw2-sched-hdr-left">
+            <span className="hj-tw2-unsched-label">UNSCHEDULED</span>
+            <span className={`hj-tw2-unsched-badge${unscheduled.length === 0 ? " hj-tw2-unsched-badge--green" : ""}`}>
+              {unscheduled.length}
+            </span>
+          </div>
+          <div className="hj-tw2-day-strip-wrap">
+            {days.length === 0 ? (
+              <div className="hj-tw2-day-empty">No dates set</div>
+            ) : (
+              <div className="hj-tw2-day-strip">
+                {days.map((d, i) => {
+                  const count = scheduledPerDay[i] ?? 0;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`hj-tw2-day-pill${i === activeDay ? " hj-tw2-day-pill--active" : ""}`}
+                      onClick={() => setActiveDay(i)}
+                    >
+                      {count > 0 && <span className="hj-tw2-day-badge">{count}</span>}
+                      <span className="hj-tw2-day-d">D{i + 1}</span>
+                      <span className="hj-tw2-day-num">{d.getUTCDate()}</span>
+                      <span className="hj-tw2-day-month">
+                        {d.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Body: unscheduled list (left) + slot grid (right) */}
+        <div className="hj-tw2-sched-body">
+          <div className="hj-tw2-sched-left">
+            {unscheduled.length === 0 ? (
+              <div className="hj-tw2-sched-left-empty">All scheduled</div>
+            ) : (
+              unscheduled.map((f) => {
+                const origIdx = fixtures.indexOf(f);
+                const isSel = origIdx === selectedIdx;
+                return (
+                  <button
+                    key={origIdx}
+                    type="button"
+                    className={`hj-tw2-unsched-row${isSel ? " hj-tw2-unsched-row--selected" : ""}`}
+                    onClick={() => setSelectedIdx(isSel ? null : origIdx)}
+                  >
+                    <span className="hj-tw2-unsched-div">{f.group_id}</span>
+                    <div className="hj-tw2-unsched-teams">
+                      <strong>{f.team1}</strong>
+                      <span className="hj-tw2-unsched-vs"> vs {f.team2}</span>
+                    </div>
+                    {isSel && (
+                      <div className="hj-tw2-unsched-hint">✦ Selected — click a slot to place</div>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="hj-tw2-sched-right">
+            {venues.length === 0 ? (
+              <div className="hj-tw2-sched-novenues">No venues selected</div>
+            ) : (
+              <table className="hj-tw2-grid-table">
+                <thead>
+                  <tr>
+                    <th className="hj-tw2-grid-th hj-tw2-grid-th--time">Time</th>
+                    {venues.map((v) => (
+                      <th key={v} className="hj-tw2-grid-th">{v}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeSlots.map((time) => (
+                    <tr key={time} className="hj-tw2-grid-row">
+                      <td className="hj-tw2-grid-time">{time}</td>
+                      {venues.map((venue) => {
+                        const fIdx = getSlotFixtureIdx(activeDay, time, venue);
+                        if (fIdx !== -1) {
+                          const f = fixtures[fIdx];
+                          const hasConflict = conflictSet.has(fIdx);
+                          const warning = getConflictWarning(f, fIdx);
+                          return (
+                            <td key={venue} className="hj-tw2-grid-cell">
+                              <div className={`hj-tw2-placed-fx${hasConflict ? " hj-tw2-placed-fx--conflict" : ""}`}>
+                                <button
+                                  type="button"
+                                  className="hj-tw2-placed-remove"
+                                  onClick={() => removeFromSlot(fIdx)}
+                                  aria-label="Remove fixture"
+                                >
+                                  ×
+                                </button>
+                                <div className="hj-tw2-placed-div">{f.group_id}</div>
+                                <div className="hj-tw2-placed-teams">
+                                  <strong>{f.team1}</strong>
+                                  <span className="hj-tw2-placed-vs"> vs {f.team2}</span>
+                                </div>
+                                {warning && (
+                                  <div className="hj-tw2-placed-warn">{warning}</div>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        }
+                        const placing = selectedIdx !== null;
+                        return (
+                          <td key={venue} className="hj-tw2-grid-cell">
+                            <div
+                              className={`hj-tw2-empty-slot${placing ? " hj-tw2-empty-slot--highlight" : ""}`}
+                              onClick={placing ? () => placeFixture(activeDay, time, venue) : undefined}
+                              role={placing ? "button" : undefined}
+                              tabIndex={placing ? 0 : undefined}
+                              onKeyDown={placing ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") placeFixture(activeDay, time, venue);
+                              } : undefined}
+                            >
+                              {placing ? "click to place" : "empty"}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onAutoGenerate}>
+          Auto-generate fixtures
+        </button>
+      </div>
+
+      {step5.skippedSameFranchise > 0 && (
+        <div className="hj-tw2-banner hj-tw2-banner--amber" role="status">
+          ⚠ {step5.skippedSameFranchise} same-franchise match(es) skipped.
+        </div>
+      )}
+
+      {step5.submitError && (
+        <div className="hj-tw2-error" role="alert">{step5.submitError}</div>
+      )}
+
+      <div className="hj-tw2-footer">
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onBack}>
+          ← Back
+        </button>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          disabled={step5.isSubmitting}
+          onClick={onSubmit}
+        >
+          {step5.isSubmitting ? "Creating…" : "Create Tournament →"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+Step5Fixtures.propTypes = {
+  step1: PropTypes.shape({
+    chakasPerGame: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    chakaMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    halftimeMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    changeoverMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    startDate: PropTypes.string.isRequired,
+    endDate: PropTypes.string.isRequired,
+    selectedVenues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  }).isRequired,
+  step5: PropTypes.shape({
+    fixtures: PropTypes.array.isRequired,
+    skippedSameFranchise: PropTypes.number.isRequired,
+    submitError: PropTypes.string.isRequired,
+    isSubmitting: PropTypes.bool.isRequired,
+  }).isRequired,
+  onFixturesChange: PropTypes.func.isRequired,
+  onAutoGenerate: PropTypes.func.isRequired,
+  onBack: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+};
+
 export default function TournamentNewWizard() {
   const [step, setStep] = useState(0);
   const [canProceed, setCanProceed] = useState(false);
@@ -1458,6 +1773,73 @@ export default function TournamentNewWizard() {
     [step2.selectedIds, step2.directory]
   );
 
+  async function handleSubmit() {
+    setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
+    try {
+      const franchiseDir = step2.directory;
+      const allTeams = [];
+      for (const divKey of activeDivisions) {
+        const divEntries = step3.entries[divKey] ?? {};
+        for (const [fId, entry] of Object.entries(divEntries)) {
+          if (!entry.optedIn) continue;
+          const fObj = franchiseDir.find((f) => f.id === fId);
+          for (const slot of entry.slots) {
+            if (!slot.name.trim()) continue;
+            allTeams.push({
+              group_id: normaliseId(divKey),
+              name: slot.name.trim(),
+              franchise_name: fObj ? fObj.name : fId,
+              is_placeholder: false,
+            });
+          }
+        }
+      }
+      const payload = {
+        tournament: {
+          id: normaliseId(`${step1.name} ${step1.season}`),
+          name: step1.name,
+          season: String(step1.season),
+        },
+        venues: step1.selectedVenues,
+        groups: activeDivisions.map((d) => ({
+          id: normaliseId(d),
+          label: d,
+          format: step4.formats[d] || getAutoFormat(getTeamsForDivision(step3.entries, d).length),
+        })),
+        franchises: selectedFranchises.map((f) => ({ name: f.name })),
+        teams: allTeams,
+        fixtures: step5.fixtures
+          .filter((f) => f.slotDay !== null && f.time && f.venue)
+          .map((f) => ({
+            group_id: f.group_id,
+            date: f.date,
+            time: f.time,
+            venue: f.venue,
+            pool: f.pool ?? null,
+            team1: f.team1,
+            team2: f.team2,
+          })),
+      };
+      const res = await adminFetch("/admin/tournament-wizard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.ok === false) {
+        throw new Error(json.error || `HTTP ${res.status}`);
+      }
+      setStep5((s) => ({
+        ...s,
+        createdTournamentId: typeof json.tournament_id === "string" ? json.tournament_id : "",
+      }));
+    } catch (e) {
+      setStep5((s) => ({ ...s, submitError: e.message || "Submit failed" }));
+    } finally {
+      setStep5((s) => ({ ...s, isSubmitting: false }));
+    }
+  }
+
   const main = step === 0 ? (
     <Step1
       value={{ ...step1, activeDivisions }}
@@ -1492,141 +1874,21 @@ export default function TournamentNewWizard() {
       onBack={() => setStep(2)}
     />
   ) : step === 4 ? (
-    <section className="hj-tw2-main" aria-label="Step 5 Fixtures">
-      <header className="hj-tw2-header">
-        <h1 className="hj-tw2-title">Create a new tournament</h1>
-        <div className="hj-tw2-subtitle">Step 5 of 5, Fixtures</div>
-      </header>
-
-      <div className="hj-tw2-card">
-        <div className="hj-tw2-card-title">Fixtures</div>
-
-        <div className="hj-tw2-footer" style={{ padding: 0, marginTop: 12 }}>
-          <button
-            type="button"
-            className="hj-tw2-btn hj-tw2-btn--ghost"
-            onClick={() => {
-              const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
-                activeDivisions,
-                step3Entries: step3.entries,
-                step4,
-              });
-              setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
-            }}
-          >
-            Auto-generate fixtures
-          </button>
-        </div>
-
-        {step5.skippedSameFranchise > 0 ? (
-          <div className="hj-tw2-banner hj-tw2-banner--amber" role="status">
-            ⚠ {step5.skippedSameFranchise} same-franchise match(es) skipped.
-          </div>
-        ) : null}
-
-        {step5.fixtures.length ? (
-          <div className="hj-tw2-fixtures" aria-label="Fixtures preview">
-            {step5.fixtures.map((f, idx) => (
-              <div key={idx} className="hj-tw2-fixture">
-                <div className="hj-tw2-fixture-meta">
-                  {f.group_id}{f.pool ? ` · Pool ${f.pool}` : ""} · {f.round}
-                </div>
-                <div className="hj-tw2-fixture-teams">
-                  {f.team1} vs {f.team2}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="hj-tw2-empty">No fixtures generated yet. Click Auto-generate to build round-robin fixtures.</div>
-        )}
-      </div>
-
-      {step5.submitError ? (
-        <div className="hj-tw2-error" role="alert">{step5.submitError}</div>
-      ) : null}
-
-      <div className="hj-tw2-footer">
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={() => setStep(3)}>
-          ← Back
-        </button>
-        <button
-          type="button"
-          className="hj-tw2-btn hj-tw2-btn--primary"
-          disabled={step5.isSubmitting}
-          onClick={async () => {
-            setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
-            try {
-              const franchiseDir = step2.directory;
-              const allTeams = [];
-              for (const divKey of activeDivisions) {
-                const divEntries = step3.entries[divKey] ?? {};
-                for (const [fId, entry] of Object.entries(divEntries)) {
-                  if (!entry.optedIn) continue;
-                  const fObj = franchiseDir.find((f) => f.id === fId);
-                  for (const slot of entry.slots) {
-                    if (!slot.name.trim()) continue;
-                    allTeams.push({
-                      group_id: normaliseId(divKey),
-                      name: slot.name.trim(),
-                      franchise_name: fObj ? fObj.name : fId,
-                      is_placeholder: false,
-                    });
-                  }
-                }
-              }
-
-              const payload = {
-                tournament: {
-                  id: normaliseId(`${step1.name} ${step1.season}`),
-                  name: step1.name,
-                  season: String(step1.season),
-                },
-                venues: step1.selectedVenues,
-                groups: activeDivisions.map((d) => ({
-                  id: normaliseId(d),
-                  label: d,
-                  format: step4.formats[d] || getAutoFormat(getTeamsForDivision(step3.entries, d).length),
-                })),
-                franchises: selectedFranchises.map((f) => ({ name: f.name })),
-                teams: allTeams,
-                fixtures: step5.fixtures
-                  .filter((f) => f.slotDay !== null && f.time && f.venue)
-                  .map((f) => ({
-                    group_id: f.group_id,
-                    date: f.date,
-                    time: f.time,
-                    venue: f.venue,
-                    pool: f.pool ?? null,
-                    team1: f.team1,
-                    team2: f.team2,
-                  })),
-              };
-
-              const res = await adminFetch("/admin/tournament-wizard", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-              });
-              const json = await res.json().catch(() => ({}));
-              if (!res.ok || json.ok === false) {
-                throw new Error(json.error || `HTTP ${res.status}`);
-              }
-              setStep5((s) => ({
-                ...s,
-                createdTournamentId: typeof json.tournament_id === "string" ? json.tournament_id : "",
-              }));
-            } catch (e) {
-              setStep5((s) => ({ ...s, submitError: e.message || "Submit failed" }));
-            } finally {
-              setStep5((s) => ({ ...s, isSubmitting: false }));
-            }
-          }}
-        >
-          {step5.isSubmitting ? "Creating…" : "Create Tournament →"}
-        </button>
-      </div>
-    </section>
+    <Step5Fixtures
+      step1={step1}
+      step5={step5}
+      onFixturesChange={(fixtures) => setStep5((s) => ({ ...s, fixtures }))}
+      onAutoGenerate={() => {
+        const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
+          activeDivisions,
+          step3Entries: step3.entries,
+          step4,
+        });
+        setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
+      }}
+      onBack={() => setStep(3)}
+      onSubmit={handleSubmit}
+    />
   ) : null;
 
   return (

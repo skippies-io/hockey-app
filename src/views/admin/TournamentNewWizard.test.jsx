@@ -443,5 +443,162 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Sharks")).toBeInTheDocument();
   });
 
+  // ── Step 5 fixture-builder tests ─────────────────────────────────────────
 
+  // Helper: drive through Steps 1-4 and land on Step 5.
+  // opts.extraVenue adds a second venue so the slot grid has two columns.
+  async function navigateToStep5(user, { extraVenue = false } = {}) {
+    await completeStep1(user);
+
+    if (extraVenue) {
+      // St Stithians is a second default venue in the directory.
+      await user.click(screen.getByRole("button", { name: "St Stithians" }));
+    }
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // Step 2: select BHA and Black Hawks (+ Knights when we need 3 franchises)
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Black Hawks"));
+    if (extraVenue) await user.click(screen.getByText("Knights"));
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 3: opt franchises into U9 Mixed
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]); // BHA
+    await user.click(divTiles[1]); // Black Hawks
+    if (extraVenue) await user.click(divTiles[2]); // Knights
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    // Step 4: advance to Step 5
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+  }
+
+  it("renders a day pill for each day between the tournament start and end dates", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    // completeStep1 sets startDate=2026-05-01, endDate=2026-05-02 → 2 days
+    expect(screen.getByRole("button", { name: /D1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /D2/ })).toBeInTheDocument();
+    // No D3 pill (only 2 days)
+    expect(screen.queryByRole("button", { name: /D3/ })).not.toBeInTheDocument();
+    // Date numbers visible
+    expect(screen.getByRole("button", { name: /D1.*1.*May/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /D2.*2.*May/ })).toBeInTheDocument();
+  });
+
+  it("auto-generate populates the unscheduled fixture list", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    // Before auto-generate the unscheduled list is empty
+    expect(screen.queryByRole("button", { name: /BHA.*Black Hawks/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    // BHA vs Black Hawks appears in the unscheduled list
+    expect(screen.getByRole("button", { name: /BHA.*Black Hawks/ })).toBeInTheDocument();
+  });
+
+  it("selecting an unscheduled fixture shows the placement hint and highlights empty slots", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    // Before selection: slots are plain divs labelled "empty", no role
+    expect(screen.getAllByText("empty").length).toBeGreaterThan(0);
+    expect(screen.queryByText("click to place")).not.toBeInTheDocument();
+    expect(screen.queryByText("✦ Selected — click a slot to place")).not.toBeInTheDocument();
+
+    // Click the unscheduled fixture row
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+
+    // Selection hint appears
+    expect(screen.getByText("✦ Selected — click a slot to place")).toBeInTheDocument();
+    // All empty slots now show "click to place" with role="button"
+    const placeBtns = screen.getAllByRole("button", { name: "click to place" });
+    expect(placeBtns.length).toBeGreaterThan(0);
+    expect(screen.queryByText("empty")).not.toBeInTheDocument();
+  });
+
+  it("clicking an empty slot places the selected fixture there", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    // Select and place in the first slot
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    // No longer in unscheduled list
+    expect(screen.queryByRole("button", { name: /BHA.*Black Hawks/ })).not.toBeInTheDocument();
+    // Placed card × button visible
+    expect(screen.getByRole("button", { name: "Remove fixture" })).toBeInTheDocument();
+    // Left panel shows all-done message
+    expect(screen.getByText("All scheduled")).toBeInTheDocument();
+  });
+
+  it("clicking Remove fixture on a placed card returns it to the unscheduled list", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+    expect(screen.getByText("All scheduled")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove fixture" }));
+
+    expect(screen.getByRole("button", { name: /BHA.*Black Hawks/ })).toBeInTheDocument();
+    expect(screen.queryByText("All scheduled")).not.toBeInTheDocument();
+  });
+
+  it("clicking a selected fixture again deselects it", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    expect(screen.getByText("✦ Selected — click a slot to place")).toBeInTheDocument();
+
+    // Second click on the same row deselects (accessible name still matches despite hint text)
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    expect(screen.queryByText("✦ Selected — click a slot to place")).not.toBeInTheDocument();
+    expect(screen.getAllByText("empty").length).toBeGreaterThan(0);
+  });
+
+  it("shows a conflict warning when the same team is scheduled in two venues at the same time", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    // extraVenue=true → two venue columns; 3 franchises → 3 fixtures so two share BHA
+    await navigateToStep5(user, { extraVenue: true });
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+
+    // Round-robin for BHA, Black Hawks, Knights (+BYE) produces (in order):
+    //   Black Hawks vs Knights · BHA vs Knights · BHA vs Black Hawks
+    // Place BHA vs Knights at D1 08:00 Beaulieu College (slot index 0)
+    await user.click(screen.getByRole("button", { name: /BHA.*Knights/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    // Place BHA vs Black Hawks at D1 08:00 St Stithians
+    // (Beaulieu College at 08:00 is now occupied → first remaining slot is St Stithians 08:00)
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    // Both placed cards should display the conflict warning for BHA
+    expect(screen.getAllByText(/BHA is already playing at 08:00/).length).toBeGreaterThanOrEqual(1);
+  });
 });
