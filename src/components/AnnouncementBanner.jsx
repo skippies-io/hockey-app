@@ -3,15 +3,22 @@ import PropTypes from 'prop-types';
 
 export default function AnnouncementBanner({ announcements }) {
   const [visible, setVisible] = useState([]);
+  const storageKey = 'hj_dismissed_announcements';
 
-  useEffect(() => {
+  function readDismissedIds() {
     let dismissed = [];
     try {
-      dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
+      dismissed = JSON.parse(localStorage.getItem(storageKey) || '[]');
       if (!Array.isArray(dismissed)) dismissed = [];
     } catch {
       dismissed = [];
     }
+    // Only allow string IDs into storage to avoid persisting unexpected objects.
+    return dismissed.filter((x) => typeof x === 'string');
+  }
+
+  useEffect(() => {
+    const dismissed = readDismissedIds();
     const active = announcements.filter(a => !dismissed.includes(a.id));
     setVisible(active);
   }, [announcements]);
@@ -19,17 +26,13 @@ export default function AnnouncementBanner({ announcements }) {
   if (visible.length === 0) return null;
 
   function dismiss(id) {
-    let dismissed = [];
-    try {
-      dismissed = JSON.parse(localStorage.getItem('hj_dismissed_announcements') || '[]');
-      if (!Array.isArray(dismissed)) dismissed = [];
-    } catch {
-      dismissed = [];
-    }
+    if (typeof id !== 'string' || !id) return;
+
+    const dismissed = readDismissedIds();
 
     if (!dismissed.includes(id)) {
       dismissed.push(id);
-      localStorage.setItem('hj_dismissed_announcements', JSON.stringify(dismissed));
+      localStorage.setItem(storageKey, JSON.stringify(dismissed));
     }
     setVisible(visible.filter(a => a.id !== id));
   }
