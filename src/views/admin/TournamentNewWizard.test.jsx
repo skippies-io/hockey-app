@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
@@ -8,9 +8,10 @@ import * as adminAuth from "../../lib/adminAuth";
 import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
 
 async function completeStep1(user, { name = "HJ Test" } = {}) {
-  await user.type(screen.getByLabelText("Name"), name);
-  await user.type(screen.getByLabelText("Start date"), "2026-05-01");
-  await user.type(screen.getByLabelText("End date"), "2026-05-02");
+  // fireEvent.change is ~10x faster than user.type for filling text inputs
+  fireEvent.change(screen.getByLabelText("Name"), { target: { value: name } });
+  fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-05-01" } });
+  fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-05-02" } });
   await user.click(screen.getByRole("button", { name: "Beaulieu College" }));
   await user.click(screen.getByRole("checkbox", { name: "U9 Mixed" }));
 }
@@ -81,21 +82,13 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getAllByText("CUSTOM").length).toBeGreaterThan(0);
   });
 
-  it("computes and displays total minutes per game using the timing inputs", async () => {
-    const user = userEvent.setup();
+  it("computes and displays total minutes per game using the timing inputs", () => {
     render(<TournamentNewWizard />);
 
-    await user.clear(screen.getByLabelText("Chakas per game"));
-    await user.type(screen.getByLabelText("Chakas per game"), "2");
-
-    await user.clear(screen.getByLabelText("Chaka minutes"));
-    await user.type(screen.getByLabelText("Chaka minutes"), "10");
-
-    await user.clear(screen.getByLabelText("Halftime minutes"));
-    await user.type(screen.getByLabelText("Halftime minutes"), "3");
-
-    await user.clear(screen.getByLabelText("Changeover minutes"));
-    await user.type(screen.getByLabelText("Changeover minutes"), "2");
+    fireEvent.change(screen.getByLabelText("Chakas per game"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Chaka minutes"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Halftime minutes"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Changeover minutes"), { target: { value: "2" } });
 
     // 2 x 10 + 3 + 2 = 25
     expect(screen.getByText(/=\s*25\s*min\/game/i)).toBeInTheDocument();
@@ -193,8 +186,7 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByRole("button", { name: "LOSS minus" }));
     expect(lossPoints).toHaveValue(0);
 
-    await user.clear(drawPoints);
-    await user.type(drawPoints, "2");
+    fireEvent.change(drawPoints, { target: { value: "2" } });
     expect(drawPoints).toHaveValue(2);
   });
 
@@ -399,15 +391,13 @@ describe("TournamentNewWizard (v2)", () => {
 
     // Drive win down below zero
     const winPoints = screen.getByLabelText("WIN points");
-    await user.clear(winPoints);
-    await user.type(winPoints, "0");
+    fireEvent.change(winPoints, { target: { value: "0" } });
     await user.click(screen.getByRole("button", { name: "WIN minus" }));
     expect(winPoints).toHaveValue(0);
 
     // Draw down below zero
     const drawPoints = screen.getByLabelText("DRAW points");
-    await user.clear(drawPoints);
-    await user.type(drawPoints, "0");
+    fireEvent.change(drawPoints, { target: { value: "0" } });
     await user.click(screen.getByRole("button", { name: "DRAW minus" }));
     expect(drawPoints).toHaveValue(0);
   });

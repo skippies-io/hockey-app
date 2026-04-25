@@ -158,7 +158,7 @@ function nextUnusedName(entries, divKey, franchiseId) {
   return names.find((n) => !used.has(n)) ?? null;
 }
 
-function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onValidityChange }) {
+function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onValidityChange, onNext, onBack }) {
   const getEntry = (divKey, fId) =>
     value.entries?.[divKey]?.[fId] ?? { optedIn: false, slots: [] };
 
@@ -414,7 +414,7 @@ function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onVa
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--ghost"
-          onClick={() => onChange({ ...value, _back: (value._back || 0) + 1 })}
+          onClick={onBack}
         >
           ← Back
         </button>
@@ -422,7 +422,7 @@ function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onVa
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
           disabled={!isValid}
-          onClick={() => onChange({ ...value, _continue: (value._continue || 0) + 1 })}
+          onClick={onNext}
         >
           Next →
         </button>
@@ -442,14 +442,14 @@ Step3Teams.propTypes = {
   ).isRequired,
   value: PropTypes.shape({
     entries: PropTypes.object.isRequired,
-    _continue: PropTypes.number,
-    _back: PropTypes.number,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
+  onNext: PropTypes.func.isRequired,
+  onBack: PropTypes.func.isRequired,
 };
 
-function Step4Rules({ activeDivisions, step3Entries, value, onChange, onValidityChange }) {
+function Step4Rules({ activeDivisions, step3Entries, value, onChange, onValidityChange, onNext, onBack }) {
   // Derive teams per division from step3 entries
   const divTeams = useMemo(() => {
     const map = {};
@@ -648,14 +648,14 @@ function Step4Rules({ activeDivisions, step3Entries, value, onChange, onValidity
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--ghost"
-          onClick={() => onChange({ ...value, _back: (value._back || 0) + 1 })}
+          onClick={onBack}
         >
           ← Back
         </button>
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
-          onClick={() => onChange({ ...value, _continue: (value._continue || 0) + 1 })}
+          onClick={onNext}
         >
           Next →
         </button>
@@ -672,14 +672,14 @@ Step4Rules.propTypes = {
     overridden: PropTypes.object.isRequired,
     poolsA: PropTypes.object.isRequired,
     poolsB: PropTypes.object.isRequired,
-    _continue: PropTypes.number,
-    _back: PropTypes.number,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
+  onNext: PropTypes.func.isRequired,
+  onBack: PropTypes.func.isRequired,
 };
 
-function Step2Franchises({ value, onChange, onValidityChange }) {
+function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
   const filtered = useMemo(() => {
     const q = value.query.trim().toLowerCase();
     if (!q) return value.directory;
@@ -811,10 +811,7 @@ function Step2Franchises({ value, onChange, onValidityChange }) {
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
-          onClick={() => {
-            if (!isValid) return;
-            onChange({ ...value, _continue: (value._continue || 0) + 1 });
-          }}
+          onClick={onNext}
           disabled={!isValid}
         >
           Save & Continue
@@ -830,10 +827,10 @@ Step2Franchises.propTypes = {
     selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
     query: PropTypes.string.isRequired,
     draftName: PropTypes.string.isRequired,
-    _continue: PropTypes.number,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
+  onNext: PropTypes.func.isRequired,
 };
 
 function TopStepper({ step, maxStep, onStepChange }) {
@@ -1421,10 +1418,9 @@ export default function TournamentNewWizard() {
     draftName: "",
   });
 
+
   const [step3, setStep3] = useState({
     entries: {},
-    _continue: 0,
-    _back: 0,
   });
 
   const activeDivisions = useMemo(() => {
@@ -1443,26 +1439,6 @@ export default function TournamentNewWizard() {
     if (step !== 0) return;
     if (step1._continue && canProceed) setStep(1);
   }, [step, step1._continue, canProceed]);
-
-  React.useEffect(() => {
-    if (step !== 2) return;
-    if (step3._continue && canProceed) setStep(3);
-  }, [step, step3._continue, canProceed]);
-
-  React.useEffect(() => {
-    if (step !== 2) return;
-    if (step3._back) setStep(1);
-  }, [step, step3._back]);
-
-  React.useEffect(() => {
-    if (step !== 3) return;
-    if (step4._continue) setStep(4);
-  }, [step, step4._continue]);
-
-  React.useEffect(() => {
-    if (step !== 3) return;
-    if (step4._back) setStep(2);
-  }, [step, step4._back]);
 
   React.useEffect(() => {
     setMaxStep((m) => Math.max(m, step));
@@ -1492,10 +1468,8 @@ export default function TournamentNewWizard() {
     <Step2Franchises
       value={step2}
       onChange={setStep2}
-      onValidityChange={(isValid) => {
-        setCanProceed(isValid);
-        if (isValid && step2._continue) setStep(2);
-      }}
+      onValidityChange={setCanProceed}
+      onNext={() => setStep(2)}
     />
   ) : step === 2 ? (
     <Step3Teams
@@ -1504,6 +1478,8 @@ export default function TournamentNewWizard() {
       value={step3}
       onChange={setStep3}
       onValidityChange={setCanProceed}
+      onNext={() => setStep(3)}
+      onBack={() => setStep(1)}
     />
   ) : step === 3 ? (
     <Step4Rules
@@ -1512,6 +1488,8 @@ export default function TournamentNewWizard() {
       value={step4}
       onChange={setStep4}
       onValidityChange={setCanProceed}
+      onNext={() => setStep(4)}
+      onBack={() => setStep(2)}
     />
   ) : step === 4 ? (
     <section className="hj-tw2-main" aria-label="Step 5 Fixtures">
