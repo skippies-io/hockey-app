@@ -7,7 +7,12 @@ const TournamentContext = createContext(null);
 
 export function TournamentProvider({ children }) {
   const [activeTournamentId, setActiveTournamentId] = useState(() => {
-    return localStorage.getItem('hj_active_tournament') || null;
+    try {
+      const raw = localStorage.getItem('hj_active_tournament');
+      return typeof raw === 'string' && raw ? raw : null;
+    } catch {
+      return null;
+    }
   });
   const [availableTournaments, setAvailableTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +52,14 @@ export function TournamentProvider({ children }) {
 
   useEffect(() => {
     if (activeTournamentId) {
-      localStorage.setItem('hj_active_tournament', activeTournamentId);
+      // Ensure only simple scalar values are persisted.
+      if (typeof activeTournamentId === 'string') {
+        try {
+          localStorage.setItem('hj_active_tournament', activeTournamentId);
+        } catch {
+          // ignore storage failures (e.g. Safari private mode)
+        }
+      }
     }
   }, [activeTournamentId]);
 
