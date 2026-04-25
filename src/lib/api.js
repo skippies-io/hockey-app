@@ -48,6 +48,8 @@ function safeJsonStringify(value) {
 
 function safeSessionSetItem(key, value) {
   try {
+    if (typeof key !== 'string' || !key) return;
+    if (typeof value !== 'string') return;
     sessionStorage.setItem(key, value);
   } catch {
     // ignore

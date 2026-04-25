@@ -7,6 +7,8 @@ export default function AnnouncementBanner({ announcements }) {
 
   function safeLocalSetItem(key, value) {
     try {
+      if (typeof key !== 'string' || !key) return;
+      if (typeof value !== 'string') return;
       localStorage.setItem(key, value);
     } catch {
       // ignore
