@@ -78,7 +78,9 @@ function buildFixturesForStep5({ divisions, teams, poolState, formats }) {
         if (!a || !b) continue;
         fixtures.push({
           group_id: normaliseId(divisionKey),
-          date: "",
+          date: new Date().toISOString().slice(0, 10),
+          time: "10:00",
+          venue: "",
           pool: poolName.replace("Pool ", ""),
           team1: a.name,
           team2: b.name,
