@@ -216,7 +216,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     // Step 5 should be locked until we've progressed.
-    const review = screen.getByRole("button", { name: "Review & Submit" });
+    const review = screen.getByRole("button", { name: "Fixtures" });
     expect(review).toBeDisabled();
 
     await user.click(review);
@@ -248,6 +248,77 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getAllByRole("button", { name: "Add" })[1]);
 
     expect(screen.getByRole("checkbox", { name: "U19 Mixed" })).toBeInTheDocument();
+  });
+
+  it("renders Step 4 Rules and supports selecting a format", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    // Step 2 valid
+    await user.click(screen.getByText("Beaulieu College"));
+    await user.click(screen.getByText("St Stithians"));
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 3 valid (2 teams, pools non-empty)
+    await screen.findByText("No teams added yet.");
+    await user.type(screen.getByLabelText("Add team"), "Beaulieu U9A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.type(screen.getByLabelText("Add team"), "St Stithians U9A");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    // Explicitly change pool count to cover the handler.
+    await user.clear(screen.getByLabelText("Number of pools"));
+    await user.type(screen.getByLabelText("Number of pools"), "2");
+
+    // Assign one team per pool.
+    await user.click(screen.getAllByRole("radio", { name: "Beaulieu U9A" })[0]);
+    await user.click(screen.getAllByRole("radio", { name: "St Stithians U9A" })[1]);
+
+    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 4
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // Select each option at least once to cover handlers.
+    await user.click(screen.getByRole("button", { name: "Round Robin x1" }));
+    expect(screen.getByRole("button", { name: "Round Robin x1" })).toHaveClass("is-selected");
+
+    await user.click(screen.getByRole("button", { name: "Group Stage + Knockout" }));
+    expect(screen.getByRole("button", { name: "Group Stage + Knockout" })).toHaveClass(
+      "is-selected"
+    );
+
+    await user.click(screen.getByRole("button", { name: "Knockout Only" }));
+    expect(screen.getByRole("button", { name: "Knockout Only" })).toHaveClass("is-selected");
+
+    await user.click(screen.getByRole("button", { name: "Round Robin x2" }));
+    expect(screen.getByRole("button", { name: "Round Robin x2" })).toHaveClass("is-selected");
+
+    // Step 4 Back should return to Step 3.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("Step 3 of 5, Teams & Pools")).toBeInTheDocument();
+
+    // Forward again.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // Step 4 Continue advances to Step 5 placeholder.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+
+    // Step 5 Back uses the generic handler.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // Step 5 Next generic handler.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {

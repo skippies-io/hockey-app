@@ -8,8 +8,8 @@ const STEPS = [
   "Tournament Details",
   "Franchises",
   "Teams & Pools",
-  "Fixtures & Time Slots",
-  "Review & Submit",
+  "Rules",
+  "Fixtures",
 ];
 
 
@@ -707,6 +707,11 @@ export default function TournamentNewWizard() {
   const [canProceed, setCanProceed] = useState(false);
   const [maxStep, setMaxStep] = useState(0);
   const mainRef = React.useRef(null);
+
+  const [step4, setStep4] = useState({
+    formats: {},
+  });
+
   const [step1, setStep1] = useState({
     _continue: 0,
     name: "",
@@ -812,6 +817,11 @@ export default function TournamentNewWizard() {
       setCanProceed(hasMinTeams && hasAtLeastTwoPools && hasNoEmptyPools);
     }
   }, [step, step3.teams.length, poolState.poolCount, poolState.poolNames, poolState.pools]);
+
+  const isStep3PoolInvalid =
+    step3.teams.length >= 2 &&
+    poolState.poolCount >= 2 &&
+    poolState.poolNames.some((p) => poolState.pools[p].length === 0);
 
   const main = step === 0 ? (
     <Step1
@@ -934,8 +944,7 @@ export default function TournamentNewWizard() {
           ))}
         </div>
 
-        {step3.teams.length >= 2 && poolState.poolCount >= 2 &&
-        poolState.poolNames.some((p) => poolState.pools[p].length === 0) ? (
+        {isStep3PoolInvalid ? (
           <div className="hj-tw2-error">Each pool must have at least one team</div>
         ) : null}
       </div>
@@ -956,6 +965,80 @@ export default function TournamentNewWizard() {
             setCanProceed(false);
           }}
           disabled={!canProceed}
+        >
+          Save & Continue
+        </button>
+      </div>
+    </section>
+  ) : step === 3 ? (
+    <section className="hj-tw2-main" aria-label="Step 4 Rules">
+      <header className="hj-tw2-header">
+        <h1 className="hj-tw2-title">Create a new tournament</h1>
+        <div className="hj-tw2-subtitle">Step 4 of 5, Rules</div>
+      </header>
+
+      {activeDivisions.map((division) => {
+        const teamCount = step3.teams.length;
+        const defaultFormat = teamCount === 3 ? "rr2" : "rr1";
+        const selected = step4.formats[division] || defaultFormat;
+        const isAuto = teamCount === 3 && selected === "rr2";
+        return (
+          <div key={division} className="hj-tw2-card">
+            <div className="hj-tw2-card-title">{division}</div>
+            <div className="hj-tw2-rule-meta">
+              <span>{teamCount} teams</span>
+              {isAuto ? <span className="hj-tw2-autosuggested">AUTO-SUGGESTED</span> : null}
+            </div>
+
+            <div className="hj-tw2-rule-options" role="radiogroup" aria-label={`${division} format`}>
+              <button
+                type="button"
+                className={`hj-tw2-opt ${selected === "rr1" ? "is-selected" : ""}`}
+                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr1" } }))}
+              >
+                <span className={`hj-tw2-opt-radio ${selected === "rr1" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Round Robin x1</span>
+              </button>
+              <button
+                type="button"
+                className={`hj-tw2-opt ${selected === "rr2" ? "is-selected" : ""}`}
+                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "rr2" } }))}
+              >
+                <span className={`hj-tw2-opt-radio ${selected === "rr2" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Round Robin x2</span>
+              </button>
+              <button
+                type="button"
+                className={`hj-tw2-opt ${selected === "gsk" ? "is-selected" : ""}`}
+                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "gsk" } }))}
+              >
+                <span className={`hj-tw2-opt-radio ${selected === "gsk" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Group Stage + Knockout</span>
+              </button>
+              <button
+                type="button"
+                className={`hj-tw2-opt ${selected === "ko" ? "is-selected" : ""}`}
+                onClick={() => setStep4((s) => ({ ...s, formats: { ...s.formats, [division]: "ko" } }))}
+              >
+                <span className={`hj-tw2-opt-radio ${selected === "ko" ? "is-checked" : ""}`} aria-hidden="true" />
+                <span className="hj-tw2-opt-label">Knockout Only</span>
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="hj-tw2-footer">
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={() => setStep(2)}>
+          Back
+        </button>
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          onClick={() => {
+            setStep(4);
+            setCanProceed(false);
+          }}
         >
           Save & Continue
         </button>
