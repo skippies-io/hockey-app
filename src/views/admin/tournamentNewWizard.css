@@ -765,6 +765,30 @@
   background: #ffffff;
 }
 
+.hj-tw2-fixtures {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.hj-tw2-fixture {
+  border: 1px solid var(--hj-color-border-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--hj-color-surface);
+}
+
+.hj-tw2-fixture-meta {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hj-color-ink-muted);
+}
+
+.hj-tw2-fixture-teams {
+  margin-top: 4px;
+  font-weight: 800;
+}
+
 .hj-tw2-opt:focus-visible {
   outline: 3px solid rgba(59, 130, 246, 0.35);
   outline-offset: 2px;

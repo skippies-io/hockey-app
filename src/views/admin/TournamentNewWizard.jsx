@@ -22,6 +22,75 @@ const franchiseShape = PropTypes.shape({
   colour: PropTypes.string.isRequired,
 });
 
+function roundRobinPairs(teamIds) {
+  const n = teamIds.length;
+  if (n < 2) return [];
+
+  const isOdd = n % 2 === 1;
+  const ids = isOdd ? [...teamIds, "BYE"] : [...teamIds];
+  const m = ids.length;
+  const half = m / 2;
+
+  let arr = [...ids];
+  const rounds = m - 1;
+  const all = [];
+
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < half; i++) {
+      const a = arr[i];
+      const b = arr[m - 1 - i];
+      if (a === "BYE" || b === "BYE") continue;
+      all.push([a, b, r + 1]);
+    }
+
+    const fixed = arr[0];
+    const rest = arr.slice(1);
+    rest.unshift(rest.pop());
+    arr = [fixed, ...rest];
+  }
+
+  return all;
+}
+
+function buildFixturesForStep5({ divisions, teams, poolState, formats }) {
+  const fixtures = [];
+  const divisionKey = divisions[0];
+  if (!divisionKey) return fixtures;
+
+  const format = formats[divisionKey] || (teams.length === 3 ? "rr2" : "rr1");
+  const poolNames = poolState.poolNames;
+
+  // If we don't have meaningful per-pool groupings yet, fall back to a single pool.
+  const effectivePoolNames = poolNames.length && poolNames.every((p) => (poolState.pools[p] || []).length >= 2)
+    ? poolNames
+    : ["Pool A"];
+
+  for (const poolName of effectivePoolNames) {
+    const poolTeamIds =
+      effectivePoolNames.length === 1 ? teams.map((t) => t.id) : poolState.pools[poolName] || [];
+    const pairings = roundRobinPairs(poolTeamIds);
+    const repeats = format === "rr2" ? 2 : 1;
+
+    for (let rep = 0; rep < repeats; rep++) {
+      for (const [aId, bId, roundNum] of pairings) {
+        const a = teams.find((t) => t.id === aId);
+        const b = teams.find((t) => t.id === bId);
+        if (!a || !b) continue;
+        fixtures.push({
+          group_id: normaliseId(divisionKey),
+          date: "",
+          pool: poolName.replace("Pool ", ""),
+          team1: a.name,
+          team2: b.name,
+          round: `Round ${roundNum}`,
+        });
+      }
+    }
+  }
+
+  return fixtures;
+}
+
 function Step2Franchises({ value, onChange, onValidityChange }) {
   const filtered = useMemo(() => {
     const q = value.query.trim().toLowerCase();
@@ -718,6 +787,7 @@ export default function TournamentNewWizard() {
     isSubmitting: false,
     submitError: "",
     createdTournamentId: "",
+    fixtures: [],
   });
 
   const [step1, setStep1] = useState({
@@ -1062,8 +1132,46 @@ export default function TournamentNewWizard() {
       <div className="hj-tw2-card">
         <div className="hj-tw2-card-title">Fixtures</div>
         <div style={{ color: "var(--hj-color-ink-muted)" }}>
-          Step 5 will generate fixtures next.
+          Generated fixtures preview (Round Robin only for now).
         </div>
+
+        <div className="hj-tw2-footer" style={{ padding: 0, marginTop: 12 }}>
+          <button
+            type="button"
+            className="hj-tw2-btn hj-tw2-btn--ghost"
+            onClick={() => {
+              const fixtures = buildFixturesForStep5({
+                divisions: activeDivisions,
+                teams: step3.teams,
+                poolState,
+                formats: step4.formats,
+              });
+              setStep5((s) => ({ ...s, fixtures }));
+            }}
+          >
+            Generate fixtures
+          </button>
+        </div>
+
+        {step5.fixtures.length ? (
+          <div className="hj-tw2-fixtures" aria-label="Fixtures preview">
+            {step5.fixtures.slice(0, 12).map((f, idx) => (
+              <div key={idx} className="hj-tw2-fixture">
+                <div className="hj-tw2-fixture-meta">
+                  {f.group_id} · Pool {f.pool} · {f.round}
+                </div>
+                <div className="hj-tw2-fixture-teams">
+                  {f.team1} vs {f.team2}
+                </div>
+              </div>
+            ))}
+            {step5.fixtures.length > 12 ? (
+              <div className="hj-tw2-empty">+ {step5.fixtures.length - 12} more…</div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="hj-tw2-empty">No fixtures generated yet.</div>
+        )}
       </div>
 
       {step5.submitError ? <div className="hj-tw2-error">{step5.submitError}</div> : null}
@@ -1097,7 +1205,7 @@ export default function TournamentNewWizard() {
                   franchise_name: step2.selected[0] || "",
                   is_placeholder: false,
                 })),
-                fixtures: [],
+                fixtures: step5.fixtures,
               };
 
               const res = await adminFetch("/admin/tournament-wizard", {

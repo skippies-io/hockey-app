@@ -317,6 +317,9 @@ describe("TournamentNewWizard (v2)", () => {
     // Step 5 has no Next; it will submit via "Create tournament".
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
     expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Generate fixtures" }));
+    expect(screen.queryByText("No fixtures generated yet.")).not.toBeInTheDocument();
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
