@@ -269,6 +269,11 @@ describe("TournamentNewWizard (v2)", () => {
     await user.type(screen.getByLabelText("Add team"), "St Stithians U9A");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
+    // Explicitly change pool count to cover the handler.
+    await user.clear(screen.getByLabelText("Number of pools"));
+    await user.type(screen.getByLabelText("Number of pools"), "2");
+
+    // Assign one team per pool.
     await user.click(screen.getAllByRole("radio", { name: "Beaulieu U9A" })[0]);
     await user.click(screen.getAllByRole("radio", { name: "St Stithians U9A" })[1]);
 
@@ -278,9 +283,42 @@ describe("TournamentNewWizard (v2)", () => {
     // Step 4
     expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
 
-    // One of the option pills should be selectable.
+    // Select each option at least once to cover handlers.
+    await user.click(screen.getByRole("button", { name: "Round Robin x1" }));
+    expect(screen.getByRole("button", { name: "Round Robin x1" })).toHaveClass("is-selected");
+
+    await user.click(screen.getByRole("button", { name: "Group Stage + Knockout" }));
+    expect(screen.getByRole("button", { name: "Group Stage + Knockout" })).toHaveClass(
+      "is-selected"
+    );
+
+    await user.click(screen.getByRole("button", { name: "Knockout Only" }));
+    expect(screen.getByRole("button", { name: "Knockout Only" })).toHaveClass("is-selected");
+
     await user.click(screen.getByRole("button", { name: "Round Robin x2" }));
     expect(screen.getByRole("button", { name: "Round Robin x2" })).toHaveClass("is-selected");
+
+    // Step 4 Back should return to Step 3.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(await screen.findByText("Step 3 of 5, Teams & Pools")).toBeInTheDocument();
+
+    // Forward again.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // Step 4 Continue advances to Step 5 placeholder.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+
+    // Step 5 Back uses the generic handler.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+
+    // Step 5 Next generic handler.
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
