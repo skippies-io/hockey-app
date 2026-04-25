@@ -579,6 +579,50 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getAllByText("empty").length).toBeGreaterThan(0);
   });
 
+  it("submitting on Step 5 calls adminFetch with the tournament payload", async () => {
+    const user = userEvent.setup();
+
+    const adminFetchSpy = vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    // Auto-generate and place one fixture so the submission has something to send
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(adminFetchSpy).toHaveBeenCalledWith(
+      "/admin/tournament-wizard",
+      expect.objectContaining({ method: "POST" })
+    );
+
+    adminFetchSpy.mockRestore();
+  });
+
+  it("pressing Enter on a highlighted slot places the selected fixture", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+
+    // Trigger keyboard placement on the first highlighted slot
+    const firstSlot = screen.getAllByRole("button", { name: "click to place" })[0];
+    fireEvent.keyDown(firstSlot, { key: "Enter" });
+
+    // Fixture should now be placed
+    expect(screen.getByRole("button", { name: "Remove fixture" })).toBeInTheDocument();
+    expect(screen.queryByText("click to place")).not.toBeInTheDocument();
+  });
+
   it("shows a conflict warning when the same team is scheduled in two venues at the same time", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
