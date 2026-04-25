@@ -320,6 +320,12 @@ describe("TournamentNewWizard (v2)", () => {
 
     await user.click(screen.getByRole("button", { name: "Generate fixtures" }));
     expect(screen.queryByText("No fixtures generated yet.")).not.toBeInTheDocument();
+
+    // Cover the Back handler on Step 5.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {
