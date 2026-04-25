@@ -2,6 +2,8 @@ import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import "./tournamentNewWizard.css";
 
+import { adminFetch } from "../../lib/adminAuth";
+
 import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
 
 const STEPS = [
@@ -712,6 +714,12 @@ export default function TournamentNewWizard() {
     formats: {},
   });
 
+  const [step5, setStep5] = useState({
+    isSubmitting: false,
+    submitError: "",
+    createdTournamentId: "",
+  });
+
   const [step1, setStep1] = useState({
     _continue: 0,
     name: "",
@@ -1058,12 +1066,58 @@ export default function TournamentNewWizard() {
         </div>
       </div>
 
+      {step5.submitError ? <div className="hj-tw2-error">{step5.submitError}</div> : null}
+      {step5.createdTournamentId ? (
+        <div className="hj-tw2-success">Created: {step5.createdTournamentId}</div>
+      ) : null}
+
       <div className="hj-tw2-footer">
         <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={() => setStep(3)}>
           Back
         </button>
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--primary" disabled>
-          Create tournament
+        <button
+          type="button"
+          className="hj-tw2-btn hj-tw2-btn--primary"
+          disabled={step5.isSubmitting}
+          onClick={async () => {
+            setStep5((s) => ({ ...s, isSubmitting: true, submitError: "", createdTournamentId: "" }));
+            try {
+              const payload = {
+                tournament: { id: normaliseId(step1.name), name: step1.name, season: String(step1.season) },
+                venues: step1.selectedVenues.map((name) => ({ name })),
+                groups: activeDivisions.map((d) => ({
+                  id: normaliseId(d),
+                  label: d,
+                  format: step4.formats[d] || undefined,
+                })),
+                franchises: step2.selected.map((name) => ({ name })),
+                teams: step3.teams.map((t) => ({
+                  group_id: normaliseId(activeDivisions[0] || ""),
+                  name: t.name,
+                  franchise_name: step2.selected[0] || "",
+                  is_placeholder: false,
+                })),
+                fixtures: [],
+              };
+
+              const res = await adminFetch("/admin/tournament-wizard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const json = await res.json().catch(() => ({}));
+              if (!res.ok || json.ok === false) {
+                throw new Error(json.error || `HTTP ${res.status}`);
+              }
+              setStep5((s) => ({ ...s, createdTournamentId: json.tournament_id || "" }));
+            } catch (e) {
+              setStep5((s) => ({ ...s, submitError: e.message || "Submit failed" }));
+            } finally {
+              setStep5((s) => ({ ...s, isSubmitting: false }));
+            }
+          }}
+        >
+          {step5.isSubmitting ? "Creating..." : "Create tournament"}
         </button>
       </div>
     </section>
