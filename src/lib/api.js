@@ -46,6 +46,14 @@ function safeJsonStringify(value) {
   return '';
 }
 
+function safeSessionSetItem(key, value) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
+
 function safeCacheKey(url) {
   // Only allow caching of same-origin / expected URLs.
   try {
@@ -115,7 +123,7 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
           .then(nd => {
             if (nd && key) {
               const payload = safeJsonStringify({ t: Date.now(), data: nd });
-              if (payload) sessionStorage.setItem(key, payload);
+              if (payload) safeSessionSetItem(key, payload);
             }
           })
           .catch(() => { /* background refresh failed; keep stale */ });
@@ -140,7 +148,7 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
   if (data && data.ok === false) throw new Error(data.error || "API error");
   if (key) {
     const payload = safeJsonStringify({ t: Date.now(), data });
-    if (payload) sessionStorage.setItem(key, payload);
+    if (payload) safeSessionSetItem(key, payload);
   }
   return data;
 }

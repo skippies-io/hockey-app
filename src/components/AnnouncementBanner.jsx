@@ -5,6 +5,14 @@ export default function AnnouncementBanner({ announcements }) {
   const [visible, setVisible] = useState([]);
   const storageKey = 'hj_dismissed_announcements';
 
+  function safeLocalSetItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // ignore
+    }
+  }
+
   function readDismissedIds() {
     let dismissed = [];
     try {
@@ -33,11 +41,7 @@ export default function AnnouncementBanner({ announcements }) {
     if (!dismissed.includes(id)) {
       dismissed.push(id);
       // Only persist a simple JSON array.
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(dismissed));
-      } catch {
-        // ignore
-      }
+      safeLocalSetItem(storageKey, JSON.stringify(dismissed));
     }
     setVisible(visible.filter(a => a.id !== id));
   }
