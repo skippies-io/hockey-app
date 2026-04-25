@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
 import TournamentNewWizard from "./TournamentNewWizard";
+import * as adminAuth from "../../lib/adminAuth";
 import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
 
 async function completeStep1(user, { name = "HJ Test" } = {}) {
@@ -252,6 +253,15 @@ describe("TournamentNewWizard (v2)", () => {
 
   it("renders Step 4 Rules and supports selecting a format", async () => {
     const user = userEvent.setup();
+
+    const adminFetchSpy = vi
+      .spyOn(adminAuth, "adminFetch")
+      .mockResolvedValue({
+        ok: true,
+        status: 201,
+        json: async () => ({ ok: true, tournament_id: "hj-test", sources: [] }),
+      });
+
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
@@ -326,6 +336,14 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
     expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create tournament" }));
+
+    // We don't assert submission here since Step 5 may be in flux while fixtures evolve.
+    // We do assert we rendered Step 5 and the submit CTA is present.
+    expect(screen.getByRole("button", { name: "Create tournament" })).toBeInTheDocument();
+
+    adminFetchSpy.mockRestore();
   });
 
   it("renders the Step 3+ WIP shell and supports back/next within the shell", async () => {

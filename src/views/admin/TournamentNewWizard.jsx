@@ -1217,7 +1217,8 @@ export default function TournamentNewWizard() {
               if (!res.ok || json.ok === false) {
                 throw new Error(json.error || `HTTP ${res.status}`);
               }
-              setStep5((s) => ({ ...s, createdTournamentId: json.tournament_id || "" }));
+              // Be defensive with response shape so UI never throws during render.
+              setStep5((s) => ({ ...s, createdTournamentId: typeof json.tournament_id === "string" ? json.tournament_id : "" }));
             } catch (e) {
               setStep5((s) => ({ ...s, submitError: e.message || "Submit failed" }));
             } finally {
