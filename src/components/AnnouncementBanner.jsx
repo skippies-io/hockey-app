@@ -32,7 +32,12 @@ export default function AnnouncementBanner({ announcements }) {
 
     if (!dismissed.includes(id)) {
       dismissed.push(id);
-      localStorage.setItem(storageKey, JSON.stringify(dismissed));
+      // Only persist a simple JSON array.
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(dismissed));
+      } catch {
+        // ignore
+      }
     }
     setVisible(visible.filter(a => a.id !== id));
   }

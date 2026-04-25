@@ -32,6 +32,20 @@ const DEFAULT_RETRY = { retries: 2, baseDelayMs: 300 };
 
 function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
 
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && (value.constructor === Object || value.constructor == null);
+}
+
+function safeJsonStringify(value) {
+  // Best-effort: only stringify plain objects/arrays, drop functions/classes.
+  try {
+    if (Array.isArray(value) || isPlainObject(value)) return JSON.stringify(value);
+  } catch {
+    // ignore
+  }
+  return '';
+}
+
 function safeCacheKey(url) {
   // Only allow caching of same-origin / expected URLs.
   try {
@@ -99,7 +113,10 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
         void fetch(url)
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(nd => {
-            if (nd && key) sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data: nd }));
+            if (nd && key) {
+              const payload = safeJsonStringify({ t: Date.now(), data: nd });
+              if (payload) sessionStorage.setItem(key, payload);
+            }
           })
           .catch(() => { /* background refresh failed; keep stale */ });
       }
@@ -121,7 +138,10 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
   }
   const data = await res.json();
   if (data && data.ok === false) throw new Error(data.error || "API error");
-  if (key) sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data }));
+  if (key) {
+    const payload = safeJsonStringify({ t: Date.now(), data });
+    if (payload) sessionStorage.setItem(key, payload);
+  }
   return data;
 }
 
