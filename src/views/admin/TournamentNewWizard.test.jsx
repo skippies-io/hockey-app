@@ -314,10 +314,8 @@ describe("TournamentNewWizard (v2)", () => {
     await user.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText("Step 4 of 5, Rules")).toBeInTheDocument();
 
-    // Step 5 Next generic handler.
+    // Step 5 has no Next; it will submit via "Create tournament".
     await user.click(screen.getByRole("button", { name: "Save & Continue" }));
-    expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Step 5 of 5, Fixtures")).toBeInTheDocument();
   });
 
