@@ -9,7 +9,6 @@ import {
   FRANCHISE_DIRECTORY,
   TEAM_DIRECTORY,
   getAutoFormat,
-  getInitials,
   normaliseId,
 } from "./TournamentNewWizard.utils";
 
