@@ -5,7 +5,7 @@ import "@testing-library/jest-dom/vitest";
 
 import TournamentNewWizard from "./TournamentNewWizard";
 import * as adminAuth from "../../lib/adminAuth";
-import { FRANCHISE_COLOUR_ROTATION, normaliseId } from "./TournamentNewWizard.utils";
+import { FRANCHISE_COLOUR_ROTATION, normaliseId, getAutoFormat, getInitials } from "./TournamentNewWizard.utils";
 
 async function completeStep1(user, { name = "HJ Test" } = {}) {
   // fireEvent.change is ~10x faster than user.type for filling text inputs
@@ -721,8 +721,7 @@ describe("TournamentNewWizard (v2)", () => {
     expect(within(sidebar).queryByText("St Stithians")).not.toBeInTheDocument();
   });
 
-  it("sidebar shows the computed game duration and formula", async () => {
-    const user = userEvent.setup();
+  it("sidebar shows the computed game duration and formula", () => {
     render(<TournamentNewWizard />);
 
     // Default timing: 2 chakas × 20 min + 5 half + 3 change = 48 min/game
@@ -765,5 +764,165 @@ describe("TournamentNewWizard (v2)", () => {
     expect(within(sidebar).getByText("U9 Mixed")).toBeInTheDocument();
     // Team count badge shows 2
     expect(within(sidebar).getByText("2")).toBeInTheDocument();
+  });
+
+  // ── Remove venue chip and timing input handlers ───────────────────────────
+  it("clicking the remove chip deselects a selected venue", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.click(screen.getByRole("button", { name: "Beaulieu College" }));
+    expect(screen.getByRole("button", { name: "Remove selected venue Beaulieu College" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove selected venue Beaulieu College" }));
+    expect(screen.queryByRole("button", { name: "Remove selected venue Beaulieu College" })).not.toBeInTheDocument();
+  });
+
+  it("changing Chakas per game updates the timing formula in the sidebar", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // Default: 2 × 20 + 5 + 3 = 48. Change chakasPerGame to 3 → 3 × 20 + 5 + 3 = 68.
+    fireEvent.change(screen.getByLabelText("Chakas per game"), { target: { value: "3" } });
+    expect(screen.getByText(/=\s*68\s*min\/game/i)).toBeInTheDocument();
+  });
+
+  // ── Enter-key handlers in Step 1 ─────────────────────────────────────────
+  it("pressing Enter in the Add custom venue input adds the venue", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Add custom venue"), "Kings Park{Enter}");
+
+    const pill = screen.getByRole("button", { name: "Kings Park" });
+    expect(pill).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Remove selected venue Kings Park" })).toBeInTheDocument();
+  });
+
+  it("pressing Enter in the Add age group input adds the age group", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await user.type(screen.getByLabelText("Add age group"), "U21{Enter}");
+
+    expect(screen.getByRole("checkbox", { name: "U21 Mixed" })).toBeInTheDocument();
+  });
+
+  it("shows an end-date error when end date is before start date", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-05-10" } });
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-05-01" } });
+
+    expect(screen.getByText("End date must be on or after start date")).toBeInTheDocument();
+  });
+
+  it("shows day pill badge count after placing a fixture on that day", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    // D1 now has 1 fixture placed — badge element should appear on the pill
+    const d1 = screen.getByRole("button", { name: /D1/ });
+    const badge = d1.querySelector(".hj-tw2-day-badge");
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toBe("1");
+  });
+
+  // ── getAutoFormat util coverage ───────────────────────────────────────────
+  it("getAutoFormat returns rr2 for ≤4 teams, rr1 for 5-8, gs_ko for >8", () => {
+    expect(getAutoFormat(1)).toBe("rr2");
+    expect(getAutoFormat(4)).toBe("rr2");
+    expect(getAutoFormat(5)).toBe("rr1");
+    expect(getAutoFormat(8)).toBe("rr1");
+    expect(getAutoFormat(9)).toBe("gs_ko");
+    expect(getAutoFormat(20)).toBe("gs_ko");
+  });
+
+  // ── getInitials util coverage ─────────────────────────────────────────────
+  it("getInitials derives 2-letter initials from franchise name", () => {
+    expect(getInitials("")).toBe("??");
+    expect(getInitials(null)).toBe("??");
+    expect(getInitials("Black")).toBe("BL");
+    expect(getInitials("Black Hawks")).toBe("BH");
+    expect(getInitials("Purple Panthers Gold")).toBe("PP");
+  });
+
+  // ── Day-pill active switching (Step 5) ───────────────────────────────────
+  it("clicking a day pill switches the active day", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    const d1 = screen.getByRole("button", { name: /D1/ });
+    const d2 = screen.getByRole("button", { name: /D2/ });
+
+    // D1 is active by default
+    expect(d1.className).toContain("hj-tw2-day-pill--active");
+    expect(d2.className).not.toContain("hj-tw2-day-pill--active");
+
+    await user.click(d2);
+
+    expect(d2.className).toContain("hj-tw2-day-pill--active");
+    expect(d1.className).not.toContain("hj-tw2-day-pill--active");
+  });
+
+  // ── Submit error paths (lines 1971, 1978) ────────────────────────────────
+  it("shows an error alert when the server returns a non-ok response", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ ok: false, error: "Server exploded" }),
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Server exploded");
+
+    vi.restoreAllMocks();
+  });
+
+  it("falls back to HTTP status in the error alert when json.error is absent", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("HTTP 503");
+
+    vi.restoreAllMocks();
+  });
+
+  it("shows the error message when adminFetch itself throws a network error", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockRejectedValue(new Error("Network failure"));
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Network failure");
+
+    vi.restoreAllMocks();
   });
 });
