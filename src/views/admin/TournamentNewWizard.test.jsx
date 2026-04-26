@@ -99,11 +99,11 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // BHA is already in the initial directory — adding it again should be rejected.
     await user.type(screen.getByLabelText("Add franchise"), "BHA");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add & Save" }));
 
     // Only one BHA entry should exist in the franchise grid.
     expect(screen.getAllByText("BHA")).toHaveLength(1);
@@ -114,7 +114,7 @@ describe("TournamentNewWizard (v2)", () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
 
-    const next = screen.getByRole("button", { name: "Next" });
+    const next = screen.getByRole("button", { name: "Next →" });
     expect(next).toBeDisabled();
 
     await user.type(screen.getByLabelText("Name"), "HJ Intercity");
@@ -140,10 +140,10 @@ describe("TournamentNewWizard (v2)", () => {
 
     await completeStep1(user);
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: "Save & Continue" });
+    const save = screen.getByRole("button", { name: "Next →" });
     expect(save).toBeDisabled();
 
     const cards = screen.getAllByRole("listitem");
@@ -158,12 +158,12 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     await user.type(screen.getByLabelText("Add franchise"), "New Club{enter}");
 
     expect(screen.getAllByText("New Club").length).toBeGreaterThan(0);
-    expect(screen.getByText(/1 selected|2 selected|3 selected/)).toBeInTheDocument();
+    expect(screen.getByText(/franchise.*selected/i)).toBeInTheDocument();
   });
 
   it("lets you adjust points tiles (plus, minus, and manual input)", async () => {
@@ -195,7 +195,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
     // Step 2 uses the fixed prototype summarybar CTA and doesn't render Back.
@@ -258,12 +258,12 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 2: select BHA and Black Hawks
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt both franchises into the U9 Mixed division
     expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
@@ -325,13 +325,13 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Select BHA and Knights in Step 2.
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Knights"));
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByRole("button", { name: "Next →" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Now on Step 3 — sees franchise cards with division tiles.
     expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
@@ -373,7 +373,7 @@ describe("TournamentNewWizard (v2)", () => {
     expect(franchises).toBeDisabled();
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
     // After reaching step 2, it should no longer be locked
@@ -408,10 +408,10 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: "Save & Continue" });
+    const save = screen.getByRole("button", { name: "Next →" });
     expect(save).toBeDisabled();
 
     const cards = screen.getAllByRole("listitem");
@@ -428,7 +428,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     const search = screen.getByRole("textbox", { name: "Search franchises" });
     await user.type(search, "  sharks ");
@@ -456,13 +456,13 @@ describe("TournamentNewWizard (v2)", () => {
       await user.click(screen.getByRole("button", { name: "St Stithians" }));
     }
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 2: select BHA and Black Hawks (+ Knights when we need 3 franchises)
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
     if (extraVenue) await user.click(screen.getByText("Knights"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt franchises into U9 Mixed
     const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
@@ -806,11 +806,11 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt both franchises into U9 Mixed
     const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });

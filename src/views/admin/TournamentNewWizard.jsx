@@ -9,6 +9,7 @@ import {
   FRANCHISE_DIRECTORY,
   TEAM_DIRECTORY,
   getAutoFormat,
+  getInitials,
   normaliseId,
   getTeamsForDivision,
   buildFixturesForStep5,
@@ -574,7 +575,7 @@ Step4Rules.propTypes = {
   onBack: PropTypes.func.isRequired,
 };
 
-function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
+function Step2Franchises({ value, onChange, onValidityChange, onNext, onBack }) {
   const filtered = useMemo(() => {
     const q = value.query.trim().toLowerCase();
     if (!q) return value.directory;
@@ -616,7 +617,7 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
       id = `f-${idBase}-${i++}`;
     }
 
-    const entry = { id, name, colour: nextColour() };
+    const entry = { id, name, colour: nextColour(), isNew: true };
     onChange({
       ...value,
       directory: [...value.directory, entry],
@@ -644,7 +645,7 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
           <input
             className="hj-tw2-input"
             aria-label="Search franchises"
-            placeholder="Search"
+            placeholder="Search franchises…"
             value={value.query}
             onChange={(e) => onChange({ ...value, query: e.target.value })}
           />
@@ -662,8 +663,12 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
                 onClick={() => toggle(f.id)}
                 aria-pressed={isSelected}
               >
-                <span className="hj-tw2-fr-swatch" style={{ background: f.colour }} aria-hidden="true" />
+                <span className="hj-tw2-fr-avatar" style={{ background: f.colour }} aria-hidden="true">
+                  {getInitials(f.name)}
+                </span>
                 <span className="hj-tw2-fr-name">{f.name}</span>
+                {f.isNew && <span className="hj-tw2-fr-badge-new">NEW</span>}
+                {isSelected && <span className="hj-tw2-fr-check" aria-hidden="true">✓</span>}
               </button>
             );
           })}
@@ -683,8 +688,13 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
               }
             }}
           />
-          <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={addFranchise}>
-            Add
+          <button
+            type="button"
+            className="hj-tw2-btn hj-tw2-btn--primary"
+            onClick={addFranchise}
+            disabled={!value.draftName.trim()}
+          >
+            Add &amp; Save
           </button>
         </div>
 
@@ -692,24 +702,22 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
       </div>
 
       <div className="hj-tw2-summarybar" role="status" aria-label="Franchises selected summary">
-        <div className="hj-tw2-summarybar-left">
-          <div className="hj-tw2-summarybar-count">{selectedCount} selected</div>
-          <div className="hj-tw2-summarybar-chips" aria-label="Selected franchises">
-            {selected.map((f) => (
-              <span key={f.id} className="hj-tw2-chip" style={{ borderColor: f.colour }}>
-                <span className="hj-tw2-chip-dot" style={{ background: f.colour }} aria-hidden="true" />
-                {f.name}
-              </span>
-            ))}
-          </div>
-        </div>
+        {selectedCount > 0
+          ? `${selectedCount} franchise${selectedCount !== 1 ? "s" : ""} selected — ${selected.map((f) => f.name).join(", ")}`
+          : "No franchises selected"}
+      </div>
+
+      <div className="hj-tw2-footer">
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onBack}>
+          ← Back
+        </button>
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
           onClick={onNext}
           disabled={!isValid}
         >
-          Save & Continue
+          Next →
         </button>
       </div>
     </section>
@@ -726,6 +734,7 @@ Step2Franchises.propTypes = {
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired,
+  onBack: PropTypes.func.isRequired,
 };
 
 function TopStepper({ step, maxStep, onStepChange }) {
@@ -1261,7 +1270,7 @@ function Step1({ value, onChange, onValidityChange }) {
             onChange({ ...value, _continue: (value._continue || 0) + 1 });
           }}
         >
-          Next
+          Next →
         </button>
       </div>
     </section>
@@ -1902,6 +1911,7 @@ export default function TournamentNewWizard() {
       onChange={setStep2}
       onValidityChange={setCanProceed}
       onNext={() => setStep(2)}
+      onBack={() => setStep(0)}
     />
   ) : step === 2 ? (
     <Step3Teams
