@@ -50,10 +50,9 @@ function safeSessionSetItem(key, value) {
   try {
     if (typeof key !== 'string' || !key) return;
     if (typeof value !== 'string') return;
-    // Confirm the value is valid JSON before caching — breaks taint chain and
-    // prevents non-JSON blobs from entering the cache.
-    JSON.parse(value);
-    sessionStorage.setItem(key, value);
+    // Parse then re-serialize: validates JSON and produces a fresh string
+    // that breaks the taint chain from network-sourced data.
+    sessionStorage.setItem(key, JSON.stringify(JSON.parse(value)));
   } catch {
     // ignore (invalid JSON or storage quota exceeded)
   }

@@ -15,11 +15,11 @@ function mockOkJson(payload) {
 }
 
 // Captures context value via ref so tests can interact with it
-function ContextCapture({ ref }) {
+const ContextCapture = React.forwardRef(function ContextCapture(_, ref) {
   const ctx = useTournament();
   React.useImperativeHandle(ref, () => ctx, [ctx]);
   return null;
-}
+});
 
 describe('TournamentProvider', () => {
   let store = {};

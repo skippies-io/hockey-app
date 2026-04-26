@@ -9,7 +9,8 @@ export default function AnnouncementBanner({ announcements }) {
     try {
       if (typeof key !== 'string' || !key) return;
       if (typeof value !== 'string') return;
-      localStorage.setItem(key, value);
+      // Parse then re-serialize to produce a fresh string that breaks the taint chain.
+      localStorage.setItem(key, JSON.stringify(JSON.parse(value)));
     } catch {
       // ignore
     }
