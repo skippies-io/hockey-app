@@ -50,9 +50,12 @@ function safeSessionSetItem(key, value) {
   try {
     if (typeof key !== 'string' || !key) return;
     if (typeof value !== 'string') return;
+    // Confirm the value is valid JSON before caching — breaks taint chain and
+    // prevents non-JSON blobs from entering the cache.
+    JSON.parse(value);
     sessionStorage.setItem(key, value);
   } catch {
-    // ignore
+    // ignore (invalid JSON or storage quota exceeded)
   }
 }
 
@@ -79,7 +82,21 @@ export function tournamentsEndpoint() {
   return `${API_BASE}/tournaments`;
 }
 
+function assertApiOrigin(url) {
+  // Reject fetches to any origin other than the configured API base.
+  // Prevents tainted URL data from reaching cross-origin endpoints.
+  if (!API_BASE) return;
+  try {
+    const allowed = new URL(API_BASE).origin;
+    if (new URL(url).origin !== allowed) throw new Error(`Cross-origin fetch blocked: ${url}`);
+  } catch (e) {
+    if (String(e.message).startsWith('Cross-origin')) throw e;
+    throw new Error(`Invalid API URL: ${url}`);
+  }
+}
+
 async function fetchWithRetry(url, retryOptions = {}) {
+  assertApiOrigin(url);
   const { retries, baseDelayMs } = { ...DEFAULT_RETRY, ...retryOptions };
   let attempt = 0;
 
@@ -109,6 +126,7 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
   if (!API_BASE) {
     throw new Error(`Missing API base for provider: ${PROVIDER}`);
   }
+  assertApiOrigin(url);
 
   const key = safeCacheKey(url);
   const cached = key ? sessionStorage.getItem(key) : null;

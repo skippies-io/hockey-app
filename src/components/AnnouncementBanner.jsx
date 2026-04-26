@@ -37,15 +37,16 @@ export default function AnnouncementBanner({ announcements }) {
 
   function dismiss(id) {
     if (typeof id !== 'string' || !id) return;
-
+    setVisible(visible.filter(a => a.id !== id));
+    // Strip characters outside the expected token alphabet before persisting
+    // so tainted API data cannot write arbitrary strings to local storage.
+    const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
+    if (!safeId) return;
     const dismissed = readDismissedIds();
-
-    if (!dismissed.includes(id)) {
-      dismissed.push(id);
-      // Only persist a simple JSON array.
+    if (!dismissed.includes(safeId)) {
+      dismissed.push(safeId);
       safeLocalSetItem(storageKey, JSON.stringify(dismissed));
     }
-    setVisible(visible.filter(a => a.id !== id));
   }
 
   // Severity → design token mapping

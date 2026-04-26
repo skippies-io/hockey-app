@@ -51,11 +51,13 @@ export function TournamentProvider({ children }) {
   }, []); // Run once on mount
 
   useEffect(() => {
-    if (activeTournamentId) {
-      // Ensure only simple scalar values are persisted.
-      if (typeof activeTournamentId === 'string') {
+    if (activeTournamentId && typeof activeTournamentId === 'string') {
+      // Strip any characters outside the expected token alphabet before persisting
+      // so tainted API data cannot write arbitrary strings to local storage.
+      const safeId = activeTournamentId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 128);
+      if (safeId) {
         try {
-          localStorage.setItem('hj_active_tournament', activeTournamentId);
+          localStorage.setItem('hj_active_tournament', safeId);
         } catch {
           // ignore storage failures (e.g. Safari private mode)
         }
