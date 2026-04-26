@@ -1358,6 +1358,53 @@ Step1.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
+function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCount, onCreateAnother }) {
+  return (
+    <section className="hj-tw2-main hj-tw2-success" aria-label="Tournament created">
+      <div className="hj-tw2-success-hero">
+        <span className="hj-tw2-success-emoji" aria-hidden="true">🏑</span>
+        <h1 className="hj-tw2-success-title">Tournament Created!</h1>
+        <p className="hj-tw2-success-name">{tournamentName}</p>
+      </div>
+
+      <div className="hj-tw2-success-tiles">
+        <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{divisionsCount}</div>
+          <div className="hj-tw2-success-tile-label">Division{divisionsCount !== 1 ? "s" : ""}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{teamsCount}</div>
+          <div className="hj-tw2-success-tile-label">Team{teamsCount !== 1 ? "s" : ""}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
+          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount !== 1 ? "s" : ""} scheduled</div>
+        </div>
+      </div>
+
+      <div className="hj-tw2-success-actions">
+        <a href="/admin/tournaments" className="hj-tw2-btn hj-tw2-btn--primary hj-tw2-success-link">
+          View Tournaments
+        </a>
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onCreateAnother}>
+          Create Another
+        </button>
+        <a href="/admin" className="hj-tw2-btn hj-tw2-btn--ghost hj-tw2-success-link">
+          Back to Dashboard
+        </a>
+      </div>
+    </section>
+  );
+}
+
+SuccessScreen.propTypes = {
+  tournamentName: PropTypes.string.isRequired,
+  scheduledCount: PropTypes.number.isRequired,
+  teamsCount: PropTypes.number.isRequired,
+  divisionsCount: PropTypes.number.isRequired,
+  onCreateAnother: PropTypes.func.isRequired,
+};
+
 function Step5Fixtures({ step1, step5, onFixturesChange, onAutoGenerate, onBack, onSubmit }) {
   const [selectedIdx, setSelectedIdx] = React.useState(null);
   const [activeDay, setActiveDay] = React.useState(0);
@@ -1750,6 +1797,14 @@ export default function TournamentNewWizard() {
     return next;
   }, [step1.ageGroups, step1.divisionTable]);
 
+  const totalTeamCount = useMemo(() => {
+    let count = 0;
+    for (const divKey of activeDivisions) {
+      count += getTeamsForDivision(step3.entries, divKey).length;
+    }
+    return count;
+  }, [activeDivisions, step3.entries]);
+
   React.useEffect(() => {
     if (step !== 0) return;
     if (step1._continue && canProceed) setStep(1);
@@ -1772,6 +1827,26 @@ export default function TournamentNewWizard() {
         .filter(Boolean),
     [step2.selectedIds, step2.directory]
   );
+
+  function handleCreateAnother() {
+    setStep(0);
+    setCanProceed(false);
+    setMaxStep(0);
+    setStep1((s) => ({
+      ...s,
+      _continue: 0,
+      name: "",
+      startDate: "",
+      endDate: "",
+      selectedVenues: [],
+      customVenueDraft: "",
+      divisionTable: Object.fromEntries(s.ageGroups.map((a) => [a, { boys: false, girls: false, mixed: false, custom: false }])),
+    }));
+    setStep2((s) => ({ ...s, selectedIds: [], query: "", draftName: "" }));
+    setStep3({ entries: {} });
+    setStep4({ formats: {}, overridden: {}, poolsA: {}, poolsB: {} });
+    setStep5({ isSubmitting: false, submitError: "", createdTournamentId: "", fixtures: [], skippedSameFranchise: 0 });
+  }
 
   async function handleSubmit() {
     setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
@@ -1891,17 +1966,31 @@ export default function TournamentNewWizard() {
     />
   ) : null;
 
+  const isSuccess = Boolean(step5.createdTournamentId);
+
   return (
     <div className="hj-tw2-shell">
-      <TopStepper step={step} maxStep={maxStep} onStepChange={setStep} />
-      <div className="hj-tw2-body">
-        <div ref={mainRef}>{main}</div>
-        <SummarySidebar
-          tournamentName={step1.name}
-          venuesCount={step1.selectedVenues.length}
-          divisionsCount={activeDivisions.length}
-        />
-      </div>
+      <TopStepper step={step} maxStep={maxStep} onStepChange={isSuccess ? () => {} : setStep} />
+      {isSuccess ? (
+        <div className="hj-tw2-body hj-tw2-body--success">
+          <SuccessScreen
+            tournamentName={step1.name}
+            scheduledCount={step5.fixtures.filter((f) => f.slotDay !== null).length}
+            teamsCount={totalTeamCount}
+            divisionsCount={activeDivisions.length}
+            onCreateAnother={handleCreateAnother}
+          />
+        </div>
+      ) : (
+        <div className="hj-tw2-body">
+          <div ref={mainRef}>{main}</div>
+          <SummarySidebar
+            tournamentName={step1.name}
+            venuesCount={step1.selectedVenues.length}
+            divisionsCount={activeDivisions.length}
+          />
+        </div>
+      )}
     </div>
   );
 }

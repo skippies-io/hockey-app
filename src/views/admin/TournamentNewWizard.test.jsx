@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 
@@ -644,5 +644,66 @@ describe("TournamentNewWizard (v2)", () => {
 
     // Both placed cards should display the conflict warning for BHA
     expect(screen.getAllByText(/BHA is already playing at 08:00/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ── Success screen tests ─────────────────────────────────────────────
+  it("shows the success screen with stat tiles and action buttons after successful submit", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+
+    await user.click(screen.getByRole("button", { name: "Auto-generate fixtures" }));
+    await user.click(screen.getByRole("button", { name: /BHA.*Black Hawks/ }));
+    await user.click(screen.getAllByRole("button", { name: "click to place" })[0]);
+
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    // Success heading and emoji
+    expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
+    // Tournament name shown
+    const successRegion = screen.getByRole("region", { name: "Tournament created" });
+    expect(within(successRegion).getByText("🏑")).toBeInTheDocument();
+    expect(within(successRegion).getByText("HJ Test")).toBeInTheDocument();
+    // Stat tile labels scoped inside success region
+    expect(within(successRegion).getByText(/Division/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/Team/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/Fixture/)).toBeInTheDocument();
+    // Action links / buttons
+    expect(screen.getByRole("link", { name: "View Tournaments" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Another" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
+  it("Create Another on the success screen resets the wizard to Step 1", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create Another" }));
+
+    // Wizard is back at Step 1
+    expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Tournament Created!" })).not.toBeInTheDocument();
+
+    vi.restoreAllMocks();
   });
 });
