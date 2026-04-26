@@ -1481,10 +1481,8 @@ function Step5Fixtures({ step1, step5, onFixturesChange, onAutoGenerate, onBack,
     const end = new Date(step1.endDate + "T00:00:00Z");
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return [];
     const result = [];
-    const cur = new Date(start);
-    while (cur <= end) {
+    for (let cur = new Date(start); cur <= end; cur = new Date(cur.getTime() + 86400000)) {
       result.push(new Date(cur));
-      cur.setUTCDate(cur.getUTCDate() + 1);
     }
     return result;
   }, [step1.startDate, step1.endDate]);

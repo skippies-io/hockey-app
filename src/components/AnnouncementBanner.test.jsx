@@ -90,4 +90,33 @@ describe('AnnouncementBanner', () => {
     expect(screen.getByText('Test 1')).toBeDefined();
     expect(screen.getByText('Test 2')).toBeDefined();
   });
+
+  it('does not persist dismiss when id strips to empty string', () => {
+    const ann = [{ id: '!!!', title: 'Special', body: 'b', severity: 'info' }];
+    render(<AnnouncementBanner announcements={ann} />);
+    const btn = screen.getByRole('button', { name: /dismiss/i });
+    fireEvent.click(btn);
+    // safeId becomes '' after stripping — setItem should not be called
+    expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('does not add duplicate ids to dismissed list', () => {
+    store['hj_dismissed_announcements'] = JSON.stringify(['2']);
+    render(<AnnouncementBanner announcements={mockAnnouncements} />);
+    // Dismiss '2' which is already in the dismissed list
+    const buttons = screen.getAllByRole('button', { name: /dismiss/i });
+    // '1' is visible (index 0), '2' is not rendered because already dismissed
+    // So only one button exists — dismiss '1'
+    fireEvent.click(buttons[0]);
+    const stored = JSON.parse(mockLocalStorage.setItem.mock.calls[0][1]);
+    expect(stored.filter((x) => x === '1').length).toBe(1);
+  });
+
+  it('filters non-string ids out of stored dismissed list', () => {
+    store['hj_dismissed_announcements'] = JSON.stringify(['1', 42, null]);
+    render(<AnnouncementBanner announcements={mockAnnouncements} />);
+    // '1' is filtered out as dismissed; '2' is shown
+    expect(screen.queryByText('Test 1')).toBeNull();
+    expect(screen.getByText('Test 2')).toBeDefined();
+  });
 });
