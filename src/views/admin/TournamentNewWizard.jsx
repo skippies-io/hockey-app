@@ -10,7 +10,6 @@ import {
   TEAM_DIRECTORY,
   getAutoFormat,
   normaliseId,
-  roundRobinPairs,
   getTeamsForDivision,
   buildFixturesForStep5,
 } from "./TournamentNewWizard.utils";

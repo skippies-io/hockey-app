@@ -169,4 +169,21 @@ describe('TournamentProvider', () => {
     await waitFor(() => expect(ref.current?.loading).toBe(false));
     expect(ref.current.activeTournamentId).toBe('stored-t1');
   });
+
+  it('handles localStorage.getItem throwing during init', async () => {
+    vi.stubGlobal('localStorage', {
+      ...mockLocalStorage,
+      getItem: vi.fn(() => { throw new Error('Storage blocked'); }),
+      setItem: vi.fn(),
+    });
+    const ref = React.createRef();
+    render(
+      <TournamentProvider>
+        <ContextCapture ref={ref} />
+      </TournamentProvider>
+    );
+    await waitFor(() => expect(ref.current?.loading).toBe(false));
+    // Should default to null without crashing
+    expect(ref.current.activeTournamentId).toBeNull();
+  });
 });

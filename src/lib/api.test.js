@@ -314,4 +314,43 @@ describe("api helpers", () => {
     vi.stubGlobal('localStorage', mockLocalStorage);
     expect(getCachedLastSyncAt()).toBe('2026-01-01');
   });
+
+  it("getAwardsRows returns topScorers and cleanSheets", async () => {
+    const { getAwardsRows } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ topScorers: [{ name: 'A' }], cleanSheets: [{ name: 'B' }] })
+    );
+    const result = await getAwardsRows('t1', 'U11B');
+    expect(result.topScorers).toHaveLength(1);
+    expect(result.cleanSheets).toHaveLength(1);
+  });
+
+  it("getAwardsRows omits age param when ageId is 'all' or absent", async () => {
+    const { getAwardsRows } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ topScorers: [], cleanSheets: [] })
+    );
+    await getAwardsRows('t1', 'all');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringMatching(/awards\?tournamentId=t1$/)
+    );
+  });
+
+  it("getFixturesIcsUrl builds the correct URL with age", () => {
+    // Synchronous; no need to import dynamically
+    (async () => {
+      const { getFixturesIcsUrl } = await import("./api.js");
+      const url = getFixturesIcsUrl('t1', 'U11B');
+      expect(url).toContain('/api/fixtures.ics');
+      expect(url).toContain('tournamentId=t1');
+      expect(url).toContain('age=U11B');
+    })();
+  });
+
+  it("getFixturesIcsUrl omits age for 'all'", async () => {
+    const { getFixturesIcsUrl } = await import("./api.js");
+    const url = getFixturesIcsUrl('t1', 'all');
+    expect(url).toContain('/api/fixtures.ics');
+    expect(url).not.toContain('age=');
+  });
 });

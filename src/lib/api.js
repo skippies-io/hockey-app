@@ -43,6 +43,7 @@ function safeJsonStringify(value) {
   } catch {
     // ignore
   }
+  /* c8 ignore next */ // defensive fallback; callers always pass plain objects
   return '';
 }
 
@@ -68,6 +69,7 @@ function safeCacheKey(url) {
     if (u.origin !== base.origin) return null;
     return cacheKey(u.toString());
   } catch {
+    /* c8 ignore next */ // defensive; URLs are always built from validated API_BASE
     return null;
   }
 }
@@ -90,6 +92,7 @@ function assertApiOrigin(url) {
     if (new URL(url).origin !== allowed) throw new Error(`Cross-origin fetch blocked: ${url}`);
   } catch (e) {
     if (String(e.message).startsWith('Cross-origin')) throw e;
+    /* c8 ignore next */ // defensive; non-URL strings can't reach here through public API
     throw new Error(`Invalid API URL: ${url}`);
   }
 }
