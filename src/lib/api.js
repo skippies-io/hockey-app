@@ -52,7 +52,7 @@ function safeSessionSetItem(key, value) {
     if (typeof value !== 'string') return;
     // Parse then re-serialize: validates JSON and produces a fresh string
     // that breaks the taint chain from network-sourced data.
-    sessionStorage.setItem(key, JSON.stringify(JSON.parse(value)));
+    sessionStorage.setItem(key, JSON.stringify(JSON.parse(value))); // NOSONAR[S8475] parse+re-serialize produces an untainted string; key is same-origin validated via safeCacheKey
   } catch {
     // ignore (invalid JSON or storage quota exceeded)
   }

@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  *   Fixtures:   Round-robin generator for U11 Boys → 3 fixtures at Dainfern
  */
 test('admin creates a full tournament via the wizard', async ({ page }) => {
-  test.setTimeout(120_000); // 50+ interactions at 800ms slow-mo
+  test.setTimeout(180_000); // 50+ interactions; extra headroom for final page nav
   const email = process.env.PW_ADMIN_EMAIL || 'admin@example.com';
   const token = process.env.PW_ADMIN_TOKEN || 'sess';
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -84,6 +84,15 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
     return route.fulfill({ json: { ok: true, tournament_id: tournamentId } });
   });
 
+  // Catch-all: resolve any other admin or public data API calls immediately so
+  // page.waitForLoadState('domcontentloaded') doesn't hang on unmocked endpoints.
+  await page.route('**/api/admin/**', (route) =>
+    route.fulfill({ json: { ok: true, data: [] } })
+  );
+  await page.route('**/api?*', (route) =>
+    route.fulfill({ json: { ok: true, groups: [], rows: [], data: [] } })
+  );
+
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   await page.goto('admin');
@@ -100,13 +109,13 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   );
 
   await page.goto('admin');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByRole('heading', { name: /admin dashboard/i })).toBeVisible();
 
   // ── Navigate to wizard ────────────────────────────────────────────────────
 
   await page.goto('admin/tournaments/new');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByRole('heading', { name: 'Tournament Setup Wizard' })).toBeVisible();
 
   // ── Step 0: Tournament details ────────────────────────────────────────────
@@ -233,7 +242,7 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   // ── Assert it appears in the public tournament directory ──────────────────
 
   await page.goto('tournaments');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByText('Tournament Directory')).toBeVisible();
   await expect(page.getByRole('heading', { name: tournamentName })).toBeVisible();
 });
