@@ -709,6 +709,63 @@ describe("TournamentNewWizard (v2)", () => {
     vi.restoreAllMocks();
   });
 
+  it("Share Fixture Link copies the fixture URL and shows it inline", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
+    expect(screen.queryByText(/\/fixtures/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Share Fixture Link/ }));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/fixtures"));
+    expect(await screen.findByText(/\/fixtures/)).toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
+  it("Share Fixture Link does nothing when clipboard is unavailable", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    await user.click(screen.getByRole("button", { name: /Share Fixture Link/ }));
+
+    expect(screen.queryByText(/\/fixtures/)).not.toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
   // ── Enhanced sidebar tests ────────────────────────────────────────────
   it("sidebar shows the selected venue names (not just a count)", async () => {
     const user = userEvent.setup();

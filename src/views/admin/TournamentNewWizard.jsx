@@ -1315,8 +1315,9 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
   const [sharedUrl, setSharedUrl] = React.useState("");
 
   function handleShare() {
+    if (!navigator.clipboard) return;
     const url = `${window.location.origin}/fixtures`;
-    navigator.clipboard?.writeText(url).then(() => setSharedUrl(url));
+    navigator.clipboard.writeText(url).then(() => setSharedUrl(url)).catch(() => {});
   }
 
   return (
