@@ -871,6 +871,74 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
+/* ── Enhanced sidebar content ─────────────────────────────────────── */
+.hj-tw2-sidebar-duration-value {
+  font-size: var(--hj-font-size-sm);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.hj-tw2-sidebar-duration-formula {
+  font-size: var(--hj-font-size-xs);
+  color: rgba(255, 255, 255, 0.52);
+  margin-top: 2px;
+}
+
+.hj-tw2-sidebar-venue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hj-tw2-sidebar-venue-item {
+  font-size: var(--hj-font-size-sm);
+  color: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hj-tw2-sidebar-venue-item::before {
+  content: "•";
+  color: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.hj-tw2-sidebar-div-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hj-tw2-sidebar-div-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hj-tw2-sidebar-div-name {
+  font-size: var(--hj-font-size-sm);
+  color: rgba(255, 255, 255, 0.92);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hj-tw2-sidebar-div-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0b1f3a;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 9999px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 1100px) {
   .hj-tw2-shell {
     grid-template-columns: 1fr;

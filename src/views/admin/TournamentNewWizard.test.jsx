@@ -351,8 +351,9 @@ describe("TournamentNewWizard (v2)", () => {
     // 2 teams in U9 Mixed → valid
     expect(screen.getByRole("button", { name: "Next →" })).toBeEnabled();
 
-    // Division summary chip should show count 2.
-    expect(screen.getByText("2")).toBeInTheDocument();
+    // Division summary chip should show count 2 (scoped to main step area).
+    const step3Region = screen.getByRole("region", { name: "Step 3 Teams" });
+    expect(within(step3Region).getByText("2")).toBeInTheDocument();
 
     // Back button returns to Step 2.
     await user.click(screen.getByRole("button", { name: "← Back" }));
@@ -705,5 +706,51 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.queryByRole("heading", { name: "Tournament Created!" })).not.toBeInTheDocument();
 
     vi.restoreAllMocks();
+  });
+
+  // ── Enhanced sidebar tests ────────────────────────────────────────────
+  it("sidebar shows the selected venue names (not just a count)", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user); // selects Beaulieu College
+
+    const sidebar = screen.getByRole("complementary", { name: "Tournament summary" });
+    expect(within(sidebar).getByText("Beaulieu College")).toBeInTheDocument();
+    // St Stithians not selected yet
+    expect(within(sidebar).queryByText("St Stithians")).not.toBeInTheDocument();
+  });
+
+  it("sidebar shows the computed game duration and formula", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    // Default timing: 2 chakas × 20 min + 5 half + 3 change = 48 min/game
+    const sidebar = screen.getByRole("complementary", { name: "Tournament summary" });
+    expect(within(sidebar).getByText("48 min/game")).toBeInTheDocument();
+    expect(within(sidebar).getByText(/2×20/)).toBeInTheDocument();
+  });
+
+  it("sidebar shows per-division team counts after teams are entered on Step 3", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next" }));
+
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Black Hawks"));
+    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+
+    // Step 3: opt both franchises into U9 Mixed
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]);
+    await user.click(divTiles[1]);
+
+    const sidebar = screen.getByRole("complementary", { name: "Tournament summary" });
+    // Division name appears in sidebar
+    expect(within(sidebar).getByText("U9 Mixed")).toBeInTheDocument();
+    // Team count badge shows 2
+    expect(within(sidebar).getByText("2")).toBeInTheDocument();
   });
 });

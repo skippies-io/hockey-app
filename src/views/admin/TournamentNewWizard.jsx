@@ -872,7 +872,15 @@ TopStepper.propTypes = {
   onStepChange: PropTypes.func.isRequired,
 };
 
-function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
+function SummarySidebar({ tournamentName, selectedVenues, step1Timing, divisionTeamCounts }) {
+  const gameDuration = React.useMemo(() => {
+    const chakas = Number(step1Timing.chakasPerGame) || 0;
+    const dur = Number(step1Timing.chakaMinutes) || 0;
+    const half = Number(step1Timing.halftimeMinutes) || 0;
+    const co = Number(step1Timing.changeoverMinutes) || 0;
+    return chakas * dur + half + co;
+  }, [step1Timing.chakasPerGame, step1Timing.chakaMinutes, step1Timing.halftimeMinutes, step1Timing.changeoverMinutes]);
+
   return (
     <aside className="hj-tw2-sidebar" aria-label="Tournament summary">
       <div className="hj-tw2-sidebar-card">
@@ -882,13 +890,52 @@ function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
             <dt>Tournament</dt>
             <dd>{tournamentName || "—"}</dd>
           </div>
+
+          <div>
+            <dt>Game Duration</dt>
+            <dd>
+              <div className="hj-tw2-sidebar-duration-value">
+                {gameDuration > 0 ? `${gameDuration} min/game` : "—"}
+              </div>
+              {gameDuration > 0 && (
+                <div className="hj-tw2-sidebar-duration-formula">
+                  {Number(step1Timing.chakasPerGame)}×{Number(step1Timing.chakaMinutes)}
+                  {" + "}{Number(step1Timing.halftimeMinutes)} half
+                  {" + "}{Number(step1Timing.changeoverMinutes)} change
+                </div>
+              )}
+            </dd>
+          </div>
+
           <div>
             <dt>Venues</dt>
-            <dd>{venuesCount}</dd>
+            <dd>
+              {selectedVenues.length === 0 ? "—" : (
+                <ul className="hj-tw2-sidebar-venue-list">
+                  {selectedVenues.map((v) => (
+                    <li key={v} className="hj-tw2-sidebar-venue-item">{v}</li>
+                  ))}
+                </ul>
+              )}
+            </dd>
           </div>
+
           <div>
             <dt>Divisions</dt>
-            <dd>{divisionsCount}</dd>
+            <dd>
+              {divisionTeamCounts.length === 0 ? "—" : (
+                <div className="hj-tw2-sidebar-div-list">
+                  {divisionTeamCounts.map(({ divKey, count }) => (
+                    <div key={divKey} className="hj-tw2-sidebar-div-row">
+                      <span className="hj-tw2-sidebar-div-name">{divKey}</span>
+                      {count > 0 && (
+                        <span className="hj-tw2-sidebar-div-count">{count}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </dd>
           </div>
         </dl>
       </div>
@@ -898,8 +945,19 @@ function SummarySidebar({ tournamentName, venuesCount, divisionsCount }) {
 
 SummarySidebar.propTypes = {
   tournamentName: PropTypes.string.isRequired,
-  venuesCount: PropTypes.number.isRequired,
-  divisionsCount: PropTypes.number.isRequired,
+  selectedVenues: PropTypes.arrayOf(PropTypes.string).isRequired,
+  step1Timing: PropTypes.shape({
+    chakasPerGame: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    chakaMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    halftimeMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    changeoverMinutes: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  }).isRequired,
+  divisionTeamCounts: PropTypes.arrayOf(
+    PropTypes.shape({
+      divKey: PropTypes.string.isRequired,
+      count: PropTypes.number.isRequired,
+    })
+  ).isRequired,
 };
 
 function Step1({ value, onChange, onValidityChange }) {
@@ -1805,6 +1863,14 @@ export default function TournamentNewWizard() {
     return count;
   }, [activeDivisions, step3.entries]);
 
+  const divisionTeamCounts = useMemo(
+    () => activeDivisions.map((divKey) => ({
+      divKey,
+      count: getTeamsForDivision(step3.entries, divKey).length,
+    })),
+    [activeDivisions, step3.entries]
+  );
+
   React.useEffect(() => {
     if (step !== 0) return;
     if (step1._continue && canProceed) setStep(1);
@@ -1986,8 +2052,14 @@ export default function TournamentNewWizard() {
           <div ref={mainRef}>{main}</div>
           <SummarySidebar
             tournamentName={step1.name}
-            venuesCount={step1.selectedVenues.length}
-            divisionsCount={activeDivisions.length}
+            selectedVenues={step1.selectedVenues}
+            step1Timing={{
+              chakasPerGame: step1.chakasPerGame,
+              chakaMinutes: step1.chakaMinutes,
+              halftimeMinutes: step1.halftimeMinutes,
+              changeoverMinutes: step1.changeoverMinutes,
+            }}
+            divisionTeamCounts={divisionTeamCounts}
           />
         </div>
       )}
