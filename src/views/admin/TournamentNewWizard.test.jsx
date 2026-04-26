@@ -673,13 +673,14 @@ describe("TournamentNewWizard (v2)", () => {
     expect(within(successRegion).getByText("🏑")).toBeInTheDocument();
     expect(within(successRegion).getByText("HJ Test")).toBeInTheDocument();
     // Stat tile labels scoped inside success region
-    expect(within(successRegion).getByText(/Division/)).toBeInTheDocument();
-    expect(within(successRegion).getByText(/Team/)).toBeInTheDocument();
-    expect(within(successRegion).getByText(/Fixture/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Fixtures?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Franchises?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Divisions?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Teams?$/)).toBeInTheDocument();
     // Action links / buttons
-    expect(screen.getByRole("link", { name: "View Tournaments" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Another" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Go to Dashboard/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Share Fixture Link/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start Over/ })).toBeInTheDocument();
 
     vi.restoreAllMocks();
   });
@@ -699,7 +700,7 @@ describe("TournamentNewWizard (v2)", () => {
 
     expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Create Another" }));
+    await user.click(screen.getByRole("button", { name: /Start Over/ }));
 
     // Wizard is back at Step 1
     expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();

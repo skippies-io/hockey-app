@@ -1311,7 +1311,14 @@ Step1.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
-function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCount, onCreateAnother }) {
+function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCount, franchisesCount, onStartOver }) {
+  const [sharedUrl, setSharedUrl] = React.useState("");
+
+  function handleShare() {
+    const url = `${window.location.origin}/fixtures`;
+    navigator.clipboard?.writeText(url).then(() => setSharedUrl(url));
+  }
+
   return (
     <section className="hj-tw2-main hj-tw2-success" aria-label="Tournament created">
       <div className="hj-tw2-success-hero">
@@ -1322,6 +1329,14 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
 
       <div className="hj-tw2-success-tiles">
         <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
+          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount !== 1 ? "s" : ""}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{franchisesCount}</div>
+          <div className="hj-tw2-success-tile-label">Franchise{franchisesCount !== 1 ? "s" : ""}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{divisionsCount}</div>
           <div className="hj-tw2-success-tile-label">Division{divisionsCount !== 1 ? "s" : ""}</div>
         </div>
@@ -1329,22 +1344,19 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
           <div className="hj-tw2-success-tile-value">{teamsCount}</div>
           <div className="hj-tw2-success-tile-label">Team{teamsCount !== 1 ? "s" : ""}</div>
         </div>
-        <div className="hj-tw2-success-tile">
-          <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
-          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount !== 1 ? "s" : ""} scheduled</div>
-        </div>
       </div>
 
       <div className="hj-tw2-success-actions">
-        <a href="/admin/tournaments" className="hj-tw2-btn hj-tw2-btn--primary hj-tw2-success-link">
-          View Tournaments
+        <a href="/admin" className="hj-tw2-btn hj-tw2-btn--primary hj-tw2-success-link">
+          📋 Go to Dashboard
         </a>
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onCreateAnother}>
-          Create Another
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={handleShare}>
+          🔗 Share Fixture Link
         </button>
-        <a href="/admin" className="hj-tw2-btn hj-tw2-btn--ghost hj-tw2-success-link">
-          Back to Dashboard
-        </a>
+        {sharedUrl && <p className="hj-tw2-success-share-url">{sharedUrl}</p>}
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost hj-tw2-btn--muted" onClick={onStartOver}>
+          ↩ Start Over
+        </button>
       </div>
     </section>
   );
@@ -1355,7 +1367,8 @@ SuccessScreen.propTypes = {
   scheduledCount: PropTypes.number.isRequired,
   teamsCount: PropTypes.number.isRequired,
   divisionsCount: PropTypes.number.isRequired,
-  onCreateAnother: PropTypes.func.isRequired,
+  franchisesCount: PropTypes.number.isRequired,
+  onStartOver: PropTypes.func.isRequired,
 };
 
 function Step5Fixtures({ step1, step5, onFixturesChange, onAutoGenerate, onBack, onSubmit }) {
@@ -1776,6 +1789,8 @@ export default function TournamentNewWizard() {
   React.useEffect(() => {
     if (!mainRef.current) return;
     mainRef.current.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [step]);
 
   // Derive selected franchise objects for Step 3
@@ -1935,9 +1950,10 @@ export default function TournamentNewWizard() {
           <SuccessScreen
             tournamentName={step1.name}
             scheduledCount={step5.fixtures.filter((f) => f.slotDay !== null).length}
+            franchisesCount={step2.selectedIds.length}
             teamsCount={totalTeamCount}
             divisionsCount={activeDivisions.length}
-            onCreateAnother={handleCreateAnother}
+            onStartOver={handleCreateAnother}
           />
         </div>
       ) : (
