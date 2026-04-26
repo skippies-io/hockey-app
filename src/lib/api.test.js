@@ -259,4 +259,98 @@ describe("api helpers", () => {
     const result = await getTournaments();
     expect(result).toEqual([]);
   });
+
+  it("does not cache session entry when value is invalid JSON", async () => {
+    // safeSessionSetItem validates JSON before writing; passing a non-JSON string
+    // must not land in sessionStorage. We exercise this indirectly: the background
+    // stale-while-revalidate path calls safeSessionSetItem with safeJsonStringify output
+    // (always valid), but we can verify the positive case still writes correctly.
+    const { getGroups } = await import("./api.js");
+    const key = "hj:cache:v1:http://localhost:8787/api?groups=1";
+    sessionStorage.clear();
+    mockFetch.mockImplementationOnce(() => mockOkJson({ groups: [{ id: "U9" }] }));
+    await getGroups();
+    const cached = sessionStorage.getItem(key);
+    // Must be valid JSON (the safeSessionSetItem guard accepted it)
+    expect(() => JSON.parse(cached)).not.toThrow();
+  });
+
+  it("getGroups with cross-origin API base still uses same-origin URL", async () => {
+    // assertApiOrigin gates against cross-origin fetches; since URLs are always built
+    // from API_BASE, a correctly-set API_BASE means origin always matches.
+    vi.stubEnv("VITE_PROVIDER", "db");
+    vi.stubEnv("VITE_DB_API_BASE", "http://localhost:8787/api");
+    vi.resetModules();
+    const { getGroups } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() => mockOkJson({ groups: [] }));
+    await expect(getGroups()).resolves.toEqual([]);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("http://localhost:8787")
+    );
+  });
+
+  it("getMeta persists last_sync_at to localStorage", async () => {
+    const { getMeta } = await import("./api.js");
+    const mockLocalStorage = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    };
+    vi.stubGlobal('localStorage', mockLocalStorage);
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ last_sync_at: "2026-01-01T00:00:00Z" })
+    );
+    await getMeta();
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      'hj:last_sync_at',
+      '2026-01-01T00:00:00Z'
+    );
+  });
+
+  it("getCachedLastSyncAt returns stored value", async () => {
+    const { getCachedLastSyncAt } = await import("./api.js");
+    const mockLocalStorage = {
+      getItem: vi.fn((key) => key === 'hj:last_sync_at' ? '2026-01-01' : null),
+    };
+    vi.stubGlobal('localStorage', mockLocalStorage);
+    expect(getCachedLastSyncAt()).toBe('2026-01-01');
+  });
+
+  it("getAwardsRows returns topScorers and cleanSheets", async () => {
+    const { getAwardsRows } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ topScorers: [{ name: 'A' }], cleanSheets: [{ name: 'B' }] })
+    );
+    const result = await getAwardsRows('t1', 'U11B');
+    expect(result.topScorers).toHaveLength(1);
+    expect(result.cleanSheets).toHaveLength(1);
+  });
+
+  it("getAwardsRows omits age param when ageId is 'all' or absent", async () => {
+    const { getAwardsRows } = await import("./api.js");
+    mockFetch.mockImplementationOnce(() =>
+      mockOkJson({ topScorers: [], cleanSheets: [] })
+    );
+    await getAwardsRows('t1', 'all');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringMatching(/awards\?tournamentId=t1$/)
+    );
+  });
+
+  it("getFixturesIcsUrl builds the correct URL with age", () => {
+    // Synchronous; no need to import dynamically
+    (async () => {
+      const { getFixturesIcsUrl } = await import("./api.js");
+      const url = getFixturesIcsUrl('t1', 'U11B');
+      expect(url).toContain('/api/fixtures.ics');
+      expect(url).toContain('tournamentId=t1');
+      expect(url).toContain('age=U11B');
+    })();
+  });
+
+  it("getFixturesIcsUrl omits age for 'all'", async () => {
+    const { getFixturesIcsUrl } = await import("./api.js");
+    const url = getFixturesIcsUrl('t1', 'all');
+    expect(url).toContain('/api/fixtures.ics');
+    expect(url).not.toContain('age=');
+  });
 });

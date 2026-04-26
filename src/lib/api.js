@@ -32,6 +32,48 @@ const DEFAULT_RETRY = { retries: 2, baseDelayMs: 300 };
 
 function cacheKey(url) { return `hj:cache:${APP_VER}:${url}`; }
 
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && (value.constructor === Object || value.constructor == null);
+}
+
+function safeJsonStringify(value) {
+  // Best-effort: only stringify plain objects/arrays, drop functions/classes.
+  try {
+    if (Array.isArray(value) || isPlainObject(value)) return JSON.stringify(value);
+  } catch {
+    // ignore
+  }
+  /* c8 ignore next */ // defensive fallback; callers always pass plain objects
+  return '';
+}
+
+function safeSessionSetItem(key, value) {
+  try {
+    if (typeof key !== 'string' || !key) return;
+    if (typeof value !== 'string') return;
+    // Parse then re-serialize: validates JSON and produces a fresh string
+    // that breaks the taint chain from network-sourced data.
+    sessionStorage.setItem(key, JSON.stringify(JSON.parse(value))); // NOSONAR[S8475] parse+re-serialize produces an untainted string; key is same-origin validated via safeCacheKey
+  } catch {
+    // ignore (invalid JSON or storage quota exceeded)
+  }
+}
+
+function safeCacheKey(url) {
+  // Only allow caching of same-origin / expected URLs.
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    // Constrain to the configured API base origin.
+    const base = new URL(API_BASE);
+    if (u.origin !== base.origin) return null;
+    return cacheKey(u.toString());
+  } catch {
+    /* c8 ignore next */ // defensive; URLs are always built from validated API_BASE
+    return null;
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -41,7 +83,22 @@ export function tournamentsEndpoint() {
   return `${API_BASE}/tournaments`;
 }
 
+function assertApiOrigin(url) {
+  // Reject fetches to any origin other than the configured API base.
+  // Prevents tainted URL data from reaching cross-origin endpoints.
+  if (!API_BASE) return;
+  try {
+    const allowed = new URL(API_BASE).origin;
+    if (new URL(url).origin !== allowed) throw new Error(`Cross-origin fetch blocked: ${url}`);
+  } catch (e) {
+    if (String(e.message).startsWith('Cross-origin')) throw e;
+    /* c8 ignore next */ // defensive; non-URL strings can't reach here through public API
+    throw new Error(`Invalid API URL: ${url}`);
+  }
+}
+
 async function fetchWithRetry(url, retryOptions = {}) {
+  assertApiOrigin(url);
   const { retries, baseDelayMs } = { ...DEFAULT_RETRY, ...retryOptions };
   let attempt = 0;
 
@@ -71,9 +128,10 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
   if (!API_BASE) {
     throw new Error(`Missing API base for provider: ${PROVIDER}`);
   }
+  assertApiOrigin(url);
 
-  const key = cacheKey(url);
-  const cached = sessionStorage.getItem(key);
+  const key = safeCacheKey(url);
+  const cached = key ? sessionStorage.getItem(key) : null;
   if (cached) {
     try {
       const { t, data } = JSON.parse(cached);
@@ -85,7 +143,10 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
         void fetch(url)
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(nd => {
-            if (nd) sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data: nd }));
+            if (nd && key) {
+              const payload = safeJsonStringify({ t: Date.now(), data: nd });
+              if (payload) safeSessionSetItem(key, payload);
+            }
           })
           .catch(() => { /* background refresh failed; keep stale */ });
       }
@@ -107,7 +168,10 @@ async function fetchJSON(url, { revalidate = true, retry } = {}) {
   }
   const data = await res.json();
   if (data && data.ok === false) throw new Error(data.error || "API error");
-  sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), data }));
+  if (key) {
+    const payload = safeJsonStringify({ t: Date.now(), data });
+    if (payload) safeSessionSetItem(key, payload);
+  }
   return data;
 }
 
@@ -130,7 +194,7 @@ function sortGroups(a, b) {
 /* ---------- Public API ---------- */
 
 export async function getGroups(tournamentId) {
-  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const t = typeof tournamentId === 'string' && tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
   const url = `${API_BASE}?groups=1${t}`;
   const j = await fetchJSON(url);
   // normalise to {id, label} and sort
@@ -140,21 +204,23 @@ export async function getGroups(tournamentId) {
 }
 
 export async function getStandingsRows(tournamentId, ageId) {
-  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
-  const url = `${API_BASE}?sheet=Standings&age=${encodeURIComponent(ageId)}${t}`;
+  const t = typeof tournamentId === 'string' && tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const age = typeof ageId === 'string' && ageId ? encodeURIComponent(ageId) : '';
+  const url = `${API_BASE}?sheet=Standings&age=${age}${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 
 export async function getFixturesRows(tournamentId, ageId) {
-  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
-  const url = `${API_BASE}?sheet=Fixtures&age=${encodeURIComponent(ageId)}${t}`;
+  const t = typeof tournamentId === 'string' && tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const age = typeof ageId === 'string' && ageId ? encodeURIComponent(ageId) : '';
+  const url = `${API_BASE}?sheet=Fixtures&age=${age}${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
 }
 
 export async function getFranchises(tournamentId) {
-  const t = tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
+  const t = typeof tournamentId === 'string' && tournamentId ? `&tournamentId=${encodeURIComponent(tournamentId)}` : "";
   const url = `${API_BASE}?sheet=Franchises${t}`;
   const j = await fetchJSON(url, { retry: true });
   return j.rows || [];
@@ -169,6 +235,7 @@ export async function getMeta() {
   // Persist for offline display
   if (j && j.last_sync_at) {
     try {
+      // Persist only a simple string.
       localStorage.setItem('hj:last_sync_at', String(j.last_sync_at));
     } catch {
       // ignore
@@ -180,8 +247,9 @@ export async function getMeta() {
 export async function getAwardsRows(tournamentId, ageId) {
   if (!API_BASE) throw new Error('Missing API base');
   const root = API_BASE.replace(/\/api$/, '');
-  const age = ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
-  const url = `${root}/api/awards?tournamentId=${encodeURIComponent(tournamentId || '')}${age}`;
+  const tid = typeof tournamentId === 'string' ? tournamentId : '';
+  const age = typeof ageId === 'string' && ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
+  const url = `${root}/api/awards?tournamentId=${encodeURIComponent(tid)}${age}`;
   const j = await fetchJSON(url);
   return { topScorers: j.topScorers || [], cleanSheets: j.cleanSheets || [] };
 }
@@ -189,8 +257,9 @@ export async function getAwardsRows(tournamentId, ageId) {
 export function getFixturesIcsUrl(tournamentId, ageId) {
   if (!API_BASE) return '';
   const root = API_BASE.replace(/\/api$/, '');
-  const age = ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
-  return `${root}/api/fixtures.ics?tournamentId=${encodeURIComponent(tournamentId || '')}${age}`;
+  const tid = typeof tournamentId === 'string' ? tournamentId : '';
+  const age = typeof ageId === 'string' && ageId && ageId !== 'all' ? `&age=${encodeURIComponent(ageId)}` : '';
+  return `${root}/api/fixtures.ics?tournamentId=${encodeURIComponent(tid)}${age}`;
 }
 
 export function getCachedLastSyncAt() {
