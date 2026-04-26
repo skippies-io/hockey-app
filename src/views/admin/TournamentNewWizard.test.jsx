@@ -731,6 +731,19 @@ describe("TournamentNewWizard (v2)", () => {
     expect(within(sidebar).getByText(/2×20/)).toBeInTheDocument();
   });
 
+  // ── Design token alignment tests ─────────────────────────────────────────
+  it("renders with the token-driven shell and stepper structure (Phase 6 alignment check)", () => {
+    render(<TournamentNewWizard />);
+    // Shell applies the root class that triggers var(--hj-font-family-sans)
+    expect(document.querySelector(".hj-tw2-shell")).toBeInTheDocument();
+    // Stepper uses the topstep class for token-driven surface/border/shadow
+    expect(document.querySelector(".hj-tw2-topstep")).toBeInTheDocument();
+    // Cards use the token-driven card class
+    expect(document.querySelector(".hj-tw2-card")).toBeInTheDocument();
+    // Sidebar uses the token-driven sidebar class
+    expect(document.querySelector(".hj-tw2-sidebar-card")).toBeInTheDocument();
+  });
+
   it("sidebar shows per-division team counts after teams are entered on Step 3", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
