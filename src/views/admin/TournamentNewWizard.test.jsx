@@ -778,8 +778,7 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.queryByRole("button", { name: "Remove selected venue Beaulieu College" })).not.toBeInTheDocument();
   });
 
-  it("changing Chakas per game updates the timing formula in the sidebar", async () => {
-    const user = userEvent.setup();
+  it("changing Chakas per game updates the timing formula in the sidebar", () => {
     render(<TournamentNewWizard />);
 
     // Default: 2 × 20 + 5 + 3 = 48. Change chakasPerGame to 3 → 3 × 20 + 5 + 3 = 68.
@@ -808,8 +807,7 @@ describe("TournamentNewWizard (v2)", () => {
     expect(screen.getByRole("checkbox", { name: "U21 Mixed" })).toBeInTheDocument();
   });
 
-  it("shows an end-date error when end date is before start date", async () => {
-    const user = userEvent.setup();
+  it("shows an end-date error when end date is before start date", () => {
     render(<TournamentNewWizard />);
 
     fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-05-10" } });
