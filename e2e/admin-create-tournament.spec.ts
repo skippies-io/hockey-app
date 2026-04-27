@@ -106,8 +106,10 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
 
   await expect(page.getByText('Step 3 of 5')).toBeVisible();
 
-  // Opt both franchises into U9 Mixed — each tile click adds a default team slot
-  const divTiles = page.getByRole('button', { name: 'U9 Mixed' });
+  // Each franchise-division tile is a .hj-tw2-div-tile-header button.
+  // With 2 franchises and 1 division there are exactly 2 tiles.
+  const divTiles = page.locator('.hj-tw2-div-tile-header');
+  await expect(divTiles.first()).toBeVisible();
   await divTiles.first().click({ force: true });
   await divTiles.nth(1).click({ force: true });
 
