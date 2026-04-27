@@ -70,9 +70,9 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
 
   // ── Step 1: Tournament Details ────────────────────────────────────────────
 
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(tournamentName);
-  await page.getByRole('textbox', { name: 'Start date' }).fill('2026-06-07');
-  await page.getByRole('textbox', { name: 'End date' }).fill('2026-06-08');
+  await page.locator('input[aria-label="Name"]').fill(tournamentName);
+  await page.locator('input[aria-label="Start date"]').fill('2026-06-07');
+  await page.locator('input[aria-label="End date"]').fill('2026-06-08');
 
   // Select a venue (pill button)
   await page.getByRole('button', { name: 'Beaulieu College' }).click();
@@ -80,7 +80,9 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   // Enable one division
   await page.getByRole('checkbox', { name: 'U9 Mixed' }).check();
 
-  await page.getByRole('button', { name: 'Next →' }).click();
+  const nextBtn1 = page.getByRole('button', { name: 'Next →' });
+  await expect(nextBtn1).toBeEnabled();
+  await nextBtn1.click();
 
   // ── Step 2: Franchises ────────────────────────────────────────────────────
 
