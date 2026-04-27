@@ -1948,7 +1948,10 @@ export default function TournamentNewWizard() {
         onChange={setStep2}
         onValidityChange={setCanProceed}
         onNext={() => setStep(2)}
-        onBack={() => setStep(0)}
+        onBack={() => {
+          setStep1((s) => ({ ...s, _continue: 0 }));
+          setStep(0);
+        }}
       />
     );
   } else if (step === 2) {

@@ -981,4 +981,99 @@ describe("TournamentNewWizard (v2)", () => {
 
     vi.restoreAllMocks();
   });
+
+  // ── SlotRow editing path (isEditing=true) ────────────────────────────────
+  it("custom franchise with no directory entries opens slot in editing mode without a revert button", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    // Add a brand-new franchise (no TEAM_DIRECTORY entry) and select BHA for validity
+    await user.type(screen.getByLabelText("Add franchise"), "New Club{enter}");
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
+
+    // Opt New Club into U9 Mixed — no directory entries means slot starts in editing mode
+    // New Club was added (and auto-selected) before BHA was toggled, so it appears first.
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]);
+
+    // Should render a text input (isEditing=true), not a select
+    const input = screen.getByLabelText("Custom team name for U9 Mixed");
+    expect(input).toBeInTheDocument();
+
+    // Revert button should NOT appear (no directory for this franchise)
+    expect(screen.queryByLabelText("Revert to directory name")).not.toBeInTheDocument();
+
+    // Typing a name updates the slot
+    await user.clear(input);
+    await user.type(input, "New Club Gold");
+    expect(input).toHaveValue("New Club Gold");
+  });
+
+  it("clicking Back on Step 2 returns to Step 1", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    // Step 2 subtitle leaves; Step 1 Name input is back in the DOM
+    expect(await screen.findByLabelText("Name")).toBeInTheDocument();
+    expect(screen.queryByText("Step 2 of 5, Franchises")).not.toBeInTheDocument();
+  });
+
+  it("changing the season select on Step 1 updates the value", () => {
+    render(<TournamentNewWizard />);
+
+    const seasonSelect = screen.getByLabelText("Season");
+    const initialValue = seasonSelect.value;
+
+    // Select the next option (if available)
+    const options = Array.from(seasonSelect.options);
+    const nextOption = options.find((o) => o.value !== initialValue);
+    if (nextOption) {
+      fireEvent.change(seasonSelect, { target: { value: nextOption.value } });
+      expect(seasonSelect.value).toBe(nextOption.value);
+    }
+  });
+
+  it("selecting ＋ New name… in a slot dropdown switches to the custom name input with a revert button", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    // Select two directory-backed franchises
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Knights"));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
+
+    // Opt BHA into U9 Mixed — auto-populates with "BHA" from directory
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]);
+
+    // Slot should render a select (isEditing=false, name="BHA")
+    const slotSelect = screen.getByLabelText("Team name for U9 Mixed");
+    expect(slotSelect.tagName).toBe("SELECT");
+
+    // Choose ＋ New name… to enter editing mode
+    fireEvent.change(slotSelect, { target: { value: "__new__" } });
+
+    // Should now show the custom input
+    const input = screen.getByLabelText("Custom team name for U9 Mixed");
+    expect(input).toBeInTheDocument();
+
+    // Revert button should appear (BHA has directory entries)
+    expect(screen.getByLabelText("Revert to directory name")).toBeInTheDocument();
+  });
 });
