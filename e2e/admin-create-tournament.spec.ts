@@ -71,8 +71,13 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   // ── Step 1: Tournament Details ────────────────────────────────────────────
 
   await page.locator('input[aria-label="Name"]').fill(tournamentName);
-  await page.locator('input[aria-label="Start date"]').fill('2026-06-07');
-  await page.locator('input[aria-label="End date"]').fill('2026-06-08');
+  // type="date" inputs need pressSequentially in Playwright's Chromium to trigger React onChange
+  const startInput = page.locator('input[aria-label="Start date"]');
+  await startInput.click();
+  await startInput.pressSequentially('2026-06-07');
+  const endInput = page.locator('input[aria-label="End date"]');
+  await endInput.click();
+  await endInput.pressSequentially('2026-06-08');
 
   // Select a venue (pill button)
   await page.getByRole('button', { name: 'Beaulieu College' }).click();
@@ -80,9 +85,10 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   // Enable one division
   await page.getByRole('checkbox', { name: 'U9 Mixed' }).check();
 
-  const nextBtn1 = page.getByRole('button', { name: 'Next →' });
+  const nextBtn1 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
   await expect(nextBtn1).toBeEnabled();
-  await nextBtn1.click();
+  await nextBtn1.scrollIntoViewIfNeeded();
+  await nextBtn1.click({ force: true });
 
   // ── Step 2: Franchises ────────────────────────────────────────────────────
 
@@ -92,20 +98,25 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   await page.getByRole('listitem').filter({ hasText: 'BHA' }).first().click();
   await page.getByRole('listitem').filter({ hasText: 'Black Hawks' }).first().click();
 
-  await page.getByRole('button', { name: 'Next →' }).click();
+  const nextBtn2 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn2).toBeEnabled();
+  await nextBtn2.click({ force: true });
 
   // ── Step 3: Teams & Pools ─────────────────────────────────────────────────
 
   await expect(page.getByText('Step 3 of 5')).toBeVisible();
 
-  // Accept default team slots and proceed
-  await page.getByRole('button', { name: 'Next →' }).click();
+  const nextBtn3 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn3).toBeEnabled();
+  await nextBtn3.click({ force: true });
 
   // ── Step 4: Rules ─────────────────────────────────────────────────────────
 
   await expect(page.getByText('Step 4 of 5')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Next →' }).click();
+  const nextBtn4 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn4).toBeEnabled();
+  await nextBtn4.click({ force: true });
 
   // ── Step 5: Fixtures ──────────────────────────────────────────────────────
 
