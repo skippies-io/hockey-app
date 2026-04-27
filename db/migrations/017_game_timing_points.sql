@@ -1,0 +1,3 @@
+ALTER TABLE tournament
+  ADD COLUMN IF NOT EXISTS game_timing JSONB,
+  ADD COLUMN IF NOT EXISTS points_config JSONB;

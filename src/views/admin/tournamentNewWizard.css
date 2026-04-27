@@ -907,10 +907,28 @@
 }
 
 /* ── Enhanced sidebar content ─────────────────────────────────────── */
+.hj-tw2-sidebar-meta {
+  font-size: var(--hj-font-size-xs);
+  color: rgba(255, 255, 255, 0.52);
+  margin-top: 2px;
+}
+
+.hj-tw2-sidebar-duration-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .hj-tw2-sidebar-duration-value {
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--hj-color-brand);
+}
+
+.hj-tw2-sidebar-duration-label {
   font-size: var(--hj-font-size-sm);
-  color: rgba(255, 255, 255, 0.92);
-  font-weight: var(--hj-font-weight-semibold);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .hj-tw2-sidebar-duration-formula {

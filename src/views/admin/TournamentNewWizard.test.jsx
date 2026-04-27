@@ -403,6 +403,26 @@ describe("TournamentNewWizard (v2)", () => {
     expect(drawPoints).toHaveValue(0);
   });
 
+  it("clamps points stepper plus button to a maximum of 99", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+
+    const winPoints = screen.getByLabelText("WIN points");
+    fireEvent.change(winPoints, { target: { value: "99" } });
+    await user.click(screen.getByRole("button", { name: "WIN plus" }));
+    expect(winPoints).toHaveValue(99);
+  });
+
+  it("clamps points direct input to a maximum of 99", async () => {
+    render(<TournamentNewWizard />);
+
+    const winPoints = screen.getByLabelText("WIN points");
+    fireEvent.change(winPoints, { target: { value: "150" } });
+    expect(winPoints).toHaveValue(99);
+  });
+
   it("allows proceeding to Step 3 once Step 2 is valid (two franchises selected)", async () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
@@ -604,6 +624,15 @@ describe("TournamentNewWizard (v2)", () => {
       expect.objectContaining({ method: "POST" })
     );
 
+    const callBody = JSON.parse(adminFetchSpy.mock.calls[0][1].body);
+    expect(callBody.tournament.game_timing).toEqual({
+      chakas: 2,
+      duration_mins: 20,
+      halftime_mins: 5,
+      changeover_mins: 3,
+    });
+    expect(callBody.tournament.points_config).toEqual({ win: 3, draw: 1, loss: 0 });
+
     adminFetchSpy.mockRestore();
   });
 
@@ -784,8 +813,23 @@ describe("TournamentNewWizard (v2)", () => {
 
     // Default timing: 2 chakas × 20 min + 5 half + 3 change = 48 min/game
     const sidebar = screen.getByRole("complementary", { name: "Tournament summary" });
-    expect(within(sidebar).getByText("48 min/game")).toBeInTheDocument();
+    expect(within(sidebar).getByText("48")).toBeInTheDocument();
+    expect(within(sidebar).getByText("min/game")).toBeInTheDocument();
     expect(within(sidebar).getByText(/2×20/)).toBeInTheDocument();
+  });
+
+  it("sidebar shows season and date range after Step 1 is filled", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user); // sets startDate=2026-05-01, endDate=2026-05-02, season=current year
+
+    const sidebar = screen.getByRole("complementary", { name: "Tournament summary" });
+    // Season (current year) should appear in sidebar meta
+    const currentYear = String(new Date().getFullYear());
+    expect(within(sidebar).getByText(new RegExp(currentYear))).toBeInTheDocument();
+    // Date range should appear
+    expect(within(sidebar).getByText(/May/)).toBeInTheDocument();
   });
 
   // ── Design token alignment tests ─────────────────────────────────────────

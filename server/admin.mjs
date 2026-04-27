@@ -149,6 +149,9 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         timeSlots = [],
       } = body;
 
+      const gameTiming = tournament?.game_timing ?? null;
+      const pointsConfig = tournament?.points_config ?? null;
+
       if (!tournament || !isNonEmptyString(tournament.name)) {
         return sendJson(req, res, 400, { ok: false, error: "tournament.name is required" });
       }
@@ -180,9 +183,11 @@ export async function handleAdminRequest(req, res, { url, pool, sendJson, caches
         }
 
         await client.query(
-          `INSERT INTO tournament (id, name, season, source)
-           VALUES ($1, $2, $3, 'App')`,
-          [tournamentId, tournamentName, tournamentSeason]
+          `INSERT INTO tournament (id, name, season, source, game_timing, points_config)
+           VALUES ($1, $2, $3, 'App', $4, $5)`,
+          [tournamentId, tournamentName, tournamentSeason,
+            gameTiming ? JSON.stringify(gameTiming) : null,
+            pointsConfig ? JSON.stringify(pointsConfig) : null]
         );
 
         // venueMap: populated on-demand from venue_directory as groupVenues are processed.
