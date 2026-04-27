@@ -9,6 +9,7 @@ import {
   FRANCHISE_DIRECTORY,
   TEAM_DIRECTORY,
   getAutoFormat,
+  getInitials,
   normaliseId,
   getTeamsForDivision,
   buildFixturesForStep5,
@@ -52,6 +53,86 @@ function nextUnusedName(entries, divKey, franchiseId) {
   const used = getUsedNames(entries, divKey, franchiseId);
   return names.find((n) => !used.has(n)) ?? null;
 }
+
+function SlotRow({ slot, divKey, franchise, entries, changeSlotName, revertSlot, setSlotEditing, removeSlot }) {
+  const used = getUsedNames(entries, divKey, franchise.id, slot.id);
+  const available = (TEAM_DIRECTORY[franchise.id] ?? []).filter((n) => !used.has(n));
+  const hasDirectory = (TEAM_DIRECTORY[franchise.id] ?? []).length > 0;
+
+  return (
+    <div className="hj-tw2-slot">
+      {slot.isEditing ? (
+        <>
+          <input
+            className="hj-tw2-input hj-tw2-slot-input--custom"
+            aria-label={`Custom team name for ${divKey}`}
+            value={slot.name}
+            placeholder="Team name"
+            onChange={(e) => changeSlotName(divKey, franchise, slot.id, e.target.value)}
+          />
+          {hasDirectory ? (
+            <button
+              type="button"
+              className="hj-tw2-slot-revert"
+              aria-label="Revert to directory name"
+              onClick={() => revertSlot(divKey, franchise, slot.id)}
+            >
+              ↩
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <select
+          className="hj-tw2-input hj-tw2-select hj-tw2-slot-select"
+          aria-label={`Team name for ${divKey}`}
+          value={slot.name}
+          onChange={(e) => {
+            if (e.target.value === "__new__") {
+              setSlotEditing(divKey, franchise, slot.id, true);
+            } else {
+              changeSlotName(divKey, franchise, slot.id, e.target.value);
+            }
+          }}
+        >
+          {slot.name ? <option value={slot.name}>{slot.name}</option> : null}
+          {available
+            .filter((n) => n !== slot.name)
+            .map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          <option value="__new__">＋ New name…</option>
+        </select>
+      )}
+      <button
+        type="button"
+        className="hj-tw2-slot-remove"
+        aria-label={`Remove team slot for ${divKey}`}
+        onClick={() => removeSlot(divKey, franchise, slot.id)}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+SlotRow.propTypes = {
+  slot: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+  }).isRequired,
+  divKey: PropTypes.string.isRequired,
+  franchise: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+  }).isRequired,
+  entries: PropTypes.object.isRequired,
+  changeSlotName: PropTypes.func.isRequired,
+  revertSlot: PropTypes.func.isRequired,
+  setSlotEditing: PropTypes.func.isRequired,
+  removeSlot: PropTypes.func.isRequired,
+};
 
 function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onValidityChange, onNext, onBack }) {
   const getEntry = (divKey, fId) =>
@@ -215,73 +296,19 @@ function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onVa
                   {/* Slot list — shown when opted in */}
                   {isOptedIn ? (
                     <div className="hj-tw2-div-tile-body">
-                      {entry.slots.map((slot) => {
-                        const used = getUsedNames(value.entries, divKey, franchise.id, slot.id);
-                        const available = (TEAM_DIRECTORY[franchise.id] ?? []).filter(
-                          (n) => !used.has(n)
-                        );
-
-                        return (
-                          <div key={slot.id} className="hj-tw2-slot">
-                            {slot.isEditing ? (
-                              <>
-                                <input
-                                  className="hj-tw2-input hj-tw2-slot-input--custom"
-                                  aria-label={`Custom team name for ${divKey}`}
-                                  value={slot.name}
-                                  placeholder="Team name"
-                                  onChange={(e) =>
-                                    changeSlotName(divKey, franchise, slot.id, e.target.value)
-                                  }
-                                />
-                                {(TEAM_DIRECTORY[franchise.id] ?? []).length > 0 ? (
-                                  <button
-                                    type="button"
-                                    className="hj-tw2-slot-revert"
-                                    aria-label="Revert to directory name"
-                                    onClick={() => revertSlot(divKey, franchise, slot.id)}
-                                  >
-                                    ↩
-                                  </button>
-                                ) : null}
-                              </>
-                            ) : (
-                              <select
-                                className="hj-tw2-input hj-tw2-select hj-tw2-slot-select"
-                                aria-label={`Team name for ${divKey}`}
-                                value={slot.name}
-                                onChange={(e) => {
-                                  if (e.target.value === "__new__") {
-                                    setSlotEditing(divKey, franchise, slot.id, true);
-                                  } else {
-                                    changeSlotName(divKey, franchise, slot.id, e.target.value);
-                                  }
-                                }}
-                              >
-                                {slot.name ? (
-                                  <option value={slot.name}>{slot.name}</option>
-                                ) : null}
-                                {available
-                                  .filter((n) => n !== slot.name)
-                                  .map((n) => (
-                                    <option key={n} value={n}>
-                                      {n}
-                                    </option>
-                                  ))}
-                                <option value="__new__">＋ New name…</option>
-                              </select>
-                            )}
-                            <button
-                              type="button"
-                              className="hj-tw2-slot-remove"
-                              aria-label={`Remove team slot for ${divKey}`}
-                              onClick={() => removeSlot(divKey, franchise, slot.id)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
+                      {entry.slots.map((slot) => (
+                        <SlotRow
+                          key={slot.id}
+                          slot={slot}
+                          divKey={divKey}
+                          franchise={franchise}
+                          entries={value.entries}
+                          changeSlotName={changeSlotName}
+                          revertSlot={revertSlot}
+                          setSlotEditing={setSlotEditing}
+                          removeSlot={removeSlot}
+                        />
+                      ))}
 
                       <button
                         type="button"
@@ -574,7 +601,7 @@ Step4Rules.propTypes = {
   onBack: PropTypes.func.isRequired,
 };
 
-function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
+function Step2Franchises({ value, onChange, onValidityChange, onNext, onBack }) {
   const filtered = useMemo(() => {
     const q = value.query.trim().toLowerCase();
     if (!q) return value.directory;
@@ -616,7 +643,7 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
       id = `f-${idBase}-${i++}`;
     }
 
-    const entry = { id, name, colour: nextColour() };
+    const entry = { id, name, colour: nextColour(), isNew: true };
     onChange({
       ...value,
       directory: [...value.directory, entry],
@@ -628,6 +655,11 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
   const selected = value.selectedIds
     .map((id) => value.directory.find((f) => f.id === id))
     .filter(Boolean);
+
+  const franchiseSuffix = selectedCount === 1 ? "" : "s";
+  const summaryText = selectedCount > 0
+    ? `${selectedCount} franchise${franchiseSuffix} selected — ${selected.map((f) => f.name).join(", ")}`
+    : "No franchises selected";
 
   return (
     <section className="hj-tw2-main" aria-label="Step 2 Franchises">
@@ -644,7 +676,7 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
           <input
             className="hj-tw2-input"
             aria-label="Search franchises"
-            placeholder="Search"
+            placeholder="Search franchises…"
             value={value.query}
             onChange={(e) => onChange({ ...value, query: e.target.value })}
           />
@@ -662,8 +694,12 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
                 onClick={() => toggle(f.id)}
                 aria-pressed={isSelected}
               >
-                <span className="hj-tw2-fr-swatch" style={{ background: f.colour }} aria-hidden="true" />
+                <span className="hj-tw2-fr-avatar" style={{ background: f.colour }} aria-hidden="true">
+                  {getInitials(f.name)}
+                </span>
                 <span className="hj-tw2-fr-name">{f.name}</span>
+                {f.isNew && <span className="hj-tw2-fr-badge-new">NEW</span>}
+                {isSelected && <span className="hj-tw2-fr-check" aria-hidden="true">✓</span>}
               </button>
             );
           })}
@@ -683,33 +719,34 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext }) {
               }
             }}
           />
-          <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={addFranchise}>
-            Add
+          <button
+            type="button"
+            className="hj-tw2-btn hj-tw2-btn--primary"
+            onClick={addFranchise}
+            disabled={!value.draftName.trim()}
+          >
+            Add &amp; Save
           </button>
         </div>
 
         {!isValid ? <div className="hj-tw2-error">Select at least two franchises</div> : null}
       </div>
 
-      <div className="hj-tw2-summarybar" role="status" aria-label="Franchises selected summary">
-        <div className="hj-tw2-summarybar-left">
-          <div className="hj-tw2-summarybar-count">{selectedCount} selected</div>
-          <div className="hj-tw2-summarybar-chips" aria-label="Selected franchises">
-            {selected.map((f) => (
-              <span key={f.id} className="hj-tw2-chip" style={{ borderColor: f.colour }}>
-                <span className="hj-tw2-chip-dot" style={{ background: f.colour }} aria-hidden="true" />
-                {f.name}
-              </span>
-            ))}
-          </div>
-        </div>
+      <output className="hj-tw2-summarybar" aria-label="Franchises selected summary">
+        {summaryText}
+      </output>
+
+      <div className="hj-tw2-footer">
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onBack}>
+          ← Back
+        </button>
         <button
           type="button"
           className="hj-tw2-btn hj-tw2-btn--primary"
           onClick={onNext}
           disabled={!isValid}
         >
-          Save & Continue
+          Next →
         </button>
       </div>
     </section>
@@ -726,6 +763,7 @@ Step2Franchises.propTypes = {
   onChange: PropTypes.func.isRequired,
   onValidityChange: PropTypes.func.isRequired,
   onNext: PropTypes.func.isRequired,
+  onBack: PropTypes.func.isRequired,
 };
 
 function TopStepper({ step, maxStep, onStepChange }) {
@@ -1261,7 +1299,7 @@ function Step1({ value, onChange, onValidityChange }) {
             onChange({ ...value, _continue: (value._continue || 0) + 1 });
           }}
         >
-          Next
+          Next →
         </button>
       </div>
     </section>
@@ -1311,7 +1349,15 @@ Step1.propTypes = {
   onValidityChange: PropTypes.func.isRequired,
 };
 
-function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCount, onCreateAnother }) {
+function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCount, franchisesCount, onStartOver }) {
+  const [sharedUrl, setSharedUrl] = React.useState("");
+
+  function handleShare() {
+    if (!navigator.clipboard) return;
+    const url = `${globalThis.location.origin}/fixtures`;
+    navigator.clipboard.writeText(url).then(() => setSharedUrl(url)).catch(() => {});
+  }
+
   return (
     <section className="hj-tw2-main hj-tw2-success" aria-label="Tournament created">
       <div className="hj-tw2-success-hero">
@@ -1322,29 +1368,34 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
 
       <div className="hj-tw2-success-tiles">
         <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
+          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount === 1 ? "" : "s"}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
+          <div className="hj-tw2-success-tile-value">{franchisesCount}</div>
+          <div className="hj-tw2-success-tile-label">Franchise{franchisesCount === 1 ? "" : "s"}</div>
+        </div>
+        <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{divisionsCount}</div>
-          <div className="hj-tw2-success-tile-label">Division{divisionsCount !== 1 ? "s" : ""}</div>
+          <div className="hj-tw2-success-tile-label">Division{divisionsCount === 1 ? "" : "s"}</div>
         </div>
         <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{teamsCount}</div>
-          <div className="hj-tw2-success-tile-label">Team{teamsCount !== 1 ? "s" : ""}</div>
-        </div>
-        <div className="hj-tw2-success-tile">
-          <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
-          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount !== 1 ? "s" : ""} scheduled</div>
+          <div className="hj-tw2-success-tile-label">Team{teamsCount === 1 ? "" : "s"}</div>
         </div>
       </div>
 
       <div className="hj-tw2-success-actions">
-        <a href="/admin/tournaments" className="hj-tw2-btn hj-tw2-btn--primary hj-tw2-success-link">
-          View Tournaments
+        <a href="/admin" className="hj-tw2-btn hj-tw2-btn--primary hj-tw2-success-link">
+          📋 Go to Dashboard
         </a>
-        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onCreateAnother}>
-          Create Another
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={handleShare}>
+          🔗 Share Fixture Link
         </button>
-        <a href="/admin" className="hj-tw2-btn hj-tw2-btn--ghost hj-tw2-success-link">
-          Back to Dashboard
-        </a>
+        {sharedUrl && <p className="hj-tw2-success-share-url">{sharedUrl}</p>}
+        <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost hj-tw2-btn--muted" onClick={onStartOver}>
+          ↩ Start Over
+        </button>
       </div>
     </section>
   );
@@ -1355,7 +1406,8 @@ SuccessScreen.propTypes = {
   scheduledCount: PropTypes.number.isRequired,
   teamsCount: PropTypes.number.isRequired,
   divisionsCount: PropTypes.number.isRequired,
-  onCreateAnother: PropTypes.func.isRequired,
+  franchisesCount: PropTypes.number.isRequired,
+  onStartOver: PropTypes.func.isRequired,
 };
 
 function Step5Fixtures({ step1, step5, onFixturesChange, onAutoGenerate, onBack, onSubmit }) {
@@ -1776,6 +1828,8 @@ export default function TournamentNewWizard() {
   React.useEffect(() => {
     if (!mainRef.current) return;
     mainRef.current.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [step]);
 
   // Derive selected franchise objects for Step 3
@@ -1807,27 +1861,31 @@ export default function TournamentNewWizard() {
     setStep5({ isSubmitting: false, submitError: "", createdTournamentId: "", fixtures: [], skippedSameFranchise: 0 });
   }
 
+  function collectAllTeams(divisions, step3Entries, franchiseDir) {
+    const allTeams = [];
+    for (const divKey of divisions) {
+      const divEntries = step3Entries[divKey] ?? {};
+      for (const [fId, entry] of Object.entries(divEntries)) {
+        if (!entry.optedIn) continue;
+        const fObj = franchiseDir.find((f) => f.id === fId);
+        for (const slot of entry.slots) {
+          if (!slot.name.trim()) continue;
+          allTeams.push({
+            group_id: normaliseId(divKey),
+            name: slot.name.trim(),
+            franchise_name: fObj ? fObj.name : fId,
+            is_placeholder: false,
+          });
+        }
+      }
+    }
+    return allTeams;
+  }
+
   async function handleSubmit() {
     setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
     try {
-      const franchiseDir = step2.directory;
-      const allTeams = [];
-      for (const divKey of activeDivisions) {
-        const divEntries = step3.entries[divKey] ?? {};
-        for (const [fId, entry] of Object.entries(divEntries)) {
-          if (!entry.optedIn) continue;
-          const fObj = franchiseDir.find((f) => f.id === fId);
-          for (const slot of entry.slots) {
-            if (!slot.name.trim()) continue;
-            allTeams.push({
-              group_id: normaliseId(divKey),
-              name: slot.name.trim(),
-              franchise_name: fObj ? fObj.name : fId,
-              is_placeholder: false,
-            });
-          }
-        }
-      }
+      const allTeams = collectAllTeams(activeDivisions, step3.entries, step2.directory);
       const payload = {
         tournament: {
           id: normaliseId(`${step1.name} ${step1.season}`),
@@ -1874,56 +1932,71 @@ export default function TournamentNewWizard() {
     }
   }
 
-  const main = step === 0 ? (
-    <Step1
-      value={{ ...step1, activeDivisions }}
-      onChange={setStep1}
-      onValidityChange={setCanProceed}
-    />
-  ) : step === 1 ? (
-    <Step2Franchises
-      value={step2}
-      onChange={setStep2}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(2)}
-    />
-  ) : step === 2 ? (
-    <Step3Teams
-      activeDivisions={activeDivisions}
-      selectedFranchises={selectedFranchises}
-      value={step3}
-      onChange={setStep3}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(3)}
-      onBack={() => setStep(1)}
-    />
-  ) : step === 3 ? (
-    <Step4Rules
-      activeDivisions={activeDivisions}
-      step3Entries={step3.entries}
-      value={step4}
-      onChange={setStep4}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(4)}
-      onBack={() => setStep(2)}
-    />
-  ) : step === 4 ? (
-    <Step5Fixtures
-      step1={step1}
-      step5={step5}
-      onFixturesChange={(fixtures) => setStep5((s) => ({ ...s, fixtures }))}
-      onAutoGenerate={() => {
-        const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
-          activeDivisions,
-          step3Entries: step3.entries,
-          step4,
-        });
-        setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
-      }}
-      onBack={() => setStep(3)}
-      onSubmit={handleSubmit}
-    />
-  ) : null;
+  let main = null;
+  if (step === 0) {
+    main = (
+      <Step1
+        value={{ ...step1, activeDivisions }}
+        onChange={setStep1}
+        onValidityChange={setCanProceed}
+      />
+    );
+  } else if (step === 1) {
+    main = (
+      <Step2Franchises
+        value={step2}
+        onChange={setStep2}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(2)}
+        onBack={() => {
+          setStep1((s) => ({ ...s, _continue: 0 }));
+          setStep(0);
+        }}
+      />
+    );
+  } else if (step === 2) {
+    main = (
+      <Step3Teams
+        activeDivisions={activeDivisions}
+        selectedFranchises={selectedFranchises}
+        value={step3}
+        onChange={setStep3}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(3)}
+        onBack={() => setStep(1)}
+      />
+    );
+  } else if (step === 3) {
+    main = (
+      <Step4Rules
+        activeDivisions={activeDivisions}
+        step3Entries={step3.entries}
+        value={step4}
+        onChange={setStep4}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(4)}
+        onBack={() => setStep(2)}
+      />
+    );
+  } else if (step === 4) {
+    main = (
+      <Step5Fixtures
+        step1={step1}
+        step5={step5}
+        onFixturesChange={(fixtures) => setStep5((s) => ({ ...s, fixtures }))}
+        onAutoGenerate={() => {
+          const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
+            activeDivisions,
+            step3Entries: step3.entries,
+            step4,
+          });
+          setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
+        }}
+        onBack={() => setStep(3)}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
 
   const isSuccess = Boolean(step5.createdTournamentId);
 
@@ -1935,9 +2008,10 @@ export default function TournamentNewWizard() {
           <SuccessScreen
             tournamentName={step1.name}
             scheduledCount={step5.fixtures.filter((f) => f.slotDay !== null).length}
+            franchisesCount={step2.selectedIds.length}
             teamsCount={totalTeamCount}
             divisionsCount={activeDivisions.length}
-            onCreateAnother={handleCreateAnother}
+            onStartOver={handleCreateAnother}
           />
         </div>
       ) : (

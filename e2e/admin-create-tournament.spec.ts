@@ -23,7 +23,18 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   const tournaments: Array<{ id: string; name: string; season: string }> = [];
 
   // ── API mocks ─────────────────────────────────────────────────────────────
+  // NOTE: Playwright routes use LIFO order — register catch-alls FIRST so that
+  // the specific mocks below (registered later) take higher priority.
 
+  // Catch-all: resolve any other admin or public data API calls immediately.
+  await page.route('**/api?*', (route) =>
+    route.fulfill({ json: { ok: true, groups: [], rows: [], data: [] } })
+  );
+  await page.route('**/api/admin/**', (route) =>
+    route.fulfill({ json: { ok: true, data: [] } })
+  );
+
+  // Specific mocks (registered after catch-alls = higher priority in LIFO order):
   await page.route('**/api/tournaments', (route) =>
     route.fulfill({ json: { ok: true, data: tournaments } })
   );
@@ -83,15 +94,6 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
     tournaments.push({ id: tournamentId, name: body?.tournament?.name, season: body?.tournament?.season });
     return route.fulfill({ json: { ok: true, tournament_id: tournamentId } });
   });
-
-  // Catch-all: resolve any other admin or public data API calls immediately so
-  // page.waitForLoadState('domcontentloaded') doesn't hang on unmocked endpoints.
-  await page.route('**/api/admin/**', (route) =>
-    route.fulfill({ json: { ok: true, data: [] } })
-  );
-  await page.route('**/api?*', (route) =>
-    route.fulfill({ json: { ok: true, groups: [], rows: [], data: [] } })
-  );
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 

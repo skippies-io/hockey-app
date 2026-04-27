@@ -99,11 +99,11 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // BHA is already in the initial directory — adding it again should be rejected.
     await user.type(screen.getByLabelText("Add franchise"), "BHA");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add & Save" }));
 
     // Only one BHA entry should exist in the franchise grid.
     expect(screen.getAllByText("BHA")).toHaveLength(1);
@@ -114,7 +114,7 @@ describe("TournamentNewWizard (v2)", () => {
     const user = userEvent.setup();
     render(<TournamentNewWizard />);
 
-    const next = screen.getByRole("button", { name: "Next" });
+    const next = screen.getByRole("button", { name: "Next →" });
     expect(next).toBeDisabled();
 
     await user.type(screen.getByLabelText("Name"), "HJ Intercity");
@@ -140,10 +140,10 @@ describe("TournamentNewWizard (v2)", () => {
 
     await completeStep1(user);
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: "Save & Continue" });
+    const save = screen.getByRole("button", { name: "Next →" });
     expect(save).toBeDisabled();
 
     const cards = screen.getAllByRole("listitem");
@@ -158,12 +158,12 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     await user.type(screen.getByLabelText("Add franchise"), "New Club{enter}");
 
     expect(screen.getAllByText("New Club").length).toBeGreaterThan(0);
-    expect(screen.getByText(/1 selected|2 selected|3 selected/)).toBeInTheDocument();
+    expect(screen.getByText(/franchise.*selected/i)).toBeInTheDocument();
   });
 
   it("lets you adjust points tiles (plus, minus, and manual input)", async () => {
@@ -195,7 +195,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
     // Step 2 uses the fixed prototype summarybar CTA and doesn't render Back.
@@ -258,12 +258,12 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 2: select BHA and Black Hawks
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt both franchises into the U9 Mixed division
     expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
@@ -325,13 +325,13 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Select BHA and Knights in Step 2.
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Knights"));
-    expect(screen.getByRole("button", { name: "Save & Continue" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    expect(screen.getByRole("button", { name: "Next →" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Now on Step 3 — sees franchise cards with division tiles.
     expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
@@ -373,7 +373,7 @@ describe("TournamentNewWizard (v2)", () => {
     expect(franchises).toBeDisabled();
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
     // After reaching step 2, it should no longer be locked
@@ -408,10 +408,10 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
     expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
 
-    const save = screen.getByRole("button", { name: "Save & Continue" });
+    const save = screen.getByRole("button", { name: "Next →" });
     expect(save).toBeDisabled();
 
     const cards = screen.getAllByRole("listitem");
@@ -428,7 +428,7 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     const search = screen.getByRole("textbox", { name: "Search franchises" });
     await user.type(search, "  sharks ");
@@ -456,13 +456,13 @@ describe("TournamentNewWizard (v2)", () => {
       await user.click(screen.getByRole("button", { name: "St Stithians" }));
     }
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 2: select BHA and Black Hawks (+ Knights when we need 3 franchises)
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
     if (extraVenue) await user.click(screen.getByText("Knights"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt franchises into U9 Mixed
     const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
@@ -673,13 +673,14 @@ describe("TournamentNewWizard (v2)", () => {
     expect(within(successRegion).getByText("🏑")).toBeInTheDocument();
     expect(within(successRegion).getByText("HJ Test")).toBeInTheDocument();
     // Stat tile labels scoped inside success region
-    expect(within(successRegion).getByText(/Division/)).toBeInTheDocument();
-    expect(within(successRegion).getByText(/Team/)).toBeInTheDocument();
-    expect(within(successRegion).getByText(/Fixture/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Fixtures?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Franchises?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Divisions?$/)).toBeInTheDocument();
+    expect(within(successRegion).getByText(/^Teams?$/)).toBeInTheDocument();
     // Action links / buttons
-    expect(screen.getByRole("link", { name: "View Tournaments" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Another" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Go to Dashboard/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Share Fixture Link/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Start Over/ })).toBeInTheDocument();
 
     vi.restoreAllMocks();
   });
@@ -699,11 +700,68 @@ describe("TournamentNewWizard (v2)", () => {
 
     expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Create Another" }));
+    await user.click(screen.getByRole("button", { name: /Start Over/ }));
 
     // Wizard is back at Step 1
     expect(screen.getByText("Step 1 of 5, Tournament Details")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Tournament Created!" })).not.toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
+  it("Share Fixture Link copies the fixture URL and shows it inline", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    expect(screen.getByRole("heading", { name: "Tournament Created!" })).toBeInTheDocument();
+    expect(screen.queryByText(/\/fixtures/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Share Fixture Link/ }));
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("/fixtures"));
+    expect(await screen.findByText(/\/fixtures/)).toBeInTheDocument();
+
+    vi.restoreAllMocks();
+  });
+
+  it("Share Fixture Link does nothing when clipboard is unavailable", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(adminAuth, "adminFetch").mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ ok: true, tournament_id: "hj-test-2026" }),
+    });
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    render(<TournamentNewWizard />);
+    await navigateToStep5(user);
+    await user.click(screen.getByRole("button", { name: "Create Tournament →" }));
+
+    await user.click(screen.getByRole("button", { name: /Share Fixture Link/ }));
+
+    expect(screen.queryByText(/\/fixtures/)).not.toBeInTheDocument();
 
     vi.restoreAllMocks();
   });
@@ -748,11 +806,11 @@ describe("TournamentNewWizard (v2)", () => {
     render(<TournamentNewWizard />);
 
     await completeStep1(user);
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     await user.click(screen.getByText("BHA"));
     await user.click(screen.getByText("Black Hawks"));
-    await user.click(screen.getByRole("button", { name: "Save & Continue" }));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
 
     // Step 3: opt both franchises into U9 Mixed
     const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
@@ -922,5 +980,100 @@ describe("TournamentNewWizard (v2)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Network failure");
 
     vi.restoreAllMocks();
+  });
+
+  // ── SlotRow editing path (isEditing=true) ────────────────────────────────
+  it("custom franchise with no directory entries opens slot in editing mode without a revert button", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    // Add a brand-new franchise (no TEAM_DIRECTORY entry) and select BHA for validity
+    await user.type(screen.getByLabelText("Add franchise"), "New Club{enter}");
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
+
+    // Opt New Club into U9 Mixed — no directory entries means slot starts in editing mode
+    // New Club was added (and auto-selected) before BHA was toggled, so it appears first.
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]);
+
+    // Should render a text input (isEditing=true), not a select
+    const input = screen.getByLabelText("Custom team name for U9 Mixed");
+    expect(input).toBeInTheDocument();
+
+    // Revert button should NOT appear (no directory for this franchise)
+    expect(screen.queryByLabelText("Revert to directory name")).not.toBeInTheDocument();
+
+    // Typing a name updates the slot
+    await user.clear(input);
+    await user.type(input, "New Club Gold");
+    expect(input).toHaveValue("New Club Gold");
+  });
+
+  it("clicking Back on Step 2 returns to Step 1", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+    expect(screen.getByText("Step 2 of 5, Franchises")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+    // Step 2 subtitle leaves; Step 1 Name input is back in the DOM
+    expect(await screen.findByLabelText("Name")).toBeInTheDocument();
+    expect(screen.queryByText("Step 2 of 5, Franchises")).not.toBeInTheDocument();
+  });
+
+  it("changing the season select on Step 1 updates the value", () => {
+    render(<TournamentNewWizard />);
+
+    const seasonSelect = screen.getByLabelText("Season");
+    const initialValue = seasonSelect.value;
+
+    // Select the next option (if available)
+    const options = Array.from(seasonSelect.options);
+    const nextOption = options.find((o) => o.value !== initialValue);
+    if (nextOption) {
+      fireEvent.change(seasonSelect, { target: { value: nextOption.value } });
+      expect(seasonSelect.value).toBe(nextOption.value);
+    }
+  });
+
+  it("selecting ＋ New name… in a slot dropdown switches to the custom name input with a revert button", async () => {
+    const user = userEvent.setup();
+    render(<TournamentNewWizard />);
+
+    await completeStep1(user);
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    // Select two directory-backed franchises
+    await user.click(screen.getByText("BHA"));
+    await user.click(screen.getByText("Knights"));
+    await user.click(screen.getByRole("button", { name: "Next →" }));
+
+    expect(await screen.findByText("Step 3 of 5, Teams")).toBeInTheDocument();
+
+    // Opt BHA into U9 Mixed — auto-populates with "BHA" from directory
+    const divTiles = screen.getAllByRole("button", { name: "U9 Mixed" });
+    await user.click(divTiles[0]);
+
+    // Slot should render a select (isEditing=false, name="BHA")
+    const slotSelect = screen.getByLabelText("Team name for U9 Mixed");
+    expect(slotSelect.tagName).toBe("SELECT");
+
+    // Choose ＋ New name… to enter editing mode
+    fireEvent.change(slotSelect, { target: { value: "__new__" } });
+
+    // Should now show the custom input
+    const input = screen.getByLabelText("Custom team name for U9 Mixed");
+    expect(input).toBeInTheDocument();
+
+    // Revert button should appear (BHA has directory entries)
+    expect(screen.getByLabelText("Revert to directory name")).toBeInTheDocument();
   });
 });
