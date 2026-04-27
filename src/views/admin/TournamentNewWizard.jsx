@@ -54,6 +54,86 @@ function nextUnusedName(entries, divKey, franchiseId) {
   return names.find((n) => !used.has(n)) ?? null;
 }
 
+function SlotRow({ slot, divKey, franchise, entries, changeSlotName, revertSlot, setSlotEditing, removeSlot }) {
+  const used = getUsedNames(entries, divKey, franchise.id, slot.id);
+  const available = (TEAM_DIRECTORY[franchise.id] ?? []).filter((n) => !used.has(n));
+  const hasDirectory = (TEAM_DIRECTORY[franchise.id] ?? []).length > 0;
+
+  return (
+    <div className="hj-tw2-slot">
+      {slot.isEditing ? (
+        <>
+          <input
+            className="hj-tw2-input hj-tw2-slot-input--custom"
+            aria-label={`Custom team name for ${divKey}`}
+            value={slot.name}
+            placeholder="Team name"
+            onChange={(e) => changeSlotName(divKey, franchise, slot.id, e.target.value)}
+          />
+          {hasDirectory ? (
+            <button
+              type="button"
+              className="hj-tw2-slot-revert"
+              aria-label="Revert to directory name"
+              onClick={() => revertSlot(divKey, franchise, slot.id)}
+            >
+              ↩
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <select
+          className="hj-tw2-input hj-tw2-select hj-tw2-slot-select"
+          aria-label={`Team name for ${divKey}`}
+          value={slot.name}
+          onChange={(e) => {
+            if (e.target.value === "__new__") {
+              setSlotEditing(divKey, franchise, slot.id, true);
+            } else {
+              changeSlotName(divKey, franchise, slot.id, e.target.value);
+            }
+          }}
+        >
+          {slot.name ? <option value={slot.name}>{slot.name}</option> : null}
+          {available
+            .filter((n) => n !== slot.name)
+            .map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          <option value="__new__">＋ New name…</option>
+        </select>
+      )}
+      <button
+        type="button"
+        className="hj-tw2-slot-remove"
+        aria-label={`Remove team slot for ${divKey}`}
+        onClick={() => removeSlot(divKey, franchise, slot.id)}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+SlotRow.propTypes = {
+  slot: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+  }).isRequired,
+  divKey: PropTypes.string.isRequired,
+  franchise: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+  }).isRequired,
+  entries: PropTypes.object.isRequired,
+  changeSlotName: PropTypes.func.isRequired,
+  revertSlot: PropTypes.func.isRequired,
+  setSlotEditing: PropTypes.func.isRequired,
+  removeSlot: PropTypes.func.isRequired,
+};
+
 function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onValidityChange, onNext, onBack }) {
   const getEntry = (divKey, fId) =>
     value.entries?.[divKey]?.[fId] ?? { optedIn: false, slots: [] };
@@ -216,73 +296,19 @@ function Step3Teams({ activeDivisions, selectedFranchises, value, onChange, onVa
                   {/* Slot list — shown when opted in */}
                   {isOptedIn ? (
                     <div className="hj-tw2-div-tile-body">
-                      {entry.slots.map((slot) => {
-                        const used = getUsedNames(value.entries, divKey, franchise.id, slot.id);
-                        const available = (TEAM_DIRECTORY[franchise.id] ?? []).filter(
-                          (n) => !used.has(n)
-                        );
-
-                        return (
-                          <div key={slot.id} className="hj-tw2-slot">
-                            {slot.isEditing ? (
-                              <>
-                                <input
-                                  className="hj-tw2-input hj-tw2-slot-input--custom"
-                                  aria-label={`Custom team name for ${divKey}`}
-                                  value={slot.name}
-                                  placeholder="Team name"
-                                  onChange={(e) =>
-                                    changeSlotName(divKey, franchise, slot.id, e.target.value)
-                                  }
-                                />
-                                {(TEAM_DIRECTORY[franchise.id] ?? []).length > 0 ? (
-                                  <button
-                                    type="button"
-                                    className="hj-tw2-slot-revert"
-                                    aria-label="Revert to directory name"
-                                    onClick={() => revertSlot(divKey, franchise, slot.id)}
-                                  >
-                                    ↩
-                                  </button>
-                                ) : null}
-                              </>
-                            ) : (
-                              <select
-                                className="hj-tw2-input hj-tw2-select hj-tw2-slot-select"
-                                aria-label={`Team name for ${divKey}`}
-                                value={slot.name}
-                                onChange={(e) => {
-                                  if (e.target.value === "__new__") {
-                                    setSlotEditing(divKey, franchise, slot.id, true);
-                                  } else {
-                                    changeSlotName(divKey, franchise, slot.id, e.target.value);
-                                  }
-                                }}
-                              >
-                                {slot.name ? (
-                                  <option value={slot.name}>{slot.name}</option>
-                                ) : null}
-                                {available
-                                  .filter((n) => n !== slot.name)
-                                  .map((n) => (
-                                    <option key={n} value={n}>
-                                      {n}
-                                    </option>
-                                  ))}
-                                <option value="__new__">＋ New name…</option>
-                              </select>
-                            )}
-                            <button
-                              type="button"
-                              className="hj-tw2-slot-remove"
-                              aria-label={`Remove team slot for ${divKey}`}
-                              onClick={() => removeSlot(divKey, franchise, slot.id)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
+                      {entry.slots.map((slot) => (
+                        <SlotRow
+                          key={slot.id}
+                          slot={slot}
+                          divKey={divKey}
+                          franchise={franchise}
+                          entries={value.entries}
+                          changeSlotName={changeSlotName}
+                          revertSlot={revertSlot}
+                          setSlotEditing={setSlotEditing}
+                          removeSlot={removeSlot}
+                        />
+                      ))}
 
                       <button
                         type="button"
@@ -630,6 +656,11 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext, onBack }) 
     .map((id) => value.directory.find((f) => f.id === id))
     .filter(Boolean);
 
+  const franchiseSuffix = selectedCount === 1 ? "" : "s";
+  const summaryText = selectedCount > 0
+    ? `${selectedCount} franchise${franchiseSuffix} selected — ${selected.map((f) => f.name).join(", ")}`
+    : "No franchises selected";
+
   return (
     <section className="hj-tw2-main" aria-label="Step 2 Franchises">
       <header className="hj-tw2-header">
@@ -701,11 +732,9 @@ function Step2Franchises({ value, onChange, onValidityChange, onNext, onBack }) 
         {!isValid ? <div className="hj-tw2-error">Select at least two franchises</div> : null}
       </div>
 
-      <div className="hj-tw2-summarybar" role="status" aria-label="Franchises selected summary">
-        {selectedCount > 0
-          ? `${selectedCount} franchise${selectedCount !== 1 ? "s" : ""} selected — ${selected.map((f) => f.name).join(", ")}`
-          : "No franchises selected"}
-      </div>
+      <output className="hj-tw2-summarybar" aria-label="Franchises selected summary">
+        {summaryText}
+      </output>
 
       <div className="hj-tw2-footer">
         <button type="button" className="hj-tw2-btn hj-tw2-btn--ghost" onClick={onBack}>
@@ -1325,7 +1354,7 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
 
   function handleShare() {
     if (!navigator.clipboard) return;
-    const url = `${window.location.origin}/fixtures`;
+    const url = `${globalThis.location.origin}/fixtures`;
     navigator.clipboard.writeText(url).then(() => setSharedUrl(url)).catch(() => {});
   }
 
@@ -1340,19 +1369,19 @@ function SuccessScreen({ tournamentName, scheduledCount, teamsCount, divisionsCo
       <div className="hj-tw2-success-tiles">
         <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{scheduledCount}</div>
-          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount !== 1 ? "s" : ""}</div>
+          <div className="hj-tw2-success-tile-label">Fixture{scheduledCount === 1 ? "" : "s"}</div>
         </div>
         <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{franchisesCount}</div>
-          <div className="hj-tw2-success-tile-label">Franchise{franchisesCount !== 1 ? "s" : ""}</div>
+          <div className="hj-tw2-success-tile-label">Franchise{franchisesCount === 1 ? "" : "s"}</div>
         </div>
         <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{divisionsCount}</div>
-          <div className="hj-tw2-success-tile-label">Division{divisionsCount !== 1 ? "s" : ""}</div>
+          <div className="hj-tw2-success-tile-label">Division{divisionsCount === 1 ? "" : "s"}</div>
         </div>
         <div className="hj-tw2-success-tile">
           <div className="hj-tw2-success-tile-value">{teamsCount}</div>
-          <div className="hj-tw2-success-tile-label">Team{teamsCount !== 1 ? "s" : ""}</div>
+          <div className="hj-tw2-success-tile-label">Team{teamsCount === 1 ? "" : "s"}</div>
         </div>
       </div>
 
@@ -1832,27 +1861,31 @@ export default function TournamentNewWizard() {
     setStep5({ isSubmitting: false, submitError: "", createdTournamentId: "", fixtures: [], skippedSameFranchise: 0 });
   }
 
+  function collectAllTeams(divisions, step3Entries, franchiseDir) {
+    const allTeams = [];
+    for (const divKey of divisions) {
+      const divEntries = step3Entries[divKey] ?? {};
+      for (const [fId, entry] of Object.entries(divEntries)) {
+        if (!entry.optedIn) continue;
+        const fObj = franchiseDir.find((f) => f.id === fId);
+        for (const slot of entry.slots) {
+          if (!slot.name.trim()) continue;
+          allTeams.push({
+            group_id: normaliseId(divKey),
+            name: slot.name.trim(),
+            franchise_name: fObj ? fObj.name : fId,
+            is_placeholder: false,
+          });
+        }
+      }
+    }
+    return allTeams;
+  }
+
   async function handleSubmit() {
     setStep5((s) => ({ ...s, isSubmitting: true, submitError: "" }));
     try {
-      const franchiseDir = step2.directory;
-      const allTeams = [];
-      for (const divKey of activeDivisions) {
-        const divEntries = step3.entries[divKey] ?? {};
-        for (const [fId, entry] of Object.entries(divEntries)) {
-          if (!entry.optedIn) continue;
-          const fObj = franchiseDir.find((f) => f.id === fId);
-          for (const slot of entry.slots) {
-            if (!slot.name.trim()) continue;
-            allTeams.push({
-              group_id: normaliseId(divKey),
-              name: slot.name.trim(),
-              franchise_name: fObj ? fObj.name : fId,
-              is_placeholder: false,
-            });
-          }
-        }
-      }
+      const allTeams = collectAllTeams(activeDivisions, step3.entries, step2.directory);
       const payload = {
         tournament: {
           id: normaliseId(`${step1.name} ${step1.season}`),
@@ -1899,57 +1932,68 @@ export default function TournamentNewWizard() {
     }
   }
 
-  const main = step === 0 ? (
-    <Step1
-      value={{ ...step1, activeDivisions }}
-      onChange={setStep1}
-      onValidityChange={setCanProceed}
-    />
-  ) : step === 1 ? (
-    <Step2Franchises
-      value={step2}
-      onChange={setStep2}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(2)}
-      onBack={() => setStep(0)}
-    />
-  ) : step === 2 ? (
-    <Step3Teams
-      activeDivisions={activeDivisions}
-      selectedFranchises={selectedFranchises}
-      value={step3}
-      onChange={setStep3}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(3)}
-      onBack={() => setStep(1)}
-    />
-  ) : step === 3 ? (
-    <Step4Rules
-      activeDivisions={activeDivisions}
-      step3Entries={step3.entries}
-      value={step4}
-      onChange={setStep4}
-      onValidityChange={setCanProceed}
-      onNext={() => setStep(4)}
-      onBack={() => setStep(2)}
-    />
-  ) : step === 4 ? (
-    <Step5Fixtures
-      step1={step1}
-      step5={step5}
-      onFixturesChange={(fixtures) => setStep5((s) => ({ ...s, fixtures }))}
-      onAutoGenerate={() => {
-        const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
-          activeDivisions,
-          step3Entries: step3.entries,
-          step4,
-        });
-        setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
-      }}
-      onBack={() => setStep(3)}
-      onSubmit={handleSubmit}
-    />
-  ) : null;
+  let main = null;
+  if (step === 0) {
+    main = (
+      <Step1
+        value={{ ...step1, activeDivisions }}
+        onChange={setStep1}
+        onValidityChange={setCanProceed}
+      />
+    );
+  } else if (step === 1) {
+    main = (
+      <Step2Franchises
+        value={step2}
+        onChange={setStep2}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(2)}
+        onBack={() => setStep(0)}
+      />
+    );
+  } else if (step === 2) {
+    main = (
+      <Step3Teams
+        activeDivisions={activeDivisions}
+        selectedFranchises={selectedFranchises}
+        value={step3}
+        onChange={setStep3}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(3)}
+        onBack={() => setStep(1)}
+      />
+    );
+  } else if (step === 3) {
+    main = (
+      <Step4Rules
+        activeDivisions={activeDivisions}
+        step3Entries={step3.entries}
+        value={step4}
+        onChange={setStep4}
+        onValidityChange={setCanProceed}
+        onNext={() => setStep(4)}
+        onBack={() => setStep(2)}
+      />
+    );
+  } else if (step === 4) {
+    main = (
+      <Step5Fixtures
+        step1={step1}
+        step5={step5}
+        onFixturesChange={(fixtures) => setStep5((s) => ({ ...s, fixtures }))}
+        onAutoGenerate={() => {
+          const { fixtures, skippedSameFranchise } = buildFixturesForStep5({
+            activeDivisions,
+            step3Entries: step3.entries,
+            step4,
+          });
+          setStep5((s) => ({ ...s, fixtures, skippedSameFranchise }));
+        }}
+        onBack={() => setStep(3)}
+        onSubmit={handleSubmit}
+      />
+    );
+  }
 
   const isSuccess = Boolean(step5.createdTournamentId);
 

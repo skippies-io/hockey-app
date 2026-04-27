@@ -1274,7 +1274,7 @@
   font-weight: var(--hj-font-weight-bold);
 }
 
-.hj-tw2-success {
+.hj-tw2-banner--success {
   margin-top: 12px;
   padding: 12px 14px;
   background: var(--hj-color-brand-soft);
