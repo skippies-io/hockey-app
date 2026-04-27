@@ -70,9 +70,9 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
 
   // ── Step 1: Tournament Details ────────────────────────────────────────────
 
-  await page.getByLabel('Name').fill(tournamentName);
-  await page.getByLabel('Start date').fill('2026-06-07');
-  await page.getByLabel('End date').fill('2026-06-08');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(tournamentName);
+  await page.getByRole('textbox', { name: 'Start date' }).fill('2026-06-07');
+  await page.getByRole('textbox', { name: 'End date' }).fill('2026-06-08');
 
   // Select a venue (pill button)
   await page.getByRole('button', { name: 'Beaulieu College' }).click();
