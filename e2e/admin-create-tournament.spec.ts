@@ -1,40 +1,32 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Full tournament creation smoke test.
+ * Full tournament creation smoke test — TournamentNewWizard v2 (5-step).
  *
  * Scenario: HJ Spring Cup 2026
- *   Venues:    Dainfern College, Beaulieu College, St Stithians
- *   Groups:
- *     - U11 Boys     (Round-robin,  3 teams, Dainfern + Beaulieu, fixtures generated)
- *     - U11 Girls    (Round-robin,  2 teams, Beaulieu, date via Girls Day shortcut)
- *     - U13 Knockout (Knockout,     3 placeholder teams via quick-add, St Stithians)
- *   Franchises: Gryphons, Purple Panthers, Knights, Blue Hawks
- *   Fixtures:   Round-robin generator for U11 Boys → 3 fixtures at Dainfern
+ *   Step 1 (Tournament Details): name, dates, Beaulieu College venue, U9 Mixed division
+ *   Step 2 (Franchises):        BHA + Black Hawks
+ *   Step 3 (Teams & Pools):     one team per franchise in U9 Mixed
+ *   Step 4 (Rules):             accept auto-selected format
+ *   Step 5 (Fixtures):          auto-generate + place one fixture
  */
 test('admin creates a full tournament via the wizard', async ({ page }) => {
-  test.setTimeout(180_000); // 50+ interactions; extra headroom for final page nav
+  test.setTimeout(180_000);
   const email = process.env.PW_ADMIN_EMAIL || 'admin@example.com';
   const token = process.env.PW_ADMIN_TOKEN || 'sess';
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
   const tournamentName = 'HJ Spring Cup 2026';
-  const season = '2026';
   const tournaments: Array<{ id: string; name: string; season: string }> = [];
 
   // ── API mocks ─────────────────────────────────────────────────────────────
-  // NOTE: Playwright routes use LIFO order — register catch-alls FIRST so that
-  // the specific mocks below (registered later) take higher priority.
 
-  // Catch-all: resolve any other admin or public data API calls immediately.
   await page.route('**/api?*', (route) =>
     route.fulfill({ json: { ok: true, groups: [], rows: [], data: [] } })
   );
   await page.route('**/api/admin/**', (route) =>
     route.fulfill({ json: { ok: true, data: [] } })
   );
-
-  // Specific mocks (registered after catch-alls = higher priority in LIFO order):
   await page.route('**/api/tournaments', (route) =>
     route.fulfill({ json: { ok: true, data: tournaments } })
   );
@@ -44,55 +36,11 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
   await page.route('**/api/announcements*', (route) =>
     route.fulfill({ json: { ok: true, data: [] } })
   );
-  await page.route('**/api/admin/venues', (route) =>
-    route.fulfill({
-      json: {
-        ok: true,
-        data: [
-          { name: 'Dainfern College' },
-          { name: 'Beaulieu College' },
-          { name: 'St Stithians' },
-        ],
-      },
-    })
-  );
-  await page.route('**/api/admin/franchises', (route) =>
-    route.fulfill({
-      json: {
-        ok: true,
-        data: [
-          { id: 'f1', name: 'Gryphons' },
-          { id: 'f2', name: 'Purple Panthers' },
-          { id: 'f3', name: 'Knights' },
-          { id: 'f4', name: 'Blue Hawks' },
-        ],
-      },
-    })
-  );
-  await page.route('**/api/admin/franchise-teams*', (route) => {
-    const url = new URL(route.request().url());
-    const franchise = url.searchParams.get('franchise') ?? '';
-    const teams: Record<string, string[]> = {
-      'Gryphons':         ['Gryphons Gold', 'Gryphons Green', 'Gryphons Blue'],
-      'Purple Panthers':  ['PP Amber', 'PP Navy', 'PP Emerald'],
-      'Knights':          ['Knights Orange', 'Knights Silver'],
-      'Blue Hawks':       ['Blue Hawks Blue', 'Blue Hawks Red'],
-    };
-    return route.fulfill({ json: { ok: true, data: teams[franchise] ?? [] } });
-  });
-  await page.route('**/api/admin/divisions', (route) =>
-    route.fulfill({
-      json: { ok: true, data: ['U11 Boys', 'U11 Girls', 'U13 Boys', 'U13 Girls'] },
-    })
-  );
-  await page.route('**/api/admin/tournament-exists*', (route) =>
-    route.fulfill({ json: { ok: true, exists: false } })
-  );
   await page.route('**/api/admin/tournament-wizard', async (route) => {
     const body = route.request().postDataJSON() as any;
-    const tournamentId = body?.tournament?.id || `hj-spring-cup-2026`;
+    const tournamentId = body?.tournament?.id || 'hj-spring-cup-2026';
     tournaments.push({ id: tournamentId, name: body?.tournament?.name, season: body?.tournament?.season });
-    return route.fulfill({ json: { ok: true, tournament_id: tournamentId } });
+    return route.fulfill({ json: { ok: true, tournament_id: tournamentId }, status: 201 });
   });
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -118,128 +66,85 @@ test('admin creates a full tournament via the wizard', async ({ page }) => {
 
   await page.goto('admin/tournaments/new');
   await page.waitForLoadState('domcontentloaded');
-  await expect(page.getByRole('heading', { name: 'Tournament Setup Wizard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Create a new tournament' })).toBeVisible();
 
-  // ── Step 0: Tournament details ────────────────────────────────────────────
+  // ── Step 1: Tournament Details ────────────────────────────────────────────
 
-  await page.getByLabel('Tournament Name').fill(tournamentName);
-  await page.getByLabel('Season').fill(season);
-  // ID hint should appear
-  await expect(page.getByText(/hj-spring-cup-2026/i)).toBeVisible();
+  await page.locator('input[aria-label="Name"]').fill(tournamentName);
+  // type="date" inputs need pressSequentially in Playwright's Chromium to trigger React onChange
+  const startInput = page.locator('input[aria-label="Start date"]');
+  await startInput.click();
+  await startInput.pressSequentially('2026-06-07');
+  const endInput = page.locator('input[aria-label="End date"]');
+  await endInput.click();
+  await endInput.pressSequentially('2026-06-08');
 
-  // ── Step 1: Groups & Pools ────────────────────────────────────────────────
+  // Select a venue (pill button)
+  await page.getByRole('button', { name: 'Beaulieu College' }).click();
 
-  await page.getByRole('button', { name: /^2\s*Groups & Pools/i }).click();
-  await expect(page.getByRole('heading', { name: 'Groups' })).toBeVisible();
+  // Enable one division
+  await page.getByRole('checkbox', { name: 'U9 Mixed' }).check();
 
-  // Group 1: U11 Boys — Round-robin, Dainfern + Beaulieu
-  const groupsSection = page.locator('section', { has: page.getByRole('heading', { name: 'Groups' }) });
-  const groupBlocks = () => groupsSection.locator('.wizard-block');
-  await groupsSection.getByLabel('Division / Age').first().fill('U11 Boys');
-  await groupsSection.getByRole('combobox', { name: 'Format' }).first().selectOption('Round-robin');
-  await groupsSection.getByLabel('Play Date').first().fill('2026-06-07');
-  await groupBlocks().nth(0).getByRole('checkbox', { name: 'Dainfern College' }).check();
-  await groupBlocks().nth(0).getByRole('checkbox', { name: 'Beaulieu College' }).check();
+  const nextBtn1 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn1).toBeEnabled();
+  await nextBtn1.scrollIntoViewIfNeeded();
+  await nextBtn1.click({ force: true });
 
-  // Group 2: U11 Girls — Round-robin, Beaulieu (play date set via shortcut)
-  await page.getByRole('button', { name: 'Add Group' }).click();
-  const divisionInputs = () => groupsSection.getByLabel('Division / Age');
-  await divisionInputs().nth(1).fill('U11 Girls');
-  await groupsSection.getByRole('combobox', { name: 'Format' }).nth(1).selectOption('Round-robin');
-  await groupBlocks().nth(1).getByRole('checkbox', { name: 'Beaulieu College' }).check();
+  // ── Step 2: Franchises ────────────────────────────────────────────────────
 
-  // Group 3: U13 Knockout — St Stithians
-  await page.getByRole('button', { name: 'Add Group' }).click();
-  await divisionInputs().nth(2).fill('U13 Knockout');
-  await groupsSection.getByRole('combobox', { name: 'Format' }).nth(2).selectOption('Knockout');
-  await groupsSection.getByLabel('Play Date').nth(2).fill('2026-06-08');
-  await groupBlocks().nth(2).getByRole('checkbox', { name: 'St Stithians' }).check();
+  await expect(page.getByText('Step 2 of 5')).toBeVisible();
 
-  // Sprint 3 feature: Girls Day shortcut → applies 2026-06-07 to U11 Girls
-  const shortcutsSection = page.locator('section', { has: page.getByRole('heading', { name: 'Scheduling Shortcuts' }) });
-  await shortcutsSection.getByLabel('Girls Day').fill('2026-06-07');
-  await shortcutsSection.getByRole('button', { name: /Apply to Girls groups/i }).click();
-  // U11 Girls play date should now match
-  await expect(groupsSection.getByLabel('Play Date').nth(1)).toHaveValue('2026-06-07');
+  // Select two franchises from the directory cards
+  await page.getByRole('listitem').filter({ hasText: 'BHA' }).first().click();
+  await page.getByRole('listitem').filter({ hasText: 'Black Hawks' }).first().click();
 
-  // ── Step 2: Teams & Fixtures ──────────────────────────────────────────────
+  const nextBtn2 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn2).toBeEnabled();
+  await nextBtn2.click({ force: true });
 
-  await page.getByRole('button', { name: /^3\s*Teams & Fixtures/i }).click();
-  await expect(page.getByRole('heading', { name: 'Teams' })).toBeVisible();
+  // ── Step 3: Teams & Pools ─────────────────────────────────────────────────
 
-  const teamsSection = page.locator('section', { has: page.getByRole('heading', { name: 'Teams' }) });
+  await expect(page.getByText('Step 3 of 5')).toBeVisible();
 
-  const teamGroupSelects = () => teamsSection.getByRole('combobox', { name: 'Team Group' });
-  const franchiseSelects = () => teamsSection.getByRole('combobox', { name: 'Franchise' });
-  const teamNameSelects = () => teamsSection.getByRole('combobox', { name: 'Team Name' });
+  // Each franchise-division tile is a .hj-tw2-div-tile-header button.
+  // With 2 franchises and 1 division there are exactly 2 tiles.
+  const divTiles = page.locator('.hj-tw2-div-tile-header');
+  await expect(divTiles.first()).toBeVisible();
+  await divTiles.first().click({ force: true });
+  await divTiles.nth(1).click({ force: true });
 
-  // U11 Boys team 1 — the default empty row
-  await teamGroupSelects().first().selectOption({ label: 'U11 Boys' });
-  await franchiseSelects().first().selectOption('Gryphons');
-  await expect(teamNameSelects().first()).toBeVisible();
-  await teamNameSelects().first().selectOption('Gryphons Gold');
+  const nextBtn3 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn3).toBeEnabled();
+  await nextBtn3.click({ force: true });
 
-  // U11 Boys team 2
-  await teamsSection.getByRole('button', { name: 'Add Team' }).click();
-  await teamGroupSelects().nth(1).selectOption({ label: 'U11 Boys' });
-  await franchiseSelects().nth(1).selectOption('Knights');
-  await expect(teamNameSelects().nth(1)).toBeVisible();
-  await teamNameSelects().nth(1).selectOption('Knights Orange');
+  // ── Step 4: Rules ─────────────────────────────────────────────────────────
 
-  // U11 Boys team 3
-  await teamsSection.getByRole('button', { name: 'Add Team' }).click();
-  await teamGroupSelects().nth(2).selectOption({ label: 'U11 Boys' });
-  await franchiseSelects().nth(2).selectOption('Blue Hawks');
-  await expect(teamNameSelects().nth(2)).toBeVisible();
-  await teamNameSelects().nth(2).selectOption('Blue Hawks Blue');
+  await expect(page.getByText('Step 4 of 5')).toBeVisible();
 
-  // U11 Girls team 1
-  await teamsSection.getByRole('button', { name: 'Add Team' }).click();
-  await teamGroupSelects().nth(3).selectOption({ label: 'U11 Girls' });
-  await franchiseSelects().nth(3).selectOption('Purple Panthers');
-  await expect(teamNameSelects().nth(3)).toBeVisible();
-  await teamNameSelects().nth(3).selectOption('PP Emerald');
+  const nextBtn4 = page.locator('button.hj-tw2-btn--primary', { hasText: 'Next' });
+  await expect(nextBtn4).toBeEnabled();
+  await nextBtn4.click({ force: true });
 
-  // U11 Girls team 2
-  await teamsSection.getByRole('button', { name: 'Add Team' }).click();
-  await teamGroupSelects().nth(4).selectOption({ label: 'U11 Girls' });
-  await franchiseSelects().nth(4).selectOption('Gryphons');
-  await expect(teamNameSelects().nth(4)).toBeVisible();
-  await teamNameSelects().nth(4).selectOption('Gryphons Blue');
+  // ── Step 5: Fixtures ──────────────────────────────────────────────────────
 
-  // Sprint 3 feature: placeholder quick-add for U13 Knockout (appended after real teams)
-  await teamsSection.getByRole('button', { name: /Add standard placeholders for U13 Knockout/i }).click();
-  await expect(page.locator('input[value="SF1 Winner"]')).toBeVisible();
-  await expect(page.locator('input[value="SF2 Winner"]')).toBeVisible();
-  await expect(page.locator('input[value="SF1 Loser / 3rd Place"]')).toBeVisible();
+  await expect(page.getByText('Step 5 of 5')).toBeVisible();
 
-  // Generate round-robin fixtures for U11 Boys at Dainfern College
-  const fixturesSection = page.locator('section', { has: page.getByRole('heading', { name: 'Fixtures' }) });
-  await fixturesSection.getByRole('combobox', { name: 'Generator Group' }).selectOption({ label: 'U11 Boys' });
-  await fixturesSection.getByLabel('Date').first().fill('2026-06-07');
-  await fixturesSection.getByRole('combobox', { name: 'Default Venue' }).selectOption('Dainfern College');
-  await fixturesSection.getByRole('button', { name: /Generate Fixtures/i }).click();
-  // 3-team round-robin = 3 fixtures
-  await expect(page.getByText(/Generated 3 fixtures/i)).toBeVisible();
+  // Auto-generate fixtures then place one
+  await page.getByRole('button', { name: 'Auto-generate fixtures' }).click();
 
-  // ── Step 3: Review & Submit ───────────────────────────────────────────────
+  const firstFixture = page.getByRole('button', { name: /BHA|Black Hawks/ }).first();
+  await firstFixture.click();
 
-  await page.getByRole('button', { name: 'Review →' }).click();
-  await expect(page.getByRole('heading', { name: 'Review Tournament' })).toBeVisible();
+  const firstSlot = page.getByRole('button', { name: 'click to place' }).first();
+  await firstSlot.click();
 
-  // Tournament summary
+  // Submit
+  await page.getByRole('button', { name: 'Create Tournament →' }).click();
+
+  // ── Success screen ────────────────────────────────────────────────────────
+
+  await expect(page.getByRole('heading', { name: 'Tournament Created!' })).toBeVisible();
   await expect(page.getByText(tournamentName)).toBeVisible();
-  await expect(page.getByText(/hj-spring-cup-2026/i)).toBeVisible();
-
-  // No ID conflict warning (mock returns exists:false)
-  await expect(page.getByText(/already exists/i)).not.toBeVisible();
-
-  // Confirm & Create should be enabled
-  const confirmBtn = page.getByRole('button', { name: 'Confirm & Create' });
-  await expect(confirmBtn).toBeEnabled();
-  await confirmBtn.click();
-
-  await expect(page.getByText(/Tournament created:/i)).toBeVisible();
 
   // ── Assert it appears in the public tournament directory ──────────────────
 

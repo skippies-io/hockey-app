@@ -805,7 +805,12 @@ TopStepper.propTypes = {
   onStepChange: PropTypes.func.isRequired,
 };
 
-function SummarySidebar({ tournamentName, selectedVenues, step1Timing, divisionTeamCounts }) {
+function fmtDate(d) {
+  if (!d) return null;
+  return new Date(d + "T00:00:00Z").toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function SummarySidebar({ tournamentName, season, startDate, endDate, selectedVenues, step1Timing, divisionTeamCounts }) {
   const gameDuration = React.useMemo(() => {
     const chakas = Number(step1Timing.chakasPerGame) || 0;
     const dur = Number(step1Timing.chakaMinutes) || 0;
@@ -814,6 +819,14 @@ function SummarySidebar({ tournamentName, selectedVenues, step1Timing, divisionT
     return chakas * dur + half + co;
   }, [step1Timing.chakasPerGame, step1Timing.chakaMinutes, step1Timing.halftimeMinutes, step1Timing.changeoverMinutes]);
 
+  const dateLine = React.useMemo(() => {
+    const s = fmtDate(startDate);
+    const e = fmtDate(endDate);
+    if (s && e) return `${s} – ${e}`;
+    if (s) return s;
+    return null;
+  }, [startDate, endDate]);
+
   return (
     <aside className="hj-tw2-sidebar" aria-label="Tournament summary">
       <div className="hj-tw2-sidebar-card">
@@ -821,15 +834,25 @@ function SummarySidebar({ tournamentName, selectedVenues, step1Timing, divisionT
         <dl className="hj-tw2-sidebar-dl">
           <div>
             <dt>Tournament</dt>
-            <dd>{tournamentName || "—"}</dd>
+            <dd>
+              {tournamentName || "—"}
+              {(season || dateLine) && (
+                <div className="hj-tw2-sidebar-meta">
+                  {season && dateLine ? `${season} • ${dateLine}` : season || dateLine}
+                </div>
+              )}
+            </dd>
           </div>
 
           <div>
             <dt>Game Duration</dt>
             <dd>
-              <div className="hj-tw2-sidebar-duration-value">
-                {gameDuration > 0 ? `${gameDuration} min/game` : "—"}
-              </div>
+              {gameDuration > 0 ? (
+                <div className="hj-tw2-sidebar-duration-row">
+                  <span className="hj-tw2-sidebar-duration-value">{gameDuration}</span>
+                  <span className="hj-tw2-sidebar-duration-label">min/game</span>
+                </div>
+              ) : "—"}
               {gameDuration > 0 && (
                 <div className="hj-tw2-sidebar-duration-formula">
                   {Number(step1Timing.chakasPerGame)}×{Number(step1Timing.chakaMinutes)}
@@ -878,6 +901,9 @@ function SummarySidebar({ tournamentName, selectedVenues, step1Timing, divisionT
 
 SummarySidebar.propTypes = {
   tournamentName: PropTypes.string.isRequired,
+  season: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  startDate: PropTypes.string,
+  endDate: PropTypes.string,
   selectedVenues: PropTypes.arrayOf(PropTypes.string).isRequired,
   step1Timing: PropTypes.shape({
     chakasPerGame: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
@@ -1254,6 +1280,8 @@ function Step1({ value, onChange, onValidityChange }) {
                   className="hj-tw2-points-input"
                   type="number"
                   inputMode="numeric"
+                  min={0}
+                  max={99}
                   aria-label={`${t.label} points`}
                   value={value.points[t.key]}
                   onChange={(e) =>
@@ -1261,7 +1289,7 @@ function Step1({ value, onChange, onValidityChange }) {
                       ...value,
                       points: {
                         ...value.points,
-                        [t.key]: Number(e.target.value || 0),
+                        [t.key]: Math.min(99, Math.max(0, Number(e.target.value || 0))),
                       },
                     })
                   }
@@ -1275,7 +1303,7 @@ function Step1({ value, onChange, onValidityChange }) {
                       ...value,
                       points: {
                         ...value.points,
-                        [t.key]: Number(value.points[t.key] || 0) + 1,
+                        [t.key]: Math.min(99, Number(value.points[t.key] || 0) + 1),
                       },
                     })
                   }
@@ -1310,15 +1338,10 @@ Step1.propTypes = {
   value: PropTypes.shape({
     name: PropTypes.string.isRequired,
     season: PropTypes.string.isRequired,
-    seasonOptions: PropTypes.arrayOf(PropTypes.string).isRequired,
+    seasonOptions: PropTypes.arrayOf(PropTypes.number).isRequired,
     startDate: PropTypes.string.isRequired,
     endDate: PropTypes.string.isRequired,
-    venueDirectory: PropTypes.arrayOf(
-      PropTypes.shape({
-        id: PropTypes.string.isRequired,
-        name: PropTypes.string.isRequired,
-      })
-    ).isRequired,
+    venueDirectory: PropTypes.arrayOf(PropTypes.string).isRequired,
     selectedVenues: PropTypes.arrayOf(PropTypes.string).isRequired,
     customVenueDraft: PropTypes.string.isRequired,
     divisionTable: PropTypes.arrayOf(
@@ -1342,7 +1365,7 @@ Step1.propTypes = {
       draw: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       loss: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     }).isRequired,
-    _continue: PropTypes.bool,
+    _continue: PropTypes.number,
     activeDivisions: PropTypes.array,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
@@ -1891,6 +1914,13 @@ export default function TournamentNewWizard() {
           id: normaliseId(`${step1.name} ${step1.season}`),
           name: step1.name,
           season: String(step1.season),
+          game_timing: {
+            chakas: Number(step1.chakasPerGame),
+            duration_mins: Number(step1.chakaMinutes),
+            halftime_mins: Number(step1.halftimeMinutes),
+            changeover_mins: Number(step1.changeoverMinutes),
+          },
+          points_config: { ...step1.points },
         },
         venues: step1.selectedVenues,
         groups: activeDivisions.map((d) => ({
@@ -2019,6 +2049,9 @@ export default function TournamentNewWizard() {
           <div ref={mainRef}>{main}</div>
           <SummarySidebar
             tournamentName={step1.name}
+            season={step1.season}
+            startDate={step1.startDate}
+            endDate={step1.endDate}
             selectedVenues={step1.selectedVenues}
             step1Timing={{
               chakasPerGame: step1.chakasPerGame,

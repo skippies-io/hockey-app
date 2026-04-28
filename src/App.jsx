@@ -37,7 +37,6 @@ import AdminRoute from "./views/admin/AdminRoute";
 import AdminLogin from "./views/admin/AdminLogin";
 import AdminLoginCallback from "./views/admin/AdminLoginCallback";
 import AnnouncementsPage from "./views/admin/AnnouncementsPage";
-import TournamentWizard from "./views/admin/TournamentWizard";
 import TournamentNewWizard from "./views/admin/TournamentNewWizard";
 import AdminTournamentsPage from "./views/admin/AdminTournamentsPage";
 import AdminDashboard from "./views/admin/AdminDashboard";
@@ -558,7 +557,7 @@ export default function App() {
             <Route element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="tournaments" element={<AdminTournamentsPage />} />
-              <Route path="tournaments/new" element={<TournamentWizard />} />
+              <Route path="tournaments/new" element={<TournamentNewWizard />} />
               <Route path="tournament/new" element={<TournamentNewWizard />} />
               <Route path="announcements" element={<AnnouncementsPage />} />
               <Route path="venues/*" element={<VenuesPage />} />
