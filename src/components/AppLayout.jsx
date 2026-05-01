@@ -7,6 +7,7 @@ import AnnouncementBanner from "./AnnouncementBanner";
 import DataFreshness from "./DataFreshness";
 import NotificationBell from "./NotificationBell";
 import BottomNav from "./BottomNav";
+import ThemeToggle from "./ThemeToggle";
 import { getAnnouncements } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 
@@ -85,6 +86,7 @@ export default function AppLayout({
                 </div>
               </div>
               <div className="header-actions">
+                <ThemeToggle />
                 <NotificationBell announcements={announcements} />
                 <TournamentSwitcher />
                 <DataFreshness />
