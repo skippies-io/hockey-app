@@ -6,6 +6,7 @@ import TournamentSwitcher from "./TournamentSwitcher";
 import AnnouncementBanner from "./AnnouncementBanner";
 import DataFreshness from "./DataFreshness";
 import NotificationBell from "./NotificationBell";
+import BottomNav from "./BottomNav";
 import { getAnnouncements } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 
@@ -158,6 +159,9 @@ export default function AppLayout({
           </footer>
         </div>
       </div>
+
+      {/* Bottom navigation — visible on mobile only (CSS hides it at ≥640px) */}
+      <BottomNav currentTab={currentTab} ageId={ageId} />
     </FilterSlotContext.Provider>
   );
 }

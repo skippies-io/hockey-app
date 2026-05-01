@@ -7,31 +7,44 @@
  */
 
 :root {
-  /* ===== Brand palette ===== */
-  --hj-color-brand: #1ed760;
+  /* ===== Brand palette (vibrant sports green — matches Stitch mockup) ===== */
+  --hj-color-brand: #4ade80;
   --hj-color-brand-soft: #dcfce7;
-  --hj-color-brand-strong: #16a34a;
+  --hj-color-brand-strong: #22c55e;
 
   /* Secondary accent */
   --hj-color-accent: #3b82f6;
   --hj-color-accent-soft: #dbeafe;
   --hj-color-accent-strong: #1d4ed8;
 
-  /* ===== Neutral palette ===== */
-  --hj-color-ink: #1f2937;
-  --hj-color-ink-muted: #4b5563;
-  --hj-color-ink-subtle: #6b7280;
+  /* ===== Neutral palette (warm ink tones — matches Stitch mockup) ===== */
+  --hj-color-ink: #1b0e0e;
+  --hj-color-ink-muted: #666666;
+  --hj-color-ink-subtle: #888888;
 
-  /* Background & surfaces */
-  --hj-color-page: #f8f9fa;
+  /* Background & surfaces (warm off-white — matches Stitch mockup) */
+  --hj-color-page: #f8f6f6;
   --hj-color-surface: #ffffff;
-  --hj-color-surface-muted: #f3f4f6;
+  --hj-color-surface-muted: #f3f0f0;
   --hj-color-surface-elevated: #ffffff;
   --hj-color-surface-highlight: #dcfce7; /* highlight cards, “followed” states */
 
   /* Borders */
-  --hj-color-border-subtle: #e5e7eb;
-  --hj-color-border-strong: #d1d5db;
+  --hj-color-border-subtle: #e8e2e2;
+  --hj-color-border-strong: #d4cccc;
+
+  /* ===== Result / match-state colours ===== */
+  --hj-color-result-win: #22c55e;
+  --hj-color-result-win-soft: #dcfce7;
+  --hj-color-result-win-ink: #166534;
+  --hj-color-result-loss: #f97316;
+  --hj-color-result-loss-soft: #ffedd5;
+  --hj-color-result-loss-ink: #9a3412;
+  --hj-color-result-draw: #94a3b8;
+  --hj-color-result-draw-soft: #f1f5f9;
+  --hj-color-result-draw-ink: #475569;
+  --hj-color-live: #ef4444;
+  --hj-color-live-soft: #fee2e2;
 
   /* ===== Status colors ===== */
   --hj-color-success: #16a34a;
@@ -69,7 +82,7 @@
   --hj-radius-pill: 999px;
 
   /* ===== Typography ===== */
-  --hj-font-family-sans: "DM Sans", system-ui, -apple-system,
+  --hj-font-family-sans: "Lexend", "DM Sans", system-ui, -apple-system,
     BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   --hj-font-size-xs: 12px;
@@ -2189,4 +2202,363 @@ select {
   .filter-help {
     display: none;
   }
+
+  /* Hide desktop pill nav on mobile — bottom nav takes over */
+  .app-nav-row {
+    display: none;
+  }
+
+  /* Extra bottom padding so content clears the bottom nav */
+  .app-main {
+    padding-bottom: 72px;
+  }
+}
+
+/* ===== Bottom navigation bar ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--hj-color-surface);
+  border-top: 1px solid var(--hj-color-border-subtle);
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+  display: none; /* shown only on mobile via media query */
+}
+
+.bottom-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.bottom-nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  height: 100%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--hj-color-ink-subtle);
+  text-decoration: none;
+  transition: color var(--hj-duration-fast) var(--hj-ease-default);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-tab:hover {
+  color: var(--hj-color-ink-muted);
+}
+
+.bottom-nav-tab.is-active {
+  color: var(--hj-color-brand-strong);
+}
+
+.bottom-nav-icon {
+  font-size: 24px;
+  line-height: 1;
+  font-family: "Material Symbols Outlined";
+  font-weight: 400;
+  font-style: normal;
+  display: block;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.bottom-nav-tab.is-active .bottom-nav-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+.bottom-nav-label {
+  font-size: 10px;
+  font-weight: var(--hj-font-weight-medium);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.bottom-nav-tab.is-active .bottom-nav-label {
+  font-weight: var(--hj-font-weight-bold);
+}
+
+/* More drawer overlay */
+.bottom-nav-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.bottom-nav-drawer {
+  position: fixed;
+  bottom: 64px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--hj-color-surface);
+  border-radius: var(--hj-radius-lg) var(--hj-radius-lg) 0 0;
+  border: 1px solid var(--hj-color-border-subtle);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+  padding: var(--hj-space-4);
+}
+
+.bottom-nav-drawer-title {
+  font-size: var(--hj-font-size-xs);
+  font-weight: var(--hj-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hj-color-ink-subtle);
+  margin-bottom: var(--hj-space-3);
+}
+
+.bottom-nav-drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--hj-space-2);
+}
+
+.bottom-nav-drawer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hj-space-2);
+  padding: var(--hj-space-3);
+  border-radius: var(--hj-radius-md);
+  background: var(--hj-color-surface-muted);
+  border: 1px solid var(--hj-color-border-subtle);
+  color: var(--hj-color-ink);
+  text-decoration: none;
+  font-size: var(--hj-font-size-xs);
+  font-weight: var(--hj-font-weight-semibold);
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--hj-duration-fast) var(--hj-ease-default);
+}
+
+.bottom-nav-drawer-item:hover {
+  background: var(--hj-color-border-subtle);
+}
+
+.bottom-nav-drawer-item-icon {
+  font-size: 22px;
+  line-height: 1;
+  font-family: "Material Symbols Outlined";
+  font-weight: 400;
+  font-style: normal;
+  color: var(--hj-color-brand-strong);
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+@media (max-width: 640px) {
+  .bottom-nav {
+    display: block;
+  }
+}
+
+/* ===== Redesigned FixtureCard (Stitch mockup layout) ===== */
+.fixture-card--v2 {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left accent strip: coloured bar indicating match result */
+.fixture-card--v2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--hj-color-border-subtle);
+  border-radius: 0;
+}
+
+.fixture-card--v2.fixture-v2--win::before  { background: var(--hj-color-result-win); }
+.fixture-card--v2.fixture-v2--loss::before { background: var(--hj-color-result-loss); }
+.fixture-card--v2.fixture-v2--draw::before { background: var(--hj-color-result-draw); }
+.fixture-card--v2.fixture-v2--live::before { background: var(--hj-color-live); }
+
+.fixture-card--v2 .fixture-card-shell {
+  padding: var(--hj-space-4) var(--hj-space-4) var(--hj-space-3) calc(var(--hj-space-4) + 5px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hj-space-3);
+}
+
+/* Status row (Live / Postponed pills + date) */
+.fixture-v2-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hj-space-2);
+  min-height: 0;
+}
+
+/* Main matchup row */
+.fixture-v2-matchup {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-3);
+}
+
+.fixture-v2-team {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fixture-v2-team--home {
+  align-items: flex-start;
+}
+
+.fixture-v2-team--away {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.fixture-v2-team-name {
+  font-weight: var(--hj-font-weight-semibold);
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.fixture-v2-team-star {
+  display: flex;
+}
+
+/* Score center block */
+.fixture-v2-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.fixture-v2-score-row {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+}
+
+/* Individual score elements — keep class fixture-team-score for test compatibility */
+.fixture-team-score {
+  font-weight: var(--hj-font-weight-bold);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--hj-color-ink);
+  min-width: 1.5ch;
+  text-align: center;
+  line-height: 1;
+}
+
+.fixture-v2-score-sep {
+  font-weight: var(--hj-font-weight-bold);
+  color: var(--hj-color-ink-subtle);
+  font-size: 16px;
+}
+
+.fixture-v2-result-badge {
+  font-size: 10px;
+  font-weight: var(--hj-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: var(--hj-radius-pill);
+  border: 1px solid transparent;
+}
+
+.fixture-v2-result-badge--win  {
+  background: var(--hj-color-result-win-soft);
+  color: var(--hj-color-result-win-ink);
+  border-color: color-mix(in srgb, var(--hj-color-result-win) 30%, transparent);
+}
+.fixture-v2-result-badge--loss {
+  background: var(--hj-color-result-loss-soft);
+  color: var(--hj-color-result-loss-ink);
+  border-color: color-mix(in srgb, var(--hj-color-result-loss) 30%, transparent);
+}
+.fixture-v2-result-badge--draw {
+  background: var(--hj-color-result-draw-soft);
+  color: var(--hj-color-result-draw-ink);
+  border-color: color-mix(in srgb, var(--hj-color-result-draw) 30%, transparent);
+}
+
+.fixture-v2-time-label {
+  font-size: 10px;
+  font-weight: var(--hj-font-weight-medium);
+  color: var(--hj-color-ink-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Live pulse badge */
+.fixture-v2-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--hj-radius-pill);
+  background: var(--hj-color-live-soft);
+  color: var(--hj-color-live);
+  border: 1px solid var(--hj-color-live);
+  font-size: 10px;
+  font-weight: var(--hj-font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fixture-v2-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hj-color-live);
+  animation: hj-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes hj-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* Meta row (time • venue • pool) */
+.fixture-v2-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  color: var(--hj-color-ink-subtle);
+  font-size: var(--hj-font-size-xs);
+  flex-wrap: wrap;
+}
+
+.fixture-v2-meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--hj-color-border-strong);
+  flex-shrink: 0;
+}
+
+/* Expandable detail section */
+.fixture-v2-details {
+  border-top: 1px solid var(--hj-color-border-subtle);
+  padding-top: var(--hj-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hj-space-1);
 }

@@ -89,8 +89,9 @@ describe("App Smoke Test", () => {
     renderApp();
 
     // Should render the Fixtures component, check for some text it contains
-    const heading = await screen.findByText(/Fixtures/i);
-    expect(heading).toBeTruthy();
+    // findAllByText used because BottomNav also renders a "Fixtures" label
+    const headings = await screen.findAllByText(/Fixtures/i);
+    expect(headings.length).toBeGreaterThan(0);
   });
 
   it("renders standings route", async () => {
@@ -98,8 +99,9 @@ describe("App Smoke Test", () => {
 
     renderApp();
 
-    const heading = await screen.findByText(/Standings/i);
-    expect(heading).toBeTruthy();
+    // findAllByText used because BottomNav also renders a "Standings" label
+    const headings = await screen.findAllByText(/Standings/i);
+    expect(headings.length).toBeGreaterThan(0);
   });
 
   it("renders teams route", async () => {
