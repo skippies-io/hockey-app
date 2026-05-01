@@ -408,6 +408,37 @@ select {
   background: var(--hj-color-border-subtle);
 }
 
+.btn-icon-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--hj-color-border-subtle);
+  border-radius: var(--hj-radius-sm);
+  background: var(--hj-color-surface);
+  color: var(--hj-color-ink-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--hj-duration-fast) var(--hj-ease-default),
+              background var(--hj-duration-fast) var(--hj-ease-default);
+}
+
+.btn-icon-refresh:hover {
+  color: var(--hj-color-ink);
+  background: var(--hj-color-surface-muted);
+}
+
+.btn-icon-refresh:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-icon-refresh .material-symbols-outlined {
+  font-size: 20px;
+}
+
 /* Tabs */
 .pills {
   display: flex;

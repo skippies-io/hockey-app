@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
 import { getFixturesRows } from '../lib/api';
+import { parseDateToUTCms } from '../lib/date';
 
 export default function Overview({ groups = [] }) {
   const navigate = useNavigate();
@@ -25,12 +26,18 @@ export default function Overview({ groups = [] }) {
       .finally(() => setLoading(false));
   }, [activeTournamentId]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const live = fixtures.filter(f => String(f.status || '').toLowerCase() === 'live');
-  const todayFixtures = fixtures.filter(f => f.date === today);
+  const todayMs = Date.UTC(
+    new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()
+  );
+  const live = fixtures.filter(f => String(f.Status || '').toLowerCase() === 'live');
+  const todayFixtures = fixtures.filter(f => parseDateToUTCms(f.Date) === todayMs);
   const next = fixtures
-    .filter(f => !f.homeScore && f.date >= today && String(f.status || '').toLowerCase() !== 'final')
-    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0];
+    .filter(f =>
+      !f.Score1 &&
+      parseDateToUTCms(f.Date) >= todayMs &&
+      String(f.Status || '').toLowerCase() !== 'final'
+    )
+    .sort((a, b) => parseDateToUTCms(a.Date) - parseDateToUTCms(b.Date))[0];
 
   const goTeams = () => navigate(`/${defaultAgeId}/teams`);
 
@@ -65,8 +72,8 @@ export default function Overview({ groups = [] }) {
           )}
           {!loading && next && (
             <p className="overview-next-fixture">
-              Next: <strong>{next.homeTeam} vs {next.awayTeam}</strong>
-              {next.time && <span className="overview-next-time">{next.time}</span>}
+              Next: <strong>{next.Team1} vs {next.Team2}</strong>
+              {next.Time && <span className="overview-next-time">{next.Time}</span>}
             </p>
           )}
           {!loading && todayFixtures.length === 0 && live.length === 0 && (

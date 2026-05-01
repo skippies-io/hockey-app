@@ -38,13 +38,11 @@ test('active nav link carries aria-current="page"', async ({ page }) => {
   await expect(standingsLink).toHaveAttribute('aria-current', 'page');
 });
 
-test('navigating from Overview to Fixtures works', async ({ page }) => {
+test('navigating from Overview to Fixtures via nav works', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
-  // Overview "View fixtures" button navigates into the fixtures view
-  const btn = page.getByRole('button', { name: /view fixtures/i });
-  await expect(btn).toBeVisible();
-  await btn.click();
+  // Use the Fixtures nav link (bottom nav on mobile, pill nav on desktop)
+  await page.getByRole('link', { name: 'Fixtures' }).first().click();
   await expect(page).toHaveURL(/\/fixtures/);
   await expect(page.locator('.fixtures-page')).toBeVisible();
 });

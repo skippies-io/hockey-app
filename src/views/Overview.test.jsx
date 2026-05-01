@@ -21,8 +21,11 @@ vi.mock("../lib/api", () => ({
   getFixturesRows: (...args) => apiMocks.getFixturesRows(...args),
 }));
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const TOMORROW = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+// Date helpers matching parseDateToUTCms format ("D MMM YYYY")
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const utcLabel = (d) => `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+const TODAY_LABEL = utcLabel(new Date());
+const TOMORROW_LABEL = utcLabel(new Date(Date.now() + 86400000));
 
 function renderOverview(props = {}) {
   return render(
@@ -67,8 +70,8 @@ describe("Overview view", () => {
 
   it("shows live count badge when fixtures are live", async () => {
     apiMocks.getFixturesRows.mockResolvedValue([
-      { id: 1, status: "live", date: TODAY, homeTeam: "A", awayTeam: "B" },
-      { id: 2, status: "live", date: TODAY, homeTeam: "C", awayTeam: "D" },
+      { Status: "live", Date: TODAY_LABEL, Team1: "A", Team2: "B" },
+      { Status: "live", Date: TODAY_LABEL, Team1: "C", Team2: "D" },
     ]);
     renderOverview();
     await waitFor(() => expect(screen.getByText(/2 Live/)).toBeTruthy());
@@ -76,9 +79,9 @@ describe("Overview view", () => {
 
   it("shows today fixture count", async () => {
     apiMocks.getFixturesRows.mockResolvedValue([
-      { id: 1, status: "upcoming", date: TODAY, homeTeam: "A", awayTeam: "B" },
-      { id: 2, status: "upcoming", date: TODAY, homeTeam: "C", awayTeam: "D" },
-      { id: 3, status: "upcoming", date: TOMORROW, homeTeam: "E", awayTeam: "F" },
+      { Status: "", Date: TODAY_LABEL, Team1: "A", Team2: "B" },
+      { Status: "", Date: TODAY_LABEL, Team1: "C", Team2: "D" },
+      { Status: "", Date: TOMORROW_LABEL, Team1: "E", Team2: "F" },
     ]);
     renderOverview();
     await waitFor(() => expect(screen.getByText("2 today")).toBeTruthy());
@@ -86,7 +89,7 @@ describe("Overview view", () => {
 
   it("shows next fixture team names", async () => {
     apiMocks.getFixturesRows.mockResolvedValue([
-      { id: 1, status: "upcoming", date: TODAY, time: "10:00", homeTeam: "Lions", awayTeam: "Tigers" },
+      { Status: "", Date: TODAY_LABEL, Time: "10:00", Team1: "Lions", Team2: "Tigers", Score1: "" },
     ]);
     renderOverview();
     await waitFor(() => {
@@ -96,7 +99,7 @@ describe("Overview view", () => {
 
   it("shows next fixture time when available", async () => {
     apiMocks.getFixturesRows.mockResolvedValue([
-      { id: 1, status: "upcoming", date: TODAY, time: "14:30", homeTeam: "A", awayTeam: "B" },
+      { Status: "", Date: TODAY_LABEL, Time: "14:30", Team1: "A", Team2: "B", Score1: "" },
     ]);
     renderOverview();
     await waitFor(() => expect(screen.getByText("14:30")).toBeTruthy());
@@ -104,7 +107,7 @@ describe("Overview view", () => {
 
   it("does not show live badge when no live fixtures", async () => {
     apiMocks.getFixturesRows.mockResolvedValue([
-      { id: 1, status: "upcoming", date: TODAY, homeTeam: "A", awayTeam: "B" },
+      { Status: "", Date: TODAY_LABEL, Team1: "A", Team2: "B" },
     ]);
     renderOverview();
     await waitFor(() => expect(screen.queryByText(/Live/)).toBeNull());
@@ -113,6 +116,16 @@ describe("Overview view", () => {
   it("shows pool count from groups prop", async () => {
     renderOverview({ groups: [{ id: "U12" }, { id: "U14" }, { id: "U16" }] });
     await waitFor(() => expect(screen.getByText("3 pools")).toBeTruthy());
+  });
+
+  it("skips fixture with Score1 set when finding next", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { Status: "final", Date: TODAY_LABEL, Time: "09:00", Team1: "Old", Team2: "News", Score1: "3" },
+      { Status: "", Date: TODAY_LABEL, Time: "11:00", Team1: "Next", Team2: "Up", Score1: "" },
+    ]);
+    renderOverview();
+    await waitFor(() => expect(screen.queryByText(/Old vs News/)).toBeNull());
+    await waitFor(() => expect(screen.getByText(/Next vs Up/)).toBeTruthy());
   });
 
   it("renders Explore section heading", async () => {
