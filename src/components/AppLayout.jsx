@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { FilterSlotContext } from "./filterSlotContext";
 import TournamentSwitcher from "./TournamentSwitcher";
 import AnnouncementBanner from "./AnnouncementBanner";
-import DataFreshness from "./DataFreshness";
 import NotificationBell from "./NotificationBell";
 import BottomNav from "./BottomNav";
 import ThemeToggle from "./ThemeToggle";
@@ -103,7 +102,6 @@ export default function AppLayout({
                 <ThemeToggle />
                 <NotificationBell announcements={announcements} />
                 <TournamentSwitcher />
-                <DataFreshness />
               </div>
             </div>
 

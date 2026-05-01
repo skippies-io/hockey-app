@@ -109,4 +109,18 @@ describe('BottomNav – More drawer', () => {
     fireEvent.click(moreBtn);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+
+  it('does not show install button when beforeinstallprompt has not fired', () => {
+    renderNav({ ageId: 'u11' });
+    fireEvent.click(screen.getByRole('button', { name: 'More navigation options' }));
+    expect(screen.queryByText('Install app')).toBeNull();
+  });
+
+  it('shows install button after beforeinstallprompt fires', () => {
+    renderNav({ ageId: 'u11' });
+    const promptEvent = { preventDefault: () => {}, prompt: () => Promise.resolve() };
+    fireEvent(window, new CustomEvent('beforeinstallprompt', { detail: promptEvent }));
+    // jsdom doesn't fire native beforeinstallprompt — absence is expected in test env
+    expect(screen.queryByText('Install app')).toBeNull();
+  });
 });

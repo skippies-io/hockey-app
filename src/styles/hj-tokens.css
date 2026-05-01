@@ -2493,6 +2493,33 @@ select {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+/* Install app CTA — pinned at bottom of drawer */
+.bottom-nav-install-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-2);
+  width: 100%;
+  margin-top: var(--hj-space-4);
+  padding: var(--hj-space-3) var(--hj-space-4);
+  border-radius: var(--hj-radius-md);
+  border: 1px solid var(--hj-color-brand-strong);
+  background: transparent;
+  color: var(--hj-color-brand-strong);
+  font-size: var(--hj-font-size-sm);
+  font-weight: var(--hj-font-weight-semibold);
+  font-family: var(--hj-font-family-sans);
+  cursor: pointer;
+  transition: background var(--hj-duration-fast), color var(--hj-duration-fast);
+}
+.bottom-nav-install-btn:hover {
+  background: var(--hj-color-brand-strong);
+  color: #fff;
+}
+.bottom-nav-install-btn .material-symbols-outlined {
+  font-size: 18px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
 @media (max-width: 640px) {
   .bottom-nav {
     display: block;

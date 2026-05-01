@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const PRIMARY_TABS = [
   { key: 'home',      label: 'Home',     icon: 'home',          getTo: () => '/' },
@@ -20,7 +20,17 @@ const MORE_ITEMS = [
 
 export default function BottomNav({ currentTab = '', ageId = '' }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
 
   const closeDrawer = () => setDrawerOpen(false);
 
@@ -28,6 +38,13 @@ export default function BottomNav({ currentTab = '', ageId = '' }) {
     const path = getTo(ageId);
     closeDrawer();
     navigate(path);
+  };
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    closeDrawer();
+    await installPrompt.prompt();
+    setInstallPrompt(null);
   };
 
   return (
@@ -60,6 +77,17 @@ export default function BottomNav({ currentTab = '', ageId = '' }) {
                 </button>
               ))}
             </div>
+
+            {installPrompt && (
+              <button
+                type="button"
+                className="bottom-nav-install-btn"
+                onClick={handleInstall}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">download</span>
+                Install app
+              </button>
+            )}
           </div>
         </>
       )}
