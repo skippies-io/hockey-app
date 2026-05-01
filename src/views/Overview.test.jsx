@@ -1,10 +1,9 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Overview from "./Overview";
 
-// useNavigate must be a let so beforeEach can reset it (vi.mock is hoisted)
 let mockNavigate;
 
 vi.mock("react-router-dom", async () => {
@@ -16,6 +15,14 @@ const tournamentMocks = vi.hoisted(() => ({ useTournament: vi.fn() }));
 vi.mock("../context/TournamentContext", () => ({
   useTournament: () => tournamentMocks.useTournament(),
 }));
+
+const apiMocks = vi.hoisted(() => ({ getFixturesRows: vi.fn() }));
+vi.mock("../lib/api", () => ({
+  getFixturesRows: (...args) => apiMocks.getFixturesRows(...args),
+}));
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const TOMORROW = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
 function renderOverview(props = {}) {
   return render(
@@ -30,110 +37,168 @@ describe("Overview view", () => {
     mockNavigate = vi.fn();
     tournamentMocks.useTournament.mockReturnValue({
       activeTournament: { id: "t-1", name: "Test Cup 2025" },
+      activeTournamentId: "t-1",
     });
+    apiMocks.getFixturesRows.mockResolvedValue([]);
   });
 
-  it("renders tournament name from context", () => {
+  it("renders tournament name from context", async () => {
     renderOverview();
     expect(screen.getByText("Test Cup 2025")).toBeTruthy();
   });
 
-  it('falls back to "HJ All Stars" when activeTournament is null', () => {
-    tournamentMocks.useTournament.mockReturnValue({ activeTournament: null });
+  it('falls back to "HJ All Stars" when activeTournament is null', async () => {
+    tournamentMocks.useTournament.mockReturnValue({ activeTournament: null, activeTournamentId: null });
     renderOverview();
     expect(screen.getByText("HJ All Stars")).toBeTruthy();
   });
 
-  it("renders Overview Dashboard subtitle", () => {
+  it("shows loading skeleton while fetching", () => {
+    apiMocks.getFixturesRows.mockReturnValue(new Promise(() => {}));
     renderOverview();
-    expect(screen.getByText("Overview Dashboard")).toBeTruthy();
+    expect(screen.getByLabelText("Loading match statistics")).toBeTruthy();
   });
 
-  it("renders welcome text referencing tournament name", () => {
+  it("shows no fixtures today message when empty", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([]);
     renderOverview();
-    expect(screen.getByText(/Welcome to the official hub for Test Cup 2025/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("No fixtures today")).toBeTruthy());
   });
 
-  it("View Fixtures button navigates to first group fixtures", () => {
-    renderOverview({ groups: [{ id: "U12", label: "U12" }] });
-    fireEvent.click(screen.getByRole("button", { name: /view fixtures/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/U12/fixtures");
-  });
-
-  it("View Standings button navigates to first group standings", () => {
-    renderOverview({ groups: [{ id: "U12", label: "U12" }] });
-    fireEvent.click(screen.getByRole("button", { name: /view standings/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/U12/standings");
-  });
-
-  it("defaults to U9M when groups is empty", () => {
-    renderOverview({ groups: [] });
-    fireEvent.click(screen.getByRole("button", { name: /view fixtures/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/U9M/fixtures");
-  });
-
-  it("defaults to U9M when groups is omitted", () => {
+  it("shows live count badge when fixtures are live", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { id: 1, status: "live", date: TODAY, homeTeam: "A", awayTeam: "B" },
+      { id: 2, status: "live", date: TODAY, homeTeam: "C", awayTeam: "D" },
+    ]);
     renderOverview();
-    fireEvent.click(screen.getByRole("button", { name: /view standings/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/U9M/standings");
+    await waitFor(() => expect(screen.getByText(/2 Live/)).toBeTruthy());
   });
 
-  it("Clubs card navigates to /franchises on click", () => {
+  it("shows today fixture count", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { id: 1, status: "upcoming", date: TODAY, homeTeam: "A", awayTeam: "B" },
+      { id: 2, status: "upcoming", date: TODAY, homeTeam: "C", awayTeam: "D" },
+      { id: 3, status: "upcoming", date: TOMORROW, homeTeam: "E", awayTeam: "F" },
+    ]);
     renderOverview();
-    // The div[role=button] containing "Clubs" heading
-    fireEvent.click(screen.getByRole("button", { name: /clubs/i }));
+    await waitFor(() => expect(screen.getByText("2 today")).toBeTruthy());
+  });
+
+  it("shows next fixture team names", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { id: 1, status: "upcoming", date: TODAY, time: "10:00", homeTeam: "Lions", awayTeam: "Tigers" },
+    ]);
+    renderOverview();
+    await waitFor(() => {
+      expect(screen.getByText(/Lions vs Tigers/)).toBeTruthy();
+    });
+  });
+
+  it("shows next fixture time when available", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { id: 1, status: "upcoming", date: TODAY, time: "14:30", homeTeam: "A", awayTeam: "B" },
+    ]);
+    renderOverview();
+    await waitFor(() => expect(screen.getByText("14:30")).toBeTruthy());
+  });
+
+  it("does not show live badge when no live fixtures", async () => {
+    apiMocks.getFixturesRows.mockResolvedValue([
+      { id: 1, status: "upcoming", date: TODAY, homeTeam: "A", awayTeam: "B" },
+    ]);
+    renderOverview();
+    await waitFor(() => expect(screen.queryByText(/Live/)).toBeNull());
+  });
+
+  it("shows pool count from groups prop", async () => {
+    renderOverview({ groups: [{ id: "U12" }, { id: "U14" }, { id: "U16" }] });
+    await waitFor(() => expect(screen.getByText("3 pools")).toBeTruthy());
+  });
+
+  it("renders Explore section heading", async () => {
+    renderOverview();
+    expect(screen.getByText("Explore")).toBeTruthy();
+  });
+
+  it("renders explore card icons", async () => {
+    renderOverview();
+    const icons = document.querySelectorAll(".overview-explore-icon");
+    expect(icons.length).toBe(4);
+  });
+
+  it("Teams card description shows group count", async () => {
+    renderOverview({ groups: [{ id: "U10" }, { id: "U12" }] });
+    await waitFor(() => expect(screen.getByText("2 age groups")).toBeTruthy());
+  });
+
+  it("Teams card description is singular for one group", async () => {
+    renderOverview({ groups: [{ id: "U10" }] });
+    await waitFor(() => expect(screen.getByText("1 age group")).toBeTruthy());
+  });
+
+  it("Clubs card navigates to /franchises on click", async () => {
+    renderOverview();
+    fireEvent.click(screen.getByRole("link", { name: /clubs/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/franchises");
   });
 
-  it("Teams card navigates to /{defaultAgeId}/teams on click", () => {
+  it("Tournaments card navigates to /tournaments on click", async () => {
+    renderOverview();
+    fireEvent.click(screen.getByRole("link", { name: /tournaments/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/tournaments");
+  });
+
+  it("Teams card navigates to /{defaultAgeId}/teams on click", async () => {
     renderOverview({ groups: [{ id: "U10", label: "U10" }] });
-    fireEvent.click(screen.getByRole("button", { name: /^teams/i }));
+    fireEvent.click(screen.getByRole("link", { name: /^teams/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/U10/teams");
   });
 
-  it("Feedback card navigates to /feedback on click", () => {
+  it("Teams card defaults to U9M when groups empty", async () => {
+    renderOverview({ groups: [] });
+    fireEvent.click(screen.getByRole("link", { name: /^teams/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/U9M/teams");
+  });
+
+  it("Feedback card navigates to /feedback on click", async () => {
     renderOverview();
-    fireEvent.click(screen.getByRole("button", { name: /feedback/i }));
+    fireEvent.click(screen.getByRole("link", { name: /feedback/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/feedback");
   });
 
-  it("Clubs card responds to Enter keydown", () => {
+  it("explore card responds to Enter keydown", async () => {
     renderOverview();
-    const clubsCard = screen.getByRole("button", { name: /clubs/i });
+    const clubsCard = screen.getByRole("link", { name: /clubs/i });
     fireEvent.keyDown(clubsCard, { key: "Enter" });
     expect(mockNavigate).toHaveBeenCalledWith("/franchises");
   });
 
-  it("Clubs card responds to Space keydown", () => {
+  it("explore card responds to Space keydown", async () => {
     renderOverview();
-    const clubsCard = screen.getByRole("button", { name: /clubs/i });
+    const clubsCard = screen.getByRole("link", { name: /clubs/i });
     fireEvent.keyDown(clubsCard, { key: " " });
     expect(mockNavigate).toHaveBeenCalledWith("/franchises");
   });
 
-  it("Teams card responds to Enter keydown", () => {
-    renderOverview({ groups: [{ id: "U10", label: "U10" }] });
-    const teamsCard = screen.getByRole("button", { name: /^teams/i });
-    fireEvent.keyDown(teamsCard, { key: "Enter" });
-    expect(mockNavigate).toHaveBeenCalledWith("/U10/teams");
-  });
-
-  it("Feedback card responds to Enter keydown", () => {
+  it("explore card ignores other keys", async () => {
     renderOverview();
-    const feedbackCard = screen.getByRole("button", { name: /feedback/i });
-    fireEvent.keyDown(feedbackCard, { key: "Enter" });
-    expect(mockNavigate).toHaveBeenCalledWith("/feedback");
-  });
-
-  it("ignores non-Enter/Space keydown on Clubs card", () => {
-    renderOverview();
-    const clubsCard = screen.getByRole("button", { name: /clubs/i });
+    const clubsCard = screen.getByRole("link", { name: /clubs/i });
     fireEvent.keyDown(clubsCard, { key: "Tab" });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("renders Explore section heading", () => {
+  it("does not fetch fixtures when no activeTournamentId", async () => {
+    tournamentMocks.useTournament.mockReturnValue({
+      activeTournament: null,
+      activeTournamentId: null,
+    });
     renderOverview();
-    expect(screen.getByText("Explore")).toBeTruthy();
+    await waitFor(() => expect(apiMocks.getFixturesRows).not.toHaveBeenCalled());
+  });
+
+  it("handles API error gracefully without crashing", async () => {
+    apiMocks.getFixturesRows.mockRejectedValue(new Error("Network error"));
+    renderOverview();
+    await waitFor(() => expect(screen.getByText("No fixtures today")).toBeTruthy());
   });
 });

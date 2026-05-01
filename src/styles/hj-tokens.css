@@ -6,11 +6,43 @@
  * - Enhanced shadows for more depth
  */
 
+/* Self-hosted fonts — avoids SRI hash mismatches across browsers */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/material-symbols-outlined.woff2') format('woff2');
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+@font-face {
+  font-family: 'Lexend';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/lexend.woff2') format('woff2');
+}
+
 :root {
-  /* ===== Brand palette (vibrant sports green — matches Stitch mockup) ===== */
-  --hj-color-brand: #4ade80;
-  --hj-color-brand-soft: #dcfce7;
-  --hj-color-brand-strong: #22c55e;
+  /* ===== Brand palette (lime green — HJ brand) ===== */
+  --hj-color-brand: #7FBA00;
+  --hj-color-brand-soft: #e8f5c0;
+  --hj-color-brand-strong: #5d8a00;
 
   /* Secondary accent */
   --hj-color-accent: #3b82f6;
@@ -34,9 +66,9 @@
   --hj-color-border-strong: #d4cccc;
 
   /* ===== Result / match-state colours ===== */
-  --hj-color-result-win: #22c55e;
-  --hj-color-result-win-soft: #dcfce7;
-  --hj-color-result-win-ink: #166534;
+  --hj-color-result-win: #7FBA00;
+  --hj-color-result-win-soft: #e8f5c0;
+  --hj-color-result-win-ink: #3d5c00;
   --hj-color-result-loss: #f97316;
   --hj-color-result-loss-soft: #ffedd5;
   --hj-color-result-loss-ink: #9a3412;
@@ -1774,6 +1806,138 @@ select {
 
 .welcome-actions-secondary {
   margin-top: var(--hj-space-2);
+}
+
+/* ===== Overview / Home dashboard ===== */
+.overview-hero {
+  padding: var(--hj-space-6);
+  border-radius: var(--hj-radius-lg);
+  background: var(--hj-color-surface);
+  border: 1px solid var(--hj-color-border-subtle);
+}
+
+.overview-hero-title {
+  margin: 0 0 var(--hj-space-3);
+  font-size: var(--hj-font-size-xl);
+  font-weight: var(--hj-font-weight-bold);
+  color: var(--hj-color-ink);
+  line-height: var(--hj-line-height-tight);
+}
+
+.overview-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hj-space-2);
+  align-items: center;
+}
+
+.overview-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hj-space-1);
+  padding: var(--hj-space-1) var(--hj-space-3);
+  border-radius: var(--hj-radius-pill);
+  background: var(--hj-color-surface-muted);
+  color: var(--hj-color-ink-muted);
+  font-size: var(--hj-font-size-sm);
+  font-weight: var(--hj-font-weight-medium);
+}
+
+.overview-stat--live {
+  background: var(--hj-color-live-soft);
+  color: var(--hj-color-live);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.overview-stat--skeleton {
+  width: 72px;
+  height: 28px;
+  background: var(--hj-color-surface-muted);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.overview-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hj-color-live);
+  animation: live-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.overview-next-fixture {
+  margin: var(--hj-space-3) 0 0;
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+}
+
+.overview-next-fixture--muted {
+  color: var(--hj-color-ink-subtle);
+}
+
+.overview-next-time {
+  margin-left: var(--hj-space-2);
+  padding: 2px var(--hj-space-2);
+  border-radius: var(--hj-radius-xs);
+  background: var(--hj-color-brand-soft);
+  color: var(--hj-color-brand-strong);
+  font-size: var(--hj-font-size-xs);
+  font-weight: var(--hj-font-weight-semibold);
+}
+
+.overview-explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--hj-space-3);
+}
+
+.overview-explore-card {
+  display: flex;
+  align-items: center;
+  gap: var(--hj-space-3);
+  padding: var(--hj-space-4);
+  border-radius: var(--hj-radius-md);
+  background: var(--hj-color-surface);
+  border: 1px solid var(--hj-color-border-subtle);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--hj-duration-fast) var(--hj-ease-default),
+              border-color var(--hj-duration-fast) var(--hj-ease-default);
+}
+
+.overview-explore-card:hover,
+.overview-explore-card:focus-visible {
+  background: var(--hj-color-surface-muted);
+  border-color: var(--hj-color-brand);
+  outline: none;
+}
+
+.overview-explore-icon {
+  font-size: 28px;
+  color: var(--hj-color-brand);
+  flex-shrink: 0;
+}
+
+.overview-explore-label {
+  font-size: var(--hj-font-size-md);
+  font-weight: var(--hj-font-weight-semibold);
+  color: var(--hj-color-ink);
+}
+
+.overview-explore-desc {
+  font-size: var(--hj-font-size-sm);
+  color: var(--hj-color-ink-muted);
+  margin-top: 2px;
 }
 
 /* ===== Admin Tournament Wizard ===== */
