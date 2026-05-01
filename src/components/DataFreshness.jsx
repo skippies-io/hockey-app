@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getCachedLastSyncAt, getMeta } from '../lib/api';
 
-const STALE_WARN_MS = 15 * 60 * 1000; // 15 minutes
+const STALE_WARN_MS = 15 * 60 * 1000;
 
 function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
-    const setOnline = () => setIsOnline(true);
-    const setOffline = () => setIsOnline(false);
-    window.addEventListener('online', setOnline);
-    window.addEventListener('offline', setOffline);
-    return () => {
-      window.removeEventListener('online', setOnline);
-      window.removeEventListener('offline', setOffline);
-    };
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
   return isOnline;
 }
@@ -22,8 +19,7 @@ function formatRelative(msAgo) {
   if (msAgo < 60_000) return 'just now';
   const mins = Math.round(msAgo / 60_000);
   if (mins < 60) return `${mins} min ago`;
-  const hrs = Math.round(mins / 60);
-  return `${hrs} h ago`;
+  return `${Math.round(mins / 60)} h ago`;
 }
 
 export default function DataFreshness() {
@@ -40,13 +36,10 @@ export default function DataFreshness() {
         if (meta?.last_sync_at) setLastSyncAt(String(meta.last_sync_at));
       } catch (e) {
         if (!alive) return;
-        // silent-ish failure: keep cached value
         setErr(e?.message || 'Failed to load freshness');
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, []);
 
   const parsed = useMemo(() => {
@@ -62,20 +55,30 @@ export default function DataFreshness() {
   const stale = ageMs !== null && ageMs > STALE_WARN_MS;
   const danger = !isOnline || stale;
 
+  // Visible-text label — used by tests via textContent and by screen readers
+  let label = '';
+  if (!isOnline) label += 'Offline';
+  if (!isOnline && parsed.ok) label += ' • ';
+  if (parsed.ok) label += `Last updated ${formatRelative(ageMs)}`;
+  if (stale) label += ' (stale)';
+
+  const tooltipFull = err
+    ? `Freshness error: ${err}`
+    : parsed.ok
+      ? `${label} (${parsed.date.toISOString()})`
+      : label;
+
   return (
-    <div
-      style={{
-        marginTop: '6px',
-        fontSize: '12px',
-        color: danger ? 'var(--hj-color-danger, #b91c1c)' : 'var(--hj-color-text-secondary, #555)',
-      }}
+    <span
+      className="data-freshness-dot"
       aria-label="Data freshness"
-      title={err ? `Freshness fetch error: ${err}` : (parsed.ok ? parsed.date.toISOString() : '')}
+      title={tooltipFull}
+      style={{ color: danger ? 'var(--hj-color-danger)' : 'var(--hj-color-success)' }}
     >
-      {!isOnline && 'Offline'}
-      {!isOnline && parsed.ok && ' • '}
-      {parsed.ok && `Last updated ${formatRelative(ageMs)}`}
-      {stale ? ' (stale)' : ''}
-    </div>
+      {/* dot — visual indicator only */}
+      <span aria-hidden="true">●</span>
+      {/* status text — visually hidden, present for AT and tests */}
+      <span className="visually-hidden">{label}</span>
+    </span>
   );
 }
