@@ -1921,7 +1921,7 @@ select {
   padding: 2px var(--hj-space-2);
   border-radius: var(--hj-radius-xs);
   background: var(--hj-color-brand-soft);
-  color: var(--hj-color-brand-strong);
+  color: var(--hj-color-ink);
   font-size: var(--hj-font-size-xs);
   font-weight: var(--hj-font-weight-semibold);
 }
