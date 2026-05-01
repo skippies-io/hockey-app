@@ -38,11 +38,12 @@ test('active nav link carries aria-current="page"', async ({ page }) => {
   await expect(standingsLink).toHaveAttribute('aria-current', 'page');
 });
 
-test('navigating from Overview to Fixtures via nav works', async ({ page }) => {
-  await page.goto('/');
+test('navigating between pages via the pill nav works', async ({ page }) => {
+  // The pill nav is only visible on age-scoped pages (not on the overview/welcome page)
+  await page.goto('U12/standings');
   await page.waitForLoadState('networkidle');
-  // Use the Fixtures nav link (bottom nav on mobile, pill nav on desktop)
-  await page.getByRole('link', { name: 'Fixtures' }).first().click();
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await nav.getByRole('link', { name: 'Fixtures' }).click();
   await expect(page).toHaveURL(/\/fixtures/);
   await expect(page.locator('.fixtures-page')).toBeVisible();
 });
