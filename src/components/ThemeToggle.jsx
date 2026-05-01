@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "hj_theme";
 
+const VALID_THEMES = new Set(["light", "dark"]);
+
 function getInitialTheme() {
   try {
-    return localStorage.getItem(STORAGE_KEY) || "light";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return VALID_THEMES.has(stored) ? stored : "light";
   } catch {
     return "light";
   }

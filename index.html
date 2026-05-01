@@ -122,7 +122,8 @@
       (function () {
         try {
           var t = localStorage.getItem('hj_theme');
-          if (t) document.documentElement.setAttribute('data-theme', t);
+          /* Whitelist prevents unsanitised localStorage value reaching setAttribute */
+          if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
         } catch (e) {}
       })();
     </script>

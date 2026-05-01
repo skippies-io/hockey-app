@@ -43,7 +43,11 @@ export default function BottomNav({ currentTab = '', ageId = '' }) {
   const handleInstall = async () => {
     if (!installPrompt) return;
     closeDrawer();
-    await installPrompt.prompt();
+    try {
+      await installPrompt.prompt();
+    } catch {
+      // user dismissed or browser blocked the prompt — safe to ignore
+    }
     setInstallPrompt(null);
   };
 
