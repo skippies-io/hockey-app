@@ -14,7 +14,8 @@ function getInitialTheme() {
 }
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
+  // Pass only a literal to setAttribute — breaks taint chain from localStorage
+  document.documentElement.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
 }
 
 export default function ThemeToggle() {
