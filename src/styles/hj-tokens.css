@@ -2402,7 +2402,7 @@ select {
 .bottom-nav-icon {
   font-size: 24px;
   line-height: 1;
-  font-family: "Material Symbols Outlined";
+  font-family: "Material Symbols Outlined", sans-serif;
   font-weight: 400;
   font-style: normal;
   display: block;
@@ -2486,7 +2486,7 @@ select {
 .bottom-nav-drawer-item-icon {
   font-size: 22px;
   line-height: 1;
-  font-family: "Material Symbols Outlined";
+  font-family: "Material Symbols Outlined", sans-serif;
   font-weight: 400;
   font-style: normal;
   color: var(--hj-color-brand-strong);
