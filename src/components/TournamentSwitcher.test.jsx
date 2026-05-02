@@ -34,7 +34,8 @@ describe('TournamentSwitcher', () => {
     });
 
     render(<TournamentSwitcher />);
-    expect(screen.getByText('Select Tournament:')).toBeTruthy();
+    // Label is now aria-label on the select (no visible label text)
+    expect(screen.getByRole('combobox', { name: /Select Tournament/i })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'One' })).toBeTruthy();
   });
 
@@ -64,7 +65,7 @@ describe('TournamentSwitcher', () => {
 
     render(<TournamentSwitcher />);
 
-    expect(screen.getByText('Select Tournament:')).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: /Select Tournament/i })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'One' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 't2' })).toBeTruthy();
 

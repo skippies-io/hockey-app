@@ -287,6 +287,7 @@ export default function Standings({
   const [pool, setPool] = useState("All");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const { activeTournament } = useTournament();
   const tournamentId = activeTournament?.id;
@@ -369,7 +370,7 @@ export default function Standings({
     return () => {
       alive = false;
     };
-  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId, tournamentId]);
+  }, [scopedAgeId, isAllAges, ageGroups, deriveAgeId, tournamentId, refreshKey]);
 
   // Derive pools from the actual rows (fallback when BE meta is missing)
   const derivedPoolsFromRows = useMemo(() => {
@@ -543,9 +544,20 @@ export default function Standings({
     </label>
   ) : null;
 
+  const refreshBtn = (
+    <button
+      className="btn-icon-refresh"
+      onClick={() => setRefreshKey((k) => k + 1)}
+      aria-label="Refresh standings"
+      disabled={loading}
+    >
+      <span className="material-symbols-outlined" aria-hidden="true">refresh</span>
+    </button>
+  );
+
   const filterBar = (
     <FilterBar
-      rightSlot={poolSelector}
+      rightSlot={<>{poolSelector}{refreshBtn}</>}
       showFavourites={onlyFollowing}
       onToggleFavourites={setOnlyFollowing}
       favouritesCount={followCount}

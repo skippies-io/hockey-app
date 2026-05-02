@@ -38,13 +38,12 @@ test('active nav link carries aria-current="page"', async ({ page }) => {
   await expect(standingsLink).toHaveAttribute('aria-current', 'page');
 });
 
-test('navigating from Overview to Fixtures works', async ({ page }) => {
-  await page.goto('/');
+test('navigating between pages via the pill nav works', async ({ page }) => {
+  // The pill nav is only visible on age-scoped pages (not on the overview/welcome page)
+  await page.goto('U12/standings');
   await page.waitForLoadState('networkidle');
-  // Overview "View fixtures" button navigates into the fixtures view
-  const btn = page.getByRole('button', { name: /view fixtures/i });
-  await expect(btn).toBeVisible();
-  await btn.click();
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await nav.getByRole('link', { name: 'Fixtures' }).click();
   await expect(page).toHaveURL(/\/fixtures/);
   await expect(page.locator('.fixtures-page')).toBeVisible();
 });

@@ -4,38 +4,19 @@ import { useTournament } from '../context/TournamentContext';
 export default function TournamentSwitcher() {
   const { activeTournamentId, setActiveTournamentId, availableTournaments, loading } = useTournament();
 
-  if (loading || availableTournaments.length === 0) {
-    return null; // Don't show if loading or no options
-  }
+  if (loading || availableTournaments.length === 0) return null;
 
   return (
-    <div className="tournament-switcher" style={{ display: 'flex', alignItems: 'center', gap: 'var(--hj-space-2)' }}>
-      <label
-        htmlFor="tournament-switcher-select"
-        style={{ fontSize: 'var(--hj-font-size-sm)', color: 'var(--hj-color-ink-muted)', fontWeight: 'var(--hj-font-weight-medium)' }}
-      >
-        Select Tournament:
-      </label>
-      <select
-        id="tournament-switcher-select"
-        value={activeTournamentId || ""}
-        onChange={(e) => setActiveTournamentId(e.target.value)}
-        className="hj-input tournament-select"
-        style={{ 
-            fontSize: 'var(--hj-font-size-sm)', 
-            padding: 'var(--hj-spacing-xs) var(--hj-spacing-sm)',
-            borderRadius: 'var(--hj-radius-md)',
-            border: '1px solid var(--hj-border-color)',
-            backgroundColor: 'var(--hj-card-bg)',
-            color: 'var(--hj-text-primary)'
-        }}
-      >
-        {availableTournaments.map(t => (
-          <option key={t.id} value={t.id}>
-            {t.name || t.id}
-          </option>
-        ))}
-      </select>
-    </div>
+    <select
+      id="tournament-switcher-select"
+      aria-label="Select Tournament:"
+      value={activeTournamentId || ""}
+      onChange={(e) => setActiveTournamentId(e.target.value)}
+      className="tournament-switcher-select"
+    >
+      {availableTournaments.map(t => (
+        <option key={t.id} value={t.id}>{t.name || t.id}</option>
+      ))}
+    </select>
   );
 }

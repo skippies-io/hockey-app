@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { FilterSlotContext } from "./filterSlotContext";
 import TournamentSwitcher from "./TournamentSwitcher";
 import AnnouncementBanner from "./AnnouncementBanner";
-import DataFreshness from "./DataFreshness";
 import NotificationBell from "./NotificationBell";
+import BottomNav from "./BottomNav";
+import ThemeToggle from "./ThemeToggle";
 import { getAnnouncements } from "../lib/api";
 import { useTournament } from "../context/TournamentContext";
 
@@ -23,7 +24,7 @@ export default function AppLayout({
   const ageId = selectedAge || ageOptions[0]?.id || "";
   const location = useLocation();
   const { activeTournamentId } = useTournament() || {};
-  
+
   const [announcements, setAnnouncements] = useState([]);
 
   useEffect(() => {
@@ -56,12 +57,26 @@ export default function AppLayout({
   useEffect(() => {
     setSlot(filters);
   }, [filters]);
-  
+
   const filterContext = useMemo(() => ({ setFilters: setSlot }), []);
   const filterContent = slot || filters;
 
   const hasAnnouncements = announcements.length > 0;
-  const hasFilterContent = enableFilterSlot && filterContent;
+
+  // Age chooser node — rendered in both desktop header and mobile filter strip
+  const ageChooser = showNav && showAgeSelector && ageOptions.length > 0 && ageId ? (
+    <label className="age-chooser">
+      Age:
+      <select value={ageId} onChange={(e) => onAgeChange?.(e.target.value)}>
+        {ageOptions.map((g) => (
+          <option key={g.id} value={g.id}>{g.label || g.id}</option>
+        ))}
+      </select>
+    </label>
+  ) : null;
+
+  // On mobile the age chooser merges into the filter strip; filter strip always renders when either exists
+  const hasFilterStrip = enableFilterSlot && (filterContent || ageChooser);
 
   return (
     <FilterSlotContext.Provider value={filterContext}>
@@ -84,70 +99,61 @@ export default function AppLayout({
                 </div>
               </div>
               <div className="header-actions">
+                <ThemeToggle />
                 <NotificationBell announcements={announcements} />
                 <TournamentSwitcher />
-                <DataFreshness />
               </div>
             </div>
 
-            {/* Announcements placed directly in header with tight spacing */}
             {hasAnnouncements && (
               <div style={{ padding: '0 12px', marginTop: '4px', marginBottom: '8px' }}>
-                 <AnnouncementBanner announcements={announcements} />
+                <AnnouncementBanner announcements={announcements} />
+              </div>
+            )}
+
+            {/* Age selector — desktop only; on mobile it moves into the filter strip below */}
+            {ageChooser && (
+              <div className="app-age-row app-age-row--desktop">
+                {ageChooser}
               </div>
             )}
 
             {showNav && (
-              <>
-                {showAgeSelector && ageOptions.length > 0 && ageId && (
-                  <div className="app-age-row">
-                    <label className="age-chooser">
-                      Age:
-                      <select value={ageId} onChange={(e) => onAgeChange?.(e.target.value)}>
-                        {ageOptions.map((g) => (
-                          <option key={g.id} value={g.id}>{g.label || g.id}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                )}
-                <div className="app-nav-row">
-                  <nav className="pills" aria-label="Main navigation">
-                    {navLinks.map((link) => (
-                      <Link
-                        key={link.key}
-                        className={`pill ${currentTab === link.key ? "is-active" : ""}`}
-                        to={link.to}
-                        aria-current={currentTab === link.key ? "page" : undefined}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </nav>
-                </div>
-              </>
+              <div className="app-nav-row">
+                <nav className="pills" aria-label="Main navigation">
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.key}
+                      className={`pill ${currentTab === link.key ? "is-active" : ""}`}
+                      to={link.to}
+                      aria-current={currentTab === link.key ? "page" : undefined}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             )}
           </header>
 
-          {/* GAP FIX: 
-            Only render if hasFilterContent is true.
-            Zero out everything if empty.
-          */}
-          <div 
-             className="app-filter-slot" 
-             style={{ 
-               minHeight: hasFilterContent ? undefined : 0, 
-               height: hasFilterContent ? 'auto' : 0,
-               padding: hasFilterContent ? undefined : 0,
-               overflow: 'hidden' // Ensure it cuts off any internal margins
-             }}
-          >
-            {hasFilterContent && (
-              <div className="app-filter-slot-inner" style={{ padding: '8px 12px' }}>
-                {filterContent}
+          {/* Filter strip: age chooser (mobile) + page filters, one compact row */}
+          {hasFilterStrip && (
+            <div className="app-filter-slot">
+              <div className="app-filter-slot-inner">
+                {/* Age chooser visible only on mobile (desktop shows it in header) */}
+                {ageChooser && (
+                  <span className="app-age-inline">
+                    {ageChooser}
+                  </span>
+                )}
+                {filterContent && (
+                  <span className="app-filter-content">
+                    {filterContent}
+                  </span>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <main id="main-content" className="app-main flex-1" style={{ paddingTop: hasAnnouncements ? '4px' : '12px' }}>
             {children}
@@ -158,6 +164,9 @@ export default function AppLayout({
           </footer>
         </div>
       </div>
+
+      {/* Bottom navigation — visible on mobile only (CSS hides it at ≥640px) */}
+      <BottomNav currentTab={currentTab} ageId={ageId} />
     </FilterSlotContext.Provider>
   );
 }

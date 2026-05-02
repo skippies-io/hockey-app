@@ -1,114 +1,108 @@
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { useTournament } from '../context/TournamentContext';
-import React from 'react';
+import { getFixturesRows } from '../lib/api';
+import { parseDateToUTCms } from '../lib/date';
 
 export default function Overview({ groups = [] }) {
   const navigate = useNavigate();
-  const { activeTournament } = useTournament();
-  
+  const { activeTournament, activeTournamentId } = useTournament();
+  const tournamentName = activeTournament?.name || 'HJ All Stars';
+  const defaultAgeId = groups[0]?.id || 'U9M';
 
+  const [fixtures, setFixtures] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Default to standard age group if none active, or first in list
-  const defaultAgeId = groups[0]?.id || "U9M";
+  useEffect(() => {
+    if (!activeTournamentId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    getFixturesRows(activeTournamentId, 'all')
+      .then(setFixtures)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [activeTournamentId]);
 
-  const goFixtures = () => navigate(`/${defaultAgeId}/fixtures`);
-  const goStandings = () => navigate(`/${defaultAgeId}/standings`);
+  const todayMs = Date.UTC(
+    new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()
+  );
+  const live = fixtures.filter(f => String(f.Status || '').toLowerCase() === 'live');
+  const todayFixtures = fixtures.filter(f => parseDateToUTCms(f.Date) === todayMs);
+  const next = fixtures
+    .filter(f =>
+      !f.Score1 &&
+      parseDateToUTCms(f.Date) >= todayMs &&
+      String(f.Status || '').toLowerCase() !== 'final'
+    )
+    .sort((a, b) => parseDateToUTCms(a.Date) - parseDateToUTCms(b.Date))[0];
+
   const goTeams = () => navigate(`/${defaultAgeId}/teams`);
-  
-  const tournamentName = activeTournament?.name || "HJ All Stars";
+
+  const exploreCards = [
+    { label: 'Tournaments', icon: 'public',      desc: 'Browse all tournaments',   onClick: () => navigate('/tournaments') },
+    { label: 'Clubs',       icon: 'shield',      desc: 'View club directory',       onClick: () => navigate('/franchises') },
+    { label: 'Teams',       icon: 'groups',      desc: `${groups.length} age group${groups.length !== 1 ? 's' : ''}`, onClick: goTeams },
+    { label: 'Feedback',    icon: 'rate_review', desc: 'Share your feedback',       onClick: () => navigate('/feedback') },
+  ];
 
   return (
     <div className="page-stack">
-
-
       <div className="page-section">
-        {/* Hero Card */}
-        <div className="hj-card hj-card--highlight" style={{ 
-            background: 'linear-gradient(135deg, var(--hj-color-surface-highlight) 0%, #ffffff 100%)',
-            border: '1px solid var(--hj-color-brand-soft)' 
-        }}>
-            <div className="flex items-center gap-4 mb-4">
-                 <div>
-                    <h1 style={{ 
-                        fontSize: 'var(--hj-font-size-xl)', 
-                        fontWeight: 'var(--hj-font-weight-bold)',
-                        color: 'var(--hj-color-ink)',
-                        lineHeight: 1.1,
-                        marginBottom: 4
-                    }}>
-                        {tournamentName}
-                    </h1>
-                    <p style={{ color: 'var(--hj-color-ink-muted)', fontSize: 'var(--hj-font-size-sm)' }}>
-                        Overview Dashboard
-                    </p>
-                 </div>
+        <div className="overview-hero">
+          <h1 className="overview-hero-title">{tournamentName}</h1>
+          {loading ? (
+            <div className="overview-stats-row" aria-label="Loading match statistics">
+              <span className="overview-stat overview-stat--skeleton" />
+              <span className="overview-stat overview-stat--skeleton" />
             </div>
-            
-            <p style={{ marginBottom: 'var(--hj-space-4)', lineHeight: 1.5 }}>
-                Welcome to the official hub for {tournamentName}. Access real-time fixtures, standings, and team updates.
+          ) : (
+            <div className="overview-stats-row">
+              {live.length > 0 && (
+                <span className="overview-stat overview-stat--live">
+                  <span className="overview-live-dot" aria-hidden="true" />
+                  {live.length} Live
+                </span>
+              )}
+              <span className="overview-stat">{todayFixtures.length} today</span>
+              <span className="overview-stat">{groups.length} pools</span>
+            </div>
+          )}
+          {!loading && next && (
+            <p className="overview-next-fixture">
+              Next: <strong>{next.Team1} vs {next.Team2}</strong>
+              {next.Time && <span className="overview-next-time">{next.Time}</span>}
             </p>
-
-             <div className="welcome-actions">
-                <button className="btn-primary" onClick={goFixtures}>
-                  View Fixtures
-                </button>
-                <button className="btn-secondary" onClick={goStandings}>
-                  View Standings
-                </button>
-              </div>
+          )}
+          {!loading && todayFixtures.length === 0 && live.length === 0 && (
+            <p className="overview-next-fixture overview-next-fixture--muted">No fixtures today</p>
+          )}
         </div>
       </div>
 
-      {/* Quick Links / Stats Grid (Placeholder for future) */}
       <div className="page-section">
-          <h2 className="hj-section-header-title">Explore</h2>
-          <div className="cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-              <div
-                className="hj-card"
-                role="button"
-                tabIndex="0"
-                onClick={() => navigate('/tournaments')}
-                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/tournaments'); }}
-                style={{ cursor: 'pointer' }}
-              >
-                  <h3 className="font-bold mb-2">Tournaments</h3>
-                  <p className="text-sm text-gray-500">Browse all tournaments.</p>
+        <h2 className="hj-section-header-title">Explore</h2>
+        <div className="overview-explore-grid">
+          {exploreCards.map((card) => (
+            <a
+              key={card.label}
+              className="overview-explore-card"
+              role="link"
+              tabIndex="0"
+              onClick={card.onClick}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') card.onClick(); }}
+              aria-label={card.label}
+            >
+              <span className="overview-explore-icon material-symbols-outlined" aria-hidden="true">{card.icon}</span>
+              <div>
+                <div className="overview-explore-label">{card.label}</div>
+                <div className="overview-explore-desc">{card.desc}</div>
               </div>
-              <div
-                className="hj-card"
-                role="button"
-                tabIndex="0"
-                onClick={() => navigate('/franchises')}
-                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/franchises'); }}
-                style={{ cursor: 'pointer' }}
-              >
-                  <h3 className="font-bold mb-2">Clubs</h3>
-                  <p className="text-sm text-gray-500">Directory of all participating clubs.</p>
-              </div>
-              <div 
-                className="hj-card" 
-                role="button" 
-                tabIndex="0"
-                onClick={goTeams} 
-                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') goTeams(); }}
-                style={{ cursor: 'pointer' }}
-              >
-                  <h3 className="font-bold mb-2">Teams</h3>
-                  <p className="text-sm text-gray-500">Browse all teams by age group.</p>
-              </div>
-               <div 
-                className="hj-card" 
-                role="button" 
-                tabIndex="0"
-                onClick={() => navigate('/feedback')} 
-                onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') navigate('/feedback'); }}
-                style={{ cursor: 'pointer' }}
-               >
-                  <h3 className="font-bold mb-2">Feedback</h3>
-                  <p className="text-sm text-gray-500">Have a suggestion? Let us know.</p>
-              </div>
-          </div>
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );

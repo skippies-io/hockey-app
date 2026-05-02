@@ -11,6 +11,11 @@ export const GROUPS = [
   { id: 'U10', label: 'U10 Mixed' },
 ];
 
+// Today's date in "D MMM YYYY" format so Overview can show a non-zero today count
+const _d = new Date();
+const _MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TODAY_LABEL = `${_d.getUTCDate()} ${_MONTHS[_d.getUTCMonth()]} ${_d.getUTCFullYear()}`;
+
 export const FIXTURE_ROWS = [
   {
     Date: '15 Mar 2026',
@@ -33,6 +38,18 @@ export const FIXTURE_ROWS = [
     Score2: '',
     Pool: 'A',
     Venue: 'Pitch 2',
+    Status: '',
+    ageId: 'U12',
+  },
+  {
+    Date: TODAY_LABEL,
+    Time: '10:00',
+    Team1: 'Falcons',
+    Team2: 'Hawks',
+    Score1: '',
+    Score2: '',
+    Pool: 'B',
+    Venue: 'Pitch 3',
     Status: '',
     ageId: 'U12',
   },
