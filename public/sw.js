@@ -28,9 +28,16 @@ self.addEventListener('install', (event) => {
       if (failed.length) {
         console.warn('[SW] Some precache requests failed:', failed.map((f) => f.url))
       }
-    }).then(() => self.skipWaiting())
+    })
   )
 })
+
+// Allow the page to tell the waiting SW to activate immediately.
+self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // ----- ACTIVATE -----
 self.addEventListener('activate', (event) => {
