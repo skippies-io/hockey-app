@@ -104,6 +104,7 @@ jobs:
         if: steps.changes.outputs.code == 'true' && github.event_name == 'pull_request'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_EVENT_NUMBER: ${{ github.event.number }}
         shell: bash
         run: |
           set -euo pipefail

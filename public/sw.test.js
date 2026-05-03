@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Minimal SW-ish globals
 function makeCache() {
   return {
     add: vi.fn(async () => {}),
@@ -14,7 +13,6 @@ describe('public/sw.js', () => {
   beforeEach(() => {
     listeners = {}
 
-    // Capture event listeners registered by the SW module
     vi.stubGlobal('self', {
       registration: { scope: 'https://example.com/hockey-app/' },
       addEventListener: (type, cb) => { listeners[type] = cb },
@@ -31,10 +29,8 @@ describe('public/sw.js', () => {
       delete: vi.fn(async () => true),
     })
 
-    // needed for fetch handler URL parsing
     vi.stubGlobal('location', { origin: 'https://example.com' })
 
-    // Import SW after globals are ready
     vi.resetModules()
   })
 
@@ -43,28 +39,39 @@ describe('public/sw.js', () => {
     vi.restoreAllMocks()
   })
 
-  it('handles SKIP_WAITING message by calling self.skipWaiting()', async () => {
-    const client = { url: 'https://example.com/hockey-app/' }
-
-    // Make clients.get resolve a valid same-origin client
-    self.clients.get = vi.fn(async () => client)
-
+  it('registers install and message handlers', async () => {
     await import('./sw.js')
-
+    expect(typeof listeners.install).toBe('function')
     expect(typeof listeners.message).toBe('function')
+  })
 
-    const waitUntil = vi.fn((p) => p)
-    listeners.message({ data: { type: 'SKIP_WAITING' }, source: { id: 'c1' }, waitUntil })
-
-    // let the async waitUntil chain resolve
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(waitUntil).toHaveBeenCalledTimes(1)
+  it('calls skipWaiting for SKIP_WAITING from same-origin client', async () => {
+    await import('./sw.js')
+    listeners.message({ origin: 'https://example.com', data: { type: 'SKIP_WAITING' } })
     expect(self.skipWaiting).toHaveBeenCalledTimes(1)
   })
 
-  it('registers install handler', async () => {
+  it('ignores messages from a different origin', async () => {
     await import('./sw.js')
-    expect(typeof listeners.install).toBe('function')
+    listeners.message({ origin: 'https://evil.com', data: { type: 'SKIP_WAITING' } })
+    expect(self.skipWaiting).not.toHaveBeenCalled()
+  })
+
+  it('ignores messages with no origin', async () => {
+    await import('./sw.js')
+    listeners.message({ origin: '', data: { type: 'SKIP_WAITING' } })
+    expect(self.skipWaiting).not.toHaveBeenCalled()
+  })
+
+  it('ignores messages with unknown type from same origin', async () => {
+    await import('./sw.js')
+    listeners.message({ origin: 'https://example.com', data: { type: 'SOMETHING_ELSE' } })
+    expect(self.skipWaiting).not.toHaveBeenCalled()
+  })
+
+  it('ignores messages with no data', async () => {
+    await import('./sw.js')
+    listeners.message({ origin: 'https://example.com', data: null })
+    expect(self.skipWaiting).not.toHaveBeenCalled()
   })
 })

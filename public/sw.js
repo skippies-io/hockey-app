@@ -33,31 +33,14 @@ self.addEventListener('install', (event) => {
 })
 
 // Allow the page to tell the waiting SW to activate immediately.
-// Security hardening (Sonar): verify the origin of the received message.
+// event.origin is the canonical way to satisfy S2819; only act on messages from this scope's origin.
 self.addEventListener('message', (event) => {
-  // Only accept messages coming from a controlled client of THIS service worker.
-  // This prevents unrelated pages from calling skipWaiting via postMessage.
-  try {
-    if (!event || !event.source) return;
-  } catch {
-    return;
+  const scopeOrigin = new URL(self.registration.scope).origin;
+  if (!event.origin || event.origin !== scopeOrigin) return;
+
+  if (event?.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
-
-  // event.source can be a Client or MessagePort. Ensure it's a Client we can resolve.
-  if (!('id' in event.source)) return;
-
-  event.waitUntil(
-    self.clients.get(event.source.id).then((client) => {
-      if (!client) return;
-      const scopeOrigin = new URL(self.registration.scope).origin;
-      const clientOrigin = new URL(client.url).origin;
-      if (clientOrigin !== scopeOrigin) return;
-
-      if (event?.data?.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-      }
-    })
-  );
 });
 
 // ----- ACTIVATE -----
