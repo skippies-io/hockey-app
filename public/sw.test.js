@@ -48,7 +48,7 @@ describe('public/sw.js', () => {
 
     expect(typeof listeners.message).toBe('function')
 
-    listeners.message({ data: { type: 'SKIP_WAITING' } })
+    listeners.message({ data: { type: 'SKIP_WAITING' }, source: {} })
     expect(self.skipWaiting).toHaveBeenCalledTimes(1)
   })
 

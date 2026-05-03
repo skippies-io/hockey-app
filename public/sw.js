@@ -33,7 +33,16 @@ self.addEventListener('install', (event) => {
 })
 
 // Allow the page to tell the waiting SW to activate immediately.
+// Security hardening: only accept messages from client pages.
 self.addEventListener('message', (event) => {
+  // In Service Workers, MessageEvent.source should be a Client.
+  // If it's missing (or malformed), ignore to prevent spoofed postMessage.
+  try {
+    if (!event || !event.source) return;
+  } catch {
+    return;
+  }
+
   if (event?.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
