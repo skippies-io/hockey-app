@@ -92,7 +92,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '✅ Staging deployment successful!\n\n🔗 **[View on Staging](https://hockey-app.aetherarc.co.za/admin)**\n\nAdmin console is ready for testing. Changes to this PR will auto-deploy.'
+              body: '✅ Staging deployment successful!\n\n🔗 **[View on Staging](https://hockey-app.aetherarc.co.za/)**\n\nChanges to this PR will auto-deploy.'
             })
 
       - name: Skip deploy (docs-only)

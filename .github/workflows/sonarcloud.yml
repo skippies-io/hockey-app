@@ -89,6 +89,7 @@ jobs:
           echo "sonar.branch.name=${{ github.event.workflow_run.head_branch }}" >> sonar-project.properties
 
       - name: SonarCloud Scan
+        id: sonar
         uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -96,3 +97,48 @@ jobs:
           args: >
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+
+      # If the quality gate fails, SonarCloud still hosts the details, but GitHub only shows a generic link.
+      # This step queries SonarCloud's API and prints a compact summary (so `gh run view --log` contains the reason).
+      - name: SonarCloud quality gate summary (on failure)
+        if: failure() && steps.changes.outputs.code == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "\n--- SonarCloud Quality Gate summary ---"
+
+          # For PR runs, GITHUB_EVENT_NUMBER is set. For workflow_run, we don't post PR context.
+          if [[ -z "${GITHUB_EVENT_NUMBER:-}" ]]; then
+            echo "No PR number in this workflow context (likely workflow_run)."
+            exit 0
+          fi
+
+          projectKey="${{ vars.SONAR_PROJECT_KEY }}"
+          prNumber="$GITHUB_EVENT_NUMBER"
+
+          # Fetch the most recent PR analysis id
+          analysisKey=$(curl -fsSL -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/project_pull_requests/list?project=${projectKey}" \
+            | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));const pr=String(process.argv[1]);const hit=(j.pullRequests||[]).find(x=>String(x.key)===pr);if(!hit){process.exit(2)};process.stdout.write(hit.analysisId||"")' "$prNumber" || true)
+
+          if [[ -z "$analysisKey" ]]; then
+            echo "Could not resolve analysisId for PR #$prNumber (project=$projectKey)."
+            exit 0
+          fi
+
+          # Quality gate status
+          curl -fsSL -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?analysisId=${analysisKey}" \
+            | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));const s=j.projectStatus||{};console.log(`status: ${s.status||"UNKNOWN"}`);(s.conditions||[]).filter(c=>c.status&&c.status!=="OK").forEach(c=>{console.log(`- ${c.metricKey}: ${c.actualValue||""} (threshold ${c.comparator||""} ${c.errorThreshold||""})`)});'
+
+          # Print security issues on new code (top 20)
+          echo "\n--- SonarCloud issues (Security, open, PR) ---"
+          curl -fsSL -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=${projectKey}&pullRequest=${prNumber}&types=VULNERABILITY&ps=20" \
+            | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));for(const i of (j.issues||[])){
+              const loc=i.textRange?`${i.textRange.startLine}:${i.textRange.startOffset}-${i.textRange.endLine}:${i.textRange.endOffset}`:"";
+              console.log(`- ${i.rule} ${i.severity} ${i.component}${loc?":"+loc:""}`);
+              if(i.message) console.log(`  ${i.message}`);
+            }'
