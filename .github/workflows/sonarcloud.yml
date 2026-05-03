@@ -89,6 +89,7 @@ jobs:
           echo "sonar.branch.name=${{ github.event.workflow_run.head_branch }}" >> sonar-project.properties
 
       - name: SonarCloud Scan
+        id: sonar
         uses: SonarSource/sonarcloud-github-action@ffc3010689be73b8e5ae0c57ce35968afd7909e8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -96,3 +97,73 @@ jobs:
           args: >
             -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+
+      # SonarCloud's GitHub action can succeed even when the Quality Gate fails.
+      # This step always prints a compact gate + issues summary to the workflow logs and fails the job when the gate is RED.
+      - name: SonarCloud quality gate summary
+        if: steps.changes.outputs.code == 'true' && github.event_name == 'pull_request'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_EVENT_NUMBER: ${{ github.event.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "\n--- SonarCloud Quality Gate summary ---"
+
+          projectKey="${{ vars.SONAR_PROJECT_KEY }}"
+          prNumber="$GITHUB_EVENT_NUMBER"
+
+          # The scan uploads a report, then Sonar processes it async. Poll the CE task until it completes.
+          ceTaskId=$(grep -oE 'https://sonarcloud\.io/api/ce/task\?id=[^ ]+' -m1 .scannerwork/report-task.txt 2>/dev/null | sed 's/.*id=//') || true
+          if [[ -z "$ceTaskId" ]]; then
+            # Fallback: parse from log snippet if report-task.txt isn't present.
+            ceTaskId=""
+          fi
+
+          analysisId=""
+          if [[ -n "$ceTaskId" ]]; then
+            for i in {1..30}; do
+              json=$(curl -fsSL -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/ce/task?id=${ceTaskId}")
+              status=$(node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(j.task?.status||"")' <<<"$json")
+              analysisId=$(node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(j.task?.analysisId||"")' <<<"$json")
+              echo "CE status: ${status:-UNKNOWN}"
+              if [[ "$status" == "SUCCESS" && -n "$analysisId" ]]; then
+                break
+              fi
+              sleep 5
+            done
+          fi
+
+          # Fall back to PR list lookup if CE polling didn't yield an analysisId
+          if [[ -z "$analysisId" ]]; then
+            analysisId=$(curl -fsSL -u "${SONAR_TOKEN}:" \
+              "https://sonarcloud.io/api/project_pull_requests/list?project=${projectKey}" \
+              | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));const pr=String(process.argv[1]);const hit=(j.pullRequests||[]).find(x=>String(x.key)===pr);if(!hit){process.exit(2)};process.stdout.write(hit.analysisId||"")' "$prNumber" || true)
+          fi
+
+          if [[ -z "$analysisId" ]]; then
+            echo "Could not resolve analysisId for PR #$prNumber (project=$projectKey)."
+            exit 1
+          fi
+
+          gateJson=$(curl -fsSL -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/qualitygates/project_status?analysisId=${analysisId}")
+
+          gateStatus=$(node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(j.projectStatus?.status||"UNKNOWN")' <<<"$gateJson")
+          echo "gate status: ${gateStatus}"
+
+          node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));const s=j.projectStatus||{};const bad=(s.conditions||[]).filter(c=>c.status&&c.status!=="OK");for(const c of bad){console.log("- "+c.metricKey+": "+(c.actualValue||"")+" (threshold "+(c.comparator||"")+" "+(c.errorThreshold||"")+")")}' <<<"$gateJson"
+
+          echo "\n--- SonarCloud issues (new code, PR) ---"
+          curl -fsSL -u "${SONAR_TOKEN}:" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=${projectKey}&pullRequest=${prNumber}&statuses=OPEN&ps=50" \
+            | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));for(const i of (j.issues||[])){
+              const loc=i.textRange?`${i.textRange.startLine}:${i.textRange.startOffset}-${i.textRange.endLine}:${i.textRange.endOffset}`:"";
+              console.log(`- ${i.type} ${i.severity} ${i.rule} ${i.component}${loc?":"+loc:""}`);
+              if(i.message) console.log(`  ${i.message}`);
+            }'
+
+          if [[ "$gateStatus" != "OK" ]]; then
+            echo "Quality Gate is $gateStatus (failing)."
+            exit 2
+          fi
