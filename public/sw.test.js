@@ -44,11 +44,22 @@ describe('public/sw.js', () => {
   })
 
   it('handles SKIP_WAITING message by calling self.skipWaiting()', async () => {
+    const client = { url: 'https://example.com/hockey-app/' }
+
+    // Make clients.get resolve a valid same-origin client
+    self.clients.get = vi.fn(async () => client)
+
     await import('./sw.js')
 
     expect(typeof listeners.message).toBe('function')
 
-    listeners.message({ data: { type: 'SKIP_WAITING' }, source: {} })
+    const waitUntil = vi.fn((p) => p)
+    listeners.message({ data: { type: 'SKIP_WAITING' }, source: { id: 'c1' }, waitUntil })
+
+    // let the async waitUntil chain resolve
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(waitUntil).toHaveBeenCalledTimes(1)
     expect(self.skipWaiting).toHaveBeenCalledTimes(1)
   })
 
