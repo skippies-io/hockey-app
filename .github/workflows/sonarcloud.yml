@@ -120,12 +120,13 @@ jobs:
             ceTaskId=""
           fi
 
+          analysisId=""
           if [[ -n "$ceTaskId" ]]; then
             for i in {1..30}; do
               json=$(curl -fsSL -u "${SONAR_TOKEN}:" "https://sonarcloud.io/api/ce/task?id=${ceTaskId}")
               status=$(node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(j.task?.status||"")' <<<"$json")
               analysisId=$(node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(j.task?.analysisId||"")' <<<"$json")
-              echo "CE status: ${status:-UNKNOWN}" 
+              echo "CE status: ${status:-UNKNOWN}"
               if [[ "$status" == "SUCCESS" && -n "$analysisId" ]]; then
                 break
               fi
@@ -133,10 +134,12 @@ jobs:
             done
           fi
 
-          # Resolve the analysisId for this PR (authoritative)
-          analysisId=$(curl -fsSL -u "${SONAR_TOKEN}:" \
-            "https://sonarcloud.io/api/project_pull_requests/list?project=${projectKey}" \
-            | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));const pr=String(process.argv[1]);const hit=(j.pullRequests||[]).find(x=>String(x.key)===pr);if(!hit){process.exit(2)};process.stdout.write(hit.analysisId||"")' "$prNumber" || true)
+          # Fall back to PR list lookup if CE polling didn't yield an analysisId
+          if [[ -z "$analysisId" ]]; then
+            analysisId=$(curl -fsSL -u "${SONAR_TOKEN}:" \
+              "https://sonarcloud.io/api/project_pull_requests/list?project=${projectKey}" \
+              | node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync(0,"utf8"));const pr=String(process.argv[1]);const hit=(j.pullRequests||[]).find(x=>String(x.key)===pr);if(!hit){process.exit(2)};process.stdout.write(hit.analysisId||"")' "$prNumber" || true)
+          fi
 
           if [[ -z "$analysisId" ]]; then
             echo "Could not resolve analysisId for PR #$prNumber (project=$projectKey)."
